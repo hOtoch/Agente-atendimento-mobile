@@ -256,3 +256,40 @@ async def test_uso_de_tokens_e_registrado() -> None:
     assert len(ev) == 1
     assert ev[0].payload["entrada"] == 10 and ev[0].payload["cache_leitura"] == 100
     assert ev[0].payload["modelo"] == "fake"
+
+
+async def test_publica_no_painel_a_etapa_do_agente_e_a_mensagem_da_ia() -> None:
+    c = await criar_cenario(_roteiro_completo()[:2])
+    await c.turno("oi, quero um iphone 16 128")
+
+    publicados = [(loja, ev) for loja, ev in c.painel.publicados]
+    assert all(loja == c.loja_id for loja, _ in publicados)
+    nomes = [ev.nome for _, ev in publicados]
+    assert nomes == ["EtapaMudou", "MensagemNova"]
+
+    etapa = publicados[0][1]
+    assert (etapa.de, etapa.para, etapa.ator) == (  # type: ignore[union-attr]
+        Etapa.NOVO_CONTATO,
+        Etapa.INTERESSE_IDENTIFICADO,
+        "ia",
+    )
+    assert etapa.lead_id == c.lead_id  # type: ignore[union-attr]
+    msg = publicados[1][1]
+    assert (msg.autor, msg.direcao, msg.tipo) == ("ia", "saida", "texto")  # type: ignore[union-attr]
+    assert msg.texto == c.canal.textos[0]  # type: ignore[union-attr]
+    assert msg.conversa_id == c.conversa_id  # type: ignore[union-attr]
+
+
+async def test_dono_vendedor_nao_publica_nada_nem_responde() -> None:
+    c = await criar_cenario([], dono="vendedor")
+    await c.turno("alguem ai?")
+    assert c.painel.publicados == []
+    assert c.canal.enviadas == []
+
+
+async def test_falha_no_painel_nao_derruba_o_turno() -> None:
+    c = await criar_cenario(_roteiro_completo()[:2])
+    c.painel.falhar = True
+    await c.turno("oi, quero um iphone 16 128")
+    assert len(c.canal.enviadas) == 1
+    assert c.etapa() is Etapa.INTERESSE_IDENTIFICADO

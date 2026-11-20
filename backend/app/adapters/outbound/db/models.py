@@ -120,6 +120,7 @@ class Mensagem(Base):
         # Idempotencia: o mesmo (canal, id_externo) nunca entra duas vezes (NULLs nao colidem).
         UniqueConstraint("canal", "id_externo", name="canal_id_externo"),
         CheckConstraint("direcao IN ('entrada', 'saida')", name="direcao_valida"),
+        CheckConstraint("autor IN ('cliente', 'ia', 'vendedor')", name="autor_valido"),
         CheckConstraint("tipo IN ('texto', 'audio', 'imagem')", name="tipo_valido"),
         Index("ix_mensagens_conversa_id_criado_em", "conversa_id", "criado_em"),
     )
@@ -131,6 +132,7 @@ class Mensagem(Base):
     )
     canal: Mapped[str] = mapped_column(String(32), nullable=False)
     direcao: Mapped[str] = mapped_column(String(16), nullable=False)
+    autor: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'cliente'"))
     tipo: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'texto'"))
     conteudo: Mapped[str | None] = mapped_column(Text)
     midia_url: Mapped[str | None] = mapped_column(Text)

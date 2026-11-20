@@ -11,6 +11,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
+from app.application.painel.casos_de_uso import (
+    ConflitoDono,
+    LeadNaoEncontrado,
+    MovimentoEtapaInvalido,
+    VendedorNaoEncontrado,
+)
 
 
 def _caminho(loc: Sequence[str | int]) -> str:
@@ -50,3 +56,20 @@ def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(LojaNaoEncontrada)
     async def _loja(_: Request, exc: LojaNaoEncontrada) -> JSONResponse:
         return JSONResponse(_corpo([ErroCampo("loja_id", "Loja não encontrada.")]), status_code=404)
+
+    @app.exception_handler(LeadNaoEncontrado)
+    async def _lead(_: Request, exc: LeadNaoEncontrado) -> JSONResponse:
+        return JSONResponse(_corpo([ErroCampo("lead_id", "Lead não encontrado.")]), status_code=404)
+
+    @app.exception_handler(VendedorNaoEncontrado)
+    async def _vendedor(_: Request, exc: VendedorNaoEncontrado) -> JSONResponse:
+        erro = ErroCampo("vendedor_id", "Vendedor não encontrado.")
+        return JSONResponse(_corpo([erro]), status_code=404)
+
+    @app.exception_handler(MovimentoEtapaInvalido)
+    async def _movimento(_: Request, exc: MovimentoEtapaInvalido) -> JSONResponse:
+        return JSONResponse(_corpo([ErroCampo("etapa", exc.motivo)]), status_code=409)
+
+    @app.exception_handler(ConflitoDono)
+    async def _dono(_: Request, exc: ConflitoDono) -> JSONResponse:
+        return JSONResponse(_corpo([ErroCampo("dono", exc.motivo)]), status_code=409)

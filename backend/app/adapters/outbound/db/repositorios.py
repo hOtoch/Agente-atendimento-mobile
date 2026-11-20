@@ -25,14 +25,19 @@ class MensagemRepositorio:
         conteudo: str | None = None,
         midia_url: str | None = None,
         id_externo: str | None = None,
+        autor: str | None = None,
     ) -> bool:
-        """Insere a mensagem; se (canal, id_externo) ja existe, nao faz nada e devolve False."""
+        """Insere a mensagem; se (canal, id_externo) ja existe, nao faz nada e devolve False.
+
+        `autor` (cliente | ia | vendedor) padrao: `cliente` para entrada, `ia` para saida.
+        """
         valores: dict[str, Any] = {
             "id": id,
             "loja_id": loja_id,
             "conversa_id": conversa_id,
             "canal": canal,
             "direcao": direcao,
+            "autor": autor or ("cliente" if direcao == "entrada" else "ia"),
             "tipo": tipo,
             "conteudo": conteudo,
             "midia_url": midia_url,

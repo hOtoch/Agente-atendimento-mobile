@@ -10,6 +10,7 @@ from fastapi import Depends
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
 from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
@@ -21,7 +22,8 @@ from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import RepositorioLojas
 from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
-from app.infra.composicao import criar_agendador, montar_casos_config
+from app.application.painel.casos_de_uso import CasosPainel
+from app.infra.composicao import criar_agendador, montar_casos_config, montar_casos_painel
 from app.infra.settings import get_settings
 
 
@@ -81,8 +83,18 @@ def get_agendar() -> Callable[[UUID], Awaitable[None]]:
 def get_receber_mensagem(
     session: Annotated[AsyncSession, Depends(get_session)],
     agendar: Annotated[Callable[[UUID], Awaitable[None]], Depends(get_agendar)],
+    barramento: Annotated[BarramentoMensagens, Depends(get_barramento)],
 ) -> ReceberMensagem:
-    return ReceberMensagem(RepositorioConversasSql(session), agendar)
+    return ReceberMensagem(
+        RepositorioConversasSql(session), agendar, painel=PublicadorPainelBarramento(barramento)
+    )
+
+
+def get_casos_painel(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    barramento: Annotated[BarramentoMensagens, Depends(get_barramento)],
+) -> CasosPainel:
+    return montar_casos_painel(session, barramento)
 
 
 def get_gerador_modelo() -> GeradorModelo:

@@ -1,0 +1,3127 @@
+{
+  "components": {
+    "schemas": {
+      "AssumirIn": {
+        "properties": {
+          "vendedor_id": {
+            "format": "uuid",
+            "title": "Vendedor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendedor_id"
+        ],
+        "title": "AssumirIn",
+        "type": "object"
+      },
+      "Body_importar_lojas__loja_id__importar__tipo__post": {
+        "properties": {
+          "arquivo": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "Body_importar_lojas__loja_id__importar__tipo__post",
+        "type": "object"
+      },
+      "CardLeadSchema": {
+        "properties": {
+          "aparelho_desejado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aparelho Desejado"
+          },
+          "canal": {
+            "enum": [
+              "webchat",
+              "whatsapp",
+              "instagram"
+            ],
+            "title": "Canal",
+            "type": "string"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "dono": {
+            "description": "`ia` ou `vendedor:<id do vendedor>`.",
+            "title": "Dono",
+            "type": "string"
+          },
+          "etapa": {
+            "$ref": "#/components/schemas/Etapa"
+          },
+          "etapa_desde": {
+            "format": "date-time",
+            "title": "Etapa Desde",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "telefone": {
+            "title": "Telefone",
+            "type": "string"
+          },
+          "valor_estimado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Estimado"
+          },
+          "vendedor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendedor Id"
+          },
+          "vendedor_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendedor Nome"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "telefone",
+          "canal",
+          "etapa",
+          "etapa_desde",
+          "dono",
+          "vendedor_id",
+          "vendedor_nome",
+          "aparelho_desejado",
+          "valor_estimado",
+          "criado_em"
+        ],
+        "title": "CardLeadSchema",
+        "type": "object"
+      },
+      "ChecklistSchema": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemChecklistSchema"
+            },
+            "title": "Itens",
+            "type": "array"
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "title": "ChecklistSchema",
+        "type": "object"
+      },
+      "ColunaKanbanSchema": {
+        "properties": {
+          "etapa": {
+            "$ref": "#/components/schemas/Etapa"
+          },
+          "leads": {
+            "items": {
+              "$ref": "#/components/schemas/CardLeadSchema"
+            },
+            "title": "Leads",
+            "type": "array"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "etapa",
+          "nome",
+          "leads"
+        ],
+        "title": "ColunaKanbanSchema",
+        "type": "object"
+      },
+      "DetalheLeadSchema": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/CardLeadSchema"
+          },
+          "eventos": {
+            "items": {
+              "$ref": "#/components/schemas/EventoLeadSchema"
+            },
+            "title": "Eventos",
+            "type": "array"
+          },
+          "ficha": {
+            "additionalProperties": true,
+            "description": "Ficha de qualificacao (JSON do dominio).",
+            "title": "Ficha",
+            "type": "object"
+          },
+          "handoff_solicitado": {
+            "title": "Handoff Solicitado",
+            "type": "boolean"
+          },
+          "mensagens": {
+            "items": {
+              "$ref": "#/components/schemas/MensagemSchema"
+            },
+            "title": "Mensagens",
+            "type": "array"
+          },
+          "motivo_handoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Handoff"
+          },
+          "pendencias": {
+            "description": "Codigos do que falta para liberar o preco.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Pendencias",
+            "type": "array"
+          },
+          "proposta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposta"
+          }
+        },
+        "required": [
+          "card",
+          "ficha",
+          "pendencias",
+          "mensagens",
+          "eventos",
+          "proposta",
+          "handoff_solicitado",
+          "motivo_handoff"
+        ],
+        "title": "DetalheLeadSchema",
+        "type": "object"
+      },
+      "EnvioMensagemSchema": {
+        "properties": {
+          "enviada": {
+            "description": "False quando o canal do lead ainda nao tem adaptador de envio.",
+            "title": "Enviada",
+            "type": "boolean"
+          },
+          "mensagem": {
+            "$ref": "#/components/schemas/MensagemSchema"
+          }
+        },
+        "required": [
+          "mensagem",
+          "enviada"
+        ],
+        "title": "EnvioMensagemSchema",
+        "type": "object"
+      },
+      "ErroCampoSchema": {
+        "properties": {
+          "caminho": {
+            "title": "Caminho",
+            "type": "string"
+          },
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "caminho",
+          "mensagem"
+        ],
+        "title": "ErroCampoSchema",
+        "type": "object"
+      },
+      "ErroSchema": {
+        "properties": {
+          "caminho": {
+            "title": "Caminho",
+            "type": "string"
+          },
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "caminho",
+          "mensagem"
+        ],
+        "title": "ErroSchema",
+        "type": "object"
+      },
+      "ErrosSchema": {
+        "description": "Corpo uniforme de 404, 409 e 422.",
+        "properties": {
+          "erros": {
+            "items": {
+              "$ref": "#/components/schemas/ErroCampoSchema"
+            },
+            "title": "Erros",
+            "type": "array"
+          }
+        },
+        "required": [
+          "erros"
+        ],
+        "title": "ErrosSchema",
+        "type": "object"
+      },
+      "EstoqueSchema-Input": {
+        "properties": {
+          "estoque": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaEstoqueSchema-Input"
+            },
+            "title": "Estoque",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estoque"
+        ],
+        "title": "EstoqueSchema",
+        "type": "object"
+      },
+      "EstoqueSchema-Output": {
+        "properties": {
+          "estoque": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaEstoqueSchema-Output"
+            },
+            "title": "Estoque",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estoque"
+        ],
+        "title": "EstoqueSchema",
+        "type": "object"
+      },
+      "Etapa": {
+        "description": "Etapa do lead no kanban. O valor (str) e gravado em `leads.etapa`.",
+        "enum": [
+          "novo_contato",
+          "interesse_identificado",
+          "interesse_qualificado",
+          "com_o_vendedor",
+          "venda_fechada"
+        ],
+        "title": "Etapa",
+        "type": "string"
+      },
+      "EventoDonoMudouSchema": {
+        "properties": {
+          "dono": {
+            "title": "Dono",
+            "type": "string"
+          },
+          "em": {
+            "format": "date-time",
+            "title": "Em",
+            "type": "string"
+          },
+          "evento": {
+            "const": "DonoMudou",
+            "title": "Evento",
+            "type": "string"
+          },
+          "lead_id": {
+            "format": "uuid",
+            "title": "Lead Id",
+            "type": "string"
+          },
+          "vendedor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendedor Id"
+          }
+        },
+        "required": [
+          "evento",
+          "lead_id",
+          "dono",
+          "vendedor_id",
+          "em"
+        ],
+        "title": "EventoDonoMudouSchema",
+        "type": "object"
+      },
+      "EventoEtapaMudouSchema": {
+        "properties": {
+          "ator": {
+            "enum": [
+              "ia",
+              "vendedor",
+              "sistema"
+            ],
+            "title": "Ator",
+            "type": "string"
+          },
+          "de": {
+            "$ref": "#/components/schemas/Etapa"
+          },
+          "em": {
+            "format": "date-time",
+            "title": "Em",
+            "type": "string"
+          },
+          "evento": {
+            "const": "EtapaMudou",
+            "title": "Evento",
+            "type": "string"
+          },
+          "lead_id": {
+            "format": "uuid",
+            "title": "Lead Id",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "para": {
+            "$ref": "#/components/schemas/Etapa"
+          }
+        },
+        "required": [
+          "evento",
+          "lead_id",
+          "de",
+          "para",
+          "ator",
+          "motivo",
+          "em"
+        ],
+        "title": "EventoEtapaMudouSchema",
+        "type": "object"
+      },
+      "EventoLeadSchema": {
+        "properties": {
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "payload",
+          "criado_em"
+        ],
+        "title": "EventoLeadSchema",
+        "type": "object"
+      },
+      "EventoMensagemNovaSchema": {
+        "properties": {
+          "autor": {
+            "enum": [
+              "cliente",
+              "ia",
+              "vendedor"
+            ],
+            "title": "Autor",
+            "type": "string"
+          },
+          "conversa_id": {
+            "format": "uuid",
+            "title": "Conversa Id",
+            "type": "string"
+          },
+          "direcao": {
+            "enum": [
+              "entrada",
+              "saida"
+            ],
+            "title": "Direcao",
+            "type": "string"
+          },
+          "em": {
+            "format": "date-time",
+            "title": "Em",
+            "type": "string"
+          },
+          "evento": {
+            "const": "MensagemNova",
+            "title": "Evento",
+            "type": "string"
+          },
+          "lead_id": {
+            "format": "uuid",
+            "title": "Lead Id",
+            "type": "string"
+          },
+          "midia_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Midia Url"
+          },
+          "texto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto"
+          },
+          "tipo": {
+            "enum": [
+              "texto",
+              "audio",
+              "imagem"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "lead_id",
+          "conversa_id",
+          "autor",
+          "direcao",
+          "tipo",
+          "texto",
+          "midia_url",
+          "em"
+        ],
+        "title": "EventoMensagemNovaSchema",
+        "type": "object"
+      },
+      "EventoPainel": {
+        "discriminator": {
+          "mapping": {
+            "DonoMudou": "#/components/schemas/EventoDonoMudouSchema",
+            "EtapaMudou": "#/components/schemas/EventoEtapaMudouSchema",
+            "MensagemNova": "#/components/schemas/EventoMensagemNovaSchema"
+          },
+          "propertyName": "evento"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/EventoEtapaMudouSchema"
+          },
+          {
+            "$ref": "#/components/schemas/EventoMensagemNovaSchema"
+          },
+          {
+            "$ref": "#/components/schemas/EventoDonoMudouSchema"
+          }
+        ]
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ItemChecklistSchema": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "completo": {
+            "title": "Completo",
+            "type": "boolean"
+          },
+          "detalhe": {
+            "title": "Detalhe",
+            "type": "string"
+          },
+          "rotulo_ptbr": {
+            "title": "Rotulo Ptbr",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "rotulo_ptbr",
+          "completo",
+          "detalhe"
+        ],
+        "title": "ItemChecklistSchema",
+        "type": "object"
+      },
+      "KanbanSchema": {
+        "properties": {
+          "etapas": {
+            "items": {
+              "$ref": "#/components/schemas/ColunaKanbanSchema"
+            },
+            "title": "Etapas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "etapas"
+        ],
+        "title": "KanbanSchema",
+        "type": "object"
+      },
+      "LinhaEstoqueSchema-Input": {
+        "properties": {
+          "bateria_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bateria Pct"
+          },
+          "capacidade_gb": {
+            "title": "Capacidade Gb",
+            "type": "integer"
+          },
+          "condicao": {
+            "title": "Condicao",
+            "type": "string"
+          },
+          "cor": {
+            "title": "Cor",
+            "type": "string"
+          },
+          "marca": {
+            "default": "Apple",
+            "title": "Marca",
+            "type": "string"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          },
+          "preco_pix": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Preco Pix"
+          },
+          "quantidade": {
+            "title": "Quantidade",
+            "type": "integer"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "modelo",
+          "capacidade_gb",
+          "cor",
+          "condicao",
+          "preco_pix",
+          "quantidade"
+        ],
+        "title": "LinhaEstoqueSchema",
+        "type": "object"
+      },
+      "LinhaEstoqueSchema-Output": {
+        "properties": {
+          "bateria_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bateria Pct"
+          },
+          "capacidade_gb": {
+            "title": "Capacidade Gb",
+            "type": "integer"
+          },
+          "condicao": {
+            "title": "Condicao",
+            "type": "string"
+          },
+          "cor": {
+            "title": "Cor",
+            "type": "string"
+          },
+          "marca": {
+            "default": "Apple",
+            "title": "Marca",
+            "type": "string"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          },
+          "preco_pix": {
+            "title": "Preco Pix",
+            "type": "string"
+          },
+          "quantidade": {
+            "title": "Quantidade",
+            "type": "integer"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "modelo",
+          "capacidade_gb",
+          "cor",
+          "condicao",
+          "preco_pix",
+          "quantidade"
+        ],
+        "title": "LinhaEstoqueSchema",
+        "type": "object"
+      },
+      "LinhaMapeamentoSchema": {
+        "properties": {
+          "capacidade_gb": {
+            "title": "Capacidade Gb",
+            "type": "integer"
+          },
+          "condicao": {
+            "title": "Condicao",
+            "type": "string"
+          },
+          "cor": {
+            "title": "Cor",
+            "type": "string"
+          },
+          "marca": {
+            "default": "Apple",
+            "title": "Marca",
+            "type": "string"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          },
+          "sku_externo": {
+            "title": "Sku Externo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku_externo",
+          "modelo",
+          "capacidade_gb",
+          "cor",
+          "condicao"
+        ],
+        "title": "LinhaMapeamentoSchema",
+        "type": "object"
+      },
+      "LinhaTrocaSchema-Input": {
+        "properties": {
+          "capacidade_gb": {
+            "title": "Capacidade Gb",
+            "type": "integer"
+          },
+          "desconto_bateria": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Bateria"
+          },
+          "desconto_bateria_sem": {
+            "default": false,
+            "title": "Desconto Bateria Sem",
+            "type": "boolean"
+          },
+          "desconto_carcaca": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Carcaca"
+          },
+          "desconto_carcaca_sem": {
+            "default": false,
+            "title": "Desconto Carcaca Sem",
+            "type": "boolean"
+          },
+          "desconto_tela": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Tela"
+          },
+          "desconto_tela_sem": {
+            "default": false,
+            "title": "Desconto Tela Sem",
+            "type": "boolean"
+          },
+          "desconto_traseira": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Traseira"
+          },
+          "desconto_traseira_sem": {
+            "default": false,
+            "title": "Desconto Traseira Sem",
+            "type": "boolean"
+          },
+          "limite_bateria_pct": {
+            "title": "Limite Bateria Pct",
+            "type": "integer"
+          },
+          "marca": {
+            "default": "Apple",
+            "title": "Marca",
+            "type": "string"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          },
+          "valor_sem_detalhes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Valor Sem Detalhes"
+          }
+        },
+        "required": [
+          "modelo",
+          "capacidade_gb",
+          "valor_sem_detalhes",
+          "limite_bateria_pct"
+        ],
+        "title": "LinhaTrocaSchema",
+        "type": "object"
+      },
+      "LinhaTrocaSchema-Output": {
+        "properties": {
+          "capacidade_gb": {
+            "title": "Capacidade Gb",
+            "type": "integer"
+          },
+          "desconto_bateria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Bateria"
+          },
+          "desconto_bateria_sem": {
+            "default": false,
+            "title": "Desconto Bateria Sem",
+            "type": "boolean"
+          },
+          "desconto_carcaca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Carcaca"
+          },
+          "desconto_carcaca_sem": {
+            "default": false,
+            "title": "Desconto Carcaca Sem",
+            "type": "boolean"
+          },
+          "desconto_tela": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Tela"
+          },
+          "desconto_tela_sem": {
+            "default": false,
+            "title": "Desconto Tela Sem",
+            "type": "boolean"
+          },
+          "desconto_traseira": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Traseira"
+          },
+          "desconto_traseira_sem": {
+            "default": false,
+            "title": "Desconto Traseira Sem",
+            "type": "boolean"
+          },
+          "limite_bateria_pct": {
+            "title": "Limite Bateria Pct",
+            "type": "integer"
+          },
+          "marca": {
+            "default": "Apple",
+            "title": "Marca",
+            "type": "string"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          },
+          "valor_sem_detalhes": {
+            "title": "Valor Sem Detalhes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "modelo",
+          "capacidade_gb",
+          "valor_sem_detalhes",
+          "limite_bateria_pct"
+        ],
+        "title": "LinhaTrocaSchema",
+        "type": "object"
+      },
+      "LojaIn": {
+        "properties": {
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome"
+        ],
+        "title": "LojaIn",
+        "type": "object"
+      },
+      "LojaOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nome"
+        ],
+        "title": "LojaOut",
+        "type": "object"
+      },
+      "MapeamentoSchema": {
+        "properties": {
+          "mapeamento_sku": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaMapeamentoSchema"
+            },
+            "title": "Mapeamento Sku",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mapeamento_sku"
+        ],
+        "title": "MapeamentoSchema",
+        "type": "object"
+      },
+      "MensagemIn": {
+        "properties": {
+          "id_cliente": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Id Cliente",
+            "type": "string"
+          },
+          "midia_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Midia Url"
+          },
+          "texto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto"
+          },
+          "tipo": {
+            "enum": [
+              "texto",
+              "audio",
+              "imagem"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id_cliente",
+          "tipo"
+        ],
+        "title": "MensagemIn",
+        "type": "object"
+      },
+      "MensagemSchema": {
+        "properties": {
+          "autor": {
+            "enum": [
+              "cliente",
+              "ia",
+              "vendedor"
+            ],
+            "title": "Autor",
+            "type": "string"
+          },
+          "conversa_id": {
+            "format": "uuid",
+            "title": "Conversa Id",
+            "type": "string"
+          },
+          "criada_em": {
+            "format": "date-time",
+            "title": "Criada Em",
+            "type": "string"
+          },
+          "direcao": {
+            "enum": [
+              "entrada",
+              "saida"
+            ],
+            "title": "Direcao",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "midia_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Midia Url"
+          },
+          "texto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto"
+          },
+          "tipo": {
+            "enum": [
+              "texto",
+              "audio",
+              "imagem"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "conversa_id",
+          "direcao",
+          "autor",
+          "tipo",
+          "texto",
+          "midia_url",
+          "criada_em"
+        ],
+        "title": "MensagemSchema",
+        "type": "object"
+      },
+      "MensagemVendedorIn": {
+        "properties": {
+          "texto": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto"
+        ],
+        "title": "MensagemVendedorIn",
+        "type": "object"
+      },
+      "MoverEtapaIn": {
+        "properties": {
+          "etapa": {
+            "$ref": "#/components/schemas/Etapa"
+          }
+        },
+        "required": [
+          "etapa"
+        ],
+        "title": "MoverEtapaIn",
+        "type": "object"
+      },
+      "PerfilSchema": {
+        "properties": {
+          "endereco": {
+            "default": "",
+            "title": "Endereco",
+            "type": "string"
+          },
+          "horarios": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Horarios",
+            "type": "object"
+          },
+          "nome_exibicao": {
+            "title": "Nome Exibicao",
+            "type": "string"
+          },
+          "tom_de_voz": {
+            "default": "",
+            "title": "Tom De Voz",
+            "type": "string"
+          },
+          "whatsapp_contato": {
+            "default": "",
+            "title": "Whatsapp Contato",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome_exibicao"
+        ],
+        "title": "PerfilSchema",
+        "type": "object"
+      },
+      "PrecoSchema-Input": {
+        "properties": {
+          "aceita_entrada_mais_cartao": {
+            "title": "Aceita Entrada Mais Cartao",
+            "type": "boolean"
+          },
+          "desconto_degrau": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Desconto Degrau"
+          },
+          "desconto_pix_tipo": {
+            "title": "Desconto Pix Tipo",
+            "type": "string"
+          },
+          "desconto_pix_valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Pix Valor"
+          },
+          "desconto_teto": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Desconto Teto"
+          },
+          "max_parcelas": {
+            "title": "Max Parcelas",
+            "type": "integer"
+          },
+          "oportunidade_ativa": {
+            "title": "Oportunidade Ativa",
+            "type": "boolean"
+          },
+          "oportunidade_conta_no_teto": {
+            "default": false,
+            "title": "Oportunidade Conta No Teto",
+            "type": "boolean"
+          },
+          "oportunidade_dias_minimos": {
+            "title": "Oportunidade Dias Minimos",
+            "type": "integer"
+          },
+          "oportunidade_valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Oportunidade Valor"
+          },
+          "repassa_taxa": {
+            "title": "Repassa Taxa",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "max_parcelas",
+          "repassa_taxa",
+          "desconto_pix_tipo",
+          "aceita_entrada_mais_cartao",
+          "desconto_teto",
+          "desconto_degrau",
+          "oportunidade_ativa",
+          "oportunidade_dias_minimos",
+          "oportunidade_valor"
+        ],
+        "title": "PrecoSchema",
+        "type": "object"
+      },
+      "PrecoSchema-Output": {
+        "properties": {
+          "aceita_entrada_mais_cartao": {
+            "title": "Aceita Entrada Mais Cartao",
+            "type": "boolean"
+          },
+          "desconto_degrau": {
+            "title": "Desconto Degrau",
+            "type": "string"
+          },
+          "desconto_pix_tipo": {
+            "title": "Desconto Pix Tipo",
+            "type": "string"
+          },
+          "desconto_pix_valor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto Pix Valor"
+          },
+          "desconto_teto": {
+            "title": "Desconto Teto",
+            "type": "string"
+          },
+          "max_parcelas": {
+            "title": "Max Parcelas",
+            "type": "integer"
+          },
+          "oportunidade_ativa": {
+            "title": "Oportunidade Ativa",
+            "type": "boolean"
+          },
+          "oportunidade_conta_no_teto": {
+            "default": false,
+            "title": "Oportunidade Conta No Teto",
+            "type": "boolean"
+          },
+          "oportunidade_dias_minimos": {
+            "title": "Oportunidade Dias Minimos",
+            "type": "integer"
+          },
+          "oportunidade_valor": {
+            "title": "Oportunidade Valor",
+            "type": "string"
+          },
+          "repassa_taxa": {
+            "title": "Repassa Taxa",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "max_parcelas",
+          "repassa_taxa",
+          "desconto_pix_tipo",
+          "aceita_entrada_mais_cartao",
+          "desconto_teto",
+          "desconto_degrau",
+          "oportunidade_ativa",
+          "oportunidade_dias_minimos",
+          "oportunidade_valor"
+        ],
+        "title": "PrecoSchema",
+        "type": "object"
+      },
+      "RecebidaSchema": {
+        "properties": {
+          "conversa_id": {
+            "format": "uuid",
+            "title": "Conversa Id",
+            "type": "string"
+          },
+          "nova": {
+            "title": "Nova",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "conversa_id",
+          "nova"
+        ],
+        "title": "RecebidaSchema",
+        "type": "object"
+      },
+      "RelatorioSchema": {
+        "properties": {
+          "erros": {
+            "items": {
+              "$ref": "#/components/schemas/ErroSchema"
+            },
+            "title": "Erros",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "resumo": {
+            "additionalProperties": true,
+            "title": "Resumo",
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok",
+          "erros",
+          "resumo"
+        ],
+        "title": "RelatorioSchema",
+        "type": "object"
+      },
+      "SessaoSchema": {
+        "properties": {
+          "sessao": {
+            "title": "Sessao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessao"
+        ],
+        "title": "SessaoSchema",
+        "type": "object"
+      },
+      "TaxaSchema-Input": {
+        "properties": {
+          "bandeira": {
+            "title": "Bandeira",
+            "type": "string"
+          },
+          "chave": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Chave"
+          },
+          "taxa_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxa Pct"
+          }
+        },
+        "required": [
+          "chave",
+          "bandeira"
+        ],
+        "title": "TaxaSchema",
+        "type": "object"
+      },
+      "TaxaSchema-Output": {
+        "properties": {
+          "bandeira": {
+            "title": "Bandeira",
+            "type": "string"
+          },
+          "chave": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Chave"
+          },
+          "taxa_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxa Pct"
+          }
+        },
+        "required": [
+          "chave",
+          "bandeira"
+        ],
+        "title": "TaxaSchema",
+        "type": "object"
+      },
+      "TaxasSchema-Input": {
+        "properties": {
+          "taxas": {
+            "items": {
+              "$ref": "#/components/schemas/TaxaSchema-Input"
+            },
+            "title": "Taxas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "taxas"
+        ],
+        "title": "TaxasSchema",
+        "type": "object"
+      },
+      "TaxasSchema-Output": {
+        "properties": {
+          "taxas": {
+            "items": {
+              "$ref": "#/components/schemas/TaxaSchema-Output"
+            },
+            "title": "Taxas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "taxas"
+        ],
+        "title": "TaxasSchema",
+        "type": "object"
+      },
+      "TrocaSchema-Input": {
+        "properties": {
+          "tabela_troca": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaTrocaSchema-Input"
+            },
+            "title": "Tabela Troca",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tabela_troca"
+        ],
+        "title": "TrocaSchema",
+        "type": "object"
+      },
+      "TrocaSchema-Output": {
+        "properties": {
+          "tabela_troca": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaTrocaSchema-Output"
+            },
+            "title": "Tabela Troca",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tabela_troca"
+        ],
+        "title": "TrocaSchema",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Agente de Atendimento Mobile",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/lojas": {
+      "post": {
+        "operationId": "criar_loja_lojas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LojaIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LojaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Criar Loja",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/estoque": {
+      "get": {
+        "operationId": "obter_estoque_lojas__loja_id__config_estoque_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstoqueSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Estoque",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_estoque_lojas__loja_id__config_estoque_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstoqueSchema-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstoqueSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Estoque",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/mapeamento-sku": {
+      "get": {
+        "operationId": "obter_mapeamento_lojas__loja_id__config_mapeamento_sku_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapeamentoSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Mapeamento",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_mapeamento_lojas__loja_id__config_mapeamento_sku_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MapeamentoSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapeamentoSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Mapeamento",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/perfil": {
+      "get": {
+        "operationId": "obter_perfil_lojas__loja_id__config_perfil_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PerfilSchema"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Obter Perfil Lojas  Loja Id  Config Perfil Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Perfil",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_perfil_lojas__loja_id__config_perfil_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerfilSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Perfil",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/preco": {
+      "get": {
+        "operationId": "obter_preco_lojas__loja_id__config_preco_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PrecoSchema-Output"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Obter Preco Lojas  Loja Id  Config Preco Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Preco",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_preco_lojas__loja_id__config_preco_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrecoSchema-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrecoSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Preco",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/taxas": {
+      "get": {
+        "operationId": "obter_taxas_lojas__loja_id__config_taxas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxasSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Taxas",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_taxas_lojas__loja_id__config_taxas_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxasSchema-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxasSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Taxas",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/troca": {
+      "get": {
+        "operationId": "obter_troca_lojas__loja_id__config_troca_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrocaSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Troca",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_troca_lojas__loja_id__config_troca_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocaSchema-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrocaSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Troca",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/eventos": {
+      "get": {
+        "description": "`text/event-stream`: cada `data:` e um JSON do schema `EventoPainel` (uniao discriminada por `evento`).",
+        "operationId": "eventos_lojas__loja_id__eventos_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream SSE de eventos da loja (EtapaMudou, MensagemNova, DonoMudou)",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/importar/{tipo}": {
+      "post": {
+        "description": "200 com o relatorio quando a planilha e valida; 422 com o relatorio quando nao e.",
+        "operationId": "importar_lojas__loja_id__importar__tipo__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tipo",
+            "required": true,
+            "schema": {
+              "enum": [
+                "troca",
+                "taxas",
+                "estoque"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "modo",
+            "required": false,
+            "schema": {
+              "default": "validar",
+              "enum": [
+                "validar",
+                "aplicar"
+              ],
+              "title": "Modo",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_lojas__loja_id__importar__tipo__post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatorioSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatorioSchema"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Importar",
+        "tags": [
+          "importacao"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/leads": {
+      "get": {
+        "operationId": "listar_leads_lojas__loja_id__leads_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KanbanSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Leads agrupados por etapa",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/leads/{lead_id}": {
+      "get": {
+        "operationId": "detalhe_lead_lojas__loja_id__leads__lead_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalheLeadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detalhe do lead",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/leads/{lead_id}/assumir": {
+      "post": {
+        "operationId": "assumir_lojas__loja_id__leads__lead_id__assumir_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumirIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardLeadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vendedor assume a conversa (a IA fica em silencio)",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/leads/{lead_id}/devolver": {
+      "post": {
+        "operationId": "devolver_lojas__loja_id__leads__lead_id__devolver_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardLeadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Devolve a conversa para a IA",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/leads/{lead_id}/etapa": {
+      "post": {
+        "operationId": "mover_etapa_lojas__loja_id__leads__lead_id__etapa_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoverEtapaIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardLeadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Movimento recusado pelo kanban."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mover o lead de etapa (manual, pelo vendedor)",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/leads/{lead_id}/mensagens": {
+      "post": {
+        "operationId": "enviar_mensagem_lojas__loja_id__leads__lead_id__mensagens_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MensagemVendedorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvioMensagemSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Envia uma mensagem como vendedor (exige ter assumido a conversa)",
+        "tags": [
+          "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/onboarding/checklist": {
+      "get": {
+        "operationId": "checklist_lojas__loja_id__onboarding_checklist_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checklist",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/modelos/{tipo}": {
+      "get": {
+        "operationId": "baixar_modelo_modelos__tipo__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tipo",
+            "required": true,
+            "schema": {
+              "enum": [
+                "troca",
+                "taxas",
+                "estoque"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Baixar Modelo",
+        "tags": [
+          "importacao"
+        ]
+      }
+    },
+    "/webchat/{loja_id}/sessoes": {
+      "post": {
+        "operationId": "criar_sessao_webchat__loja_id__sessoes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Criar Sessao",
+        "tags": [
+          "webchat"
+        ]
+      }
+    },
+    "/webchat/{loja_id}/sessoes/{sessao}/mensagens": {
+      "post": {
+        "operationId": "enviar_mensagem_webchat__loja_id__sessoes__sessao__mensagens_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessao",
+            "required": true,
+            "schema": {
+              "maxLength": 32,
+              "minLength": 1,
+              "title": "Sessao",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MensagemIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecebidaSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enviar Mensagem",
+        "tags": [
+          "webchat"
+        ]
+      }
+    },
+    "/webchat/{loja_id}/sessoes/{sessao}/stream": {
+      "get": {
+        "operationId": "stream_webchat__loja_id__sessoes__sessao__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessao",
+            "required": true,
+            "schema": {
+              "maxLength": 32,
+              "minLength": 1,
+              "title": "Sessao",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream",
+        "tags": [
+          "webchat"
+        ]
+      }
+    }
+  }
+}

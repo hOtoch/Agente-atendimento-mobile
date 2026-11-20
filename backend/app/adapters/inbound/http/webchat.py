@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 import uuid
-from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Literal, Self
 from uuid import UUID
@@ -14,6 +11,7 @@ from fastapi import APIRouter, Depends, Path
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
+from app.adapters.inbound.http.sse import SSE_HEADERS, eventos_sse
 from app.adapters.outbound.canal.webchat import topico_webchat
 from app.application.canal import (
     BarramentoMensagens,
@@ -27,8 +25,6 @@ from app.application.config.portas import RepositorioLojas
 from app.infra.dependencias import get_barramento, get_lojas, get_receber_mensagem
 
 router = APIRouter(prefix="/webchat/{loja_id}", tags=["webchat"])
-
-HEARTBEAT_S = 15.0
 
 # leads.telefone e VARCHAR(32) e a sessao vira o contato: uuid4().hex tem exatos 32 chars.
 SessaoPath = Annotated[str, Path(min_length=1, max_length=32)]
@@ -61,30 +57,6 @@ class RecebidaSchema(BaseModel):
 async def _exigir_loja(lojas: RepositorioLojas, loja_id: UUID) -> None:
     if not await lojas.existe(loja_id):
         raise LojaNaoEncontrada(loja_id)
-
-
-async def eventos_sse(
-    mensagens: AsyncIterator[dict[str, object]], heartbeat_s: float = HEARTBEAT_S
-) -> AsyncIterator[str]:
-    """Converte mensagens em blocos SSE, com comentario de heartbeat nos intervalos."""
-    pendente: asyncio.Future[dict[str, object]] = asyncio.ensure_future(anext(mensagens))
-    try:
-        while True:
-            await asyncio.wait({pendente}, timeout=heartbeat_s)
-            if not pendente.done():
-                yield ": heartbeat\n\n"
-                continue
-            try:
-                payload = pendente.result()
-            except StopAsyncIteration:
-                return
-            yield f"data: {json.dumps(payload)}\n\n"
-            pendente = asyncio.ensure_future(anext(mensagens))
-    finally:
-        pendente.cancel()
-        aclose = getattr(mensagens, "aclose", None)
-        if aclose is not None:
-            await aclose()
 
 
 @router.post("/sessoes", status_code=201, response_model=SessaoSchema)
@@ -131,5 +103,5 @@ async def stream(
     return StreamingResponse(
         eventos_sse(barramento.assinar(topico_webchat(loja_id, sessao))),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers=SSE_HEADERS,
     )

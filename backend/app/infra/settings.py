@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     llm_fallback_model: str = "claude-haiku-5-5"
     llm_effort: str = "low"
     anthropic_api_key: str | None = None
+    cors_origins: str = "http://localhost:3000"
+    """Origens do painel (separadas por virgula) liberadas no CORS."""
+
+    @property
+    def origens_cors(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache
