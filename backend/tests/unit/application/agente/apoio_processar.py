@@ -21,6 +21,7 @@ from app.application.llm import (
     RespostaLLM,
     ResultadoFerramenta,
 )
+from app.application.painel.memoria import PublicadorEmMemoria
 from app.domain.kanban import Etapa
 
 from .apoio_ferramentas import (
@@ -101,6 +102,7 @@ class Cenario:
     eventos: EventosEmMemoria
     caso: ProcessarConversa
     conversa_id: UUID
+    painel: PublicadorEmMemoria
 
     @property
     def lead_id(self) -> UUID:
@@ -146,6 +148,7 @@ async def criar_cenario(
     transcricao = RepositorioTranscricaoEmMemoria()
     atendimento = RepositorioAtendimentoEmMemoria()
     eventos = EventosEmMemoria()
+    painel = PublicadorEmMemoria()
     caso = ProcessarConversa(
         conversas=conversas,
         transcricao=transcricao,
@@ -157,6 +160,9 @@ async def criar_cenario(
         config=amb.casos,
         estoque=amb.ctx.estoque,
         hoje=lambda: HOJE,
+        painel=painel,
         max_iteracoes=max_iteracoes,
     )
-    return Cenario(amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id)
+    return Cenario(
+        amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id, painel
+    )

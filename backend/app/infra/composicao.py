@@ -13,6 +13,7 @@ from arq.connections import ArqRedis
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
 from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.canal.webchat import WebChatAdapter
 from app.adapters.outbound.db.atendimento import RepositorioAtendimentoSql
@@ -23,6 +24,7 @@ from app.adapters.outbound.db.config import (
     RepositorioLojasSql,
     RepositorioMapeamentoSkuSql,
 )
+from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.processamento import RegistroEventosSql, RepositorioProcessamentoSql
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
@@ -34,6 +36,8 @@ from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
 from app.application.estoque_resiliente import EstoqueResiliente
 from app.application.llm import LLMPort
+from app.application.painel.casos_de_uso import CasosPainel
+from app.application.painel.publicador import PublicadorPainel
 from app.infra.fila import AgendadorArq, RelogioParede
 from app.infra.llm import criar_llm
 from app.infra.settings import Settings, get_settings
@@ -64,11 +68,21 @@ def montar_casos_config(session: AsyncSession) -> CasosDeUsoConfig:
     )
 
 
+def montar_casos_painel(session: AsyncSession, barramento: BarramentoMensagens) -> CasosPainel:
+    """Painel: leitura/gravacao em SQL, eventos pelo barramento e envio pelo webchat."""
+    return CasosPainel(
+        repo=RepositorioPainelSql(session),
+        publicador=PublicadorPainelBarramento(barramento),
+        canais={Canal.WEBCHAT: WebChatAdapter(barramento)},
+    )
+
+
 def montar_processar_conversa(
     session: AsyncSession,
     *,
     llm: LLMPort,
     canais: Mapping[Canal, CanalPort],
+    painel: PublicadorPainel | None = None,
     hoje: Callable[[], date] = hoje_brasil,
     max_iteracoes: int = 6,
 ) -> ProcessarConversa:
@@ -88,6 +102,7 @@ def montar_processar_conversa(
         config=casos,
         estoque=estoque,
         hoje=hoje,
+        painel=painel,
         max_iteracoes=max_iteracoes,
     )
 
@@ -103,14 +118,16 @@ def criar_processador(
     """`processar(conversa_id)` do worker: uma sessao nova por job, LLM/canal compartilhados."""
     settings = settings or get_settings()
     llm = llm or criar_llm(settings)
-    canais: dict[Canal, CanalPort] = {
-        Canal.WEBCHAT: WebChatAdapter(barramento or BarramentoRedis(redis))
-    }
+    barramento = barramento or BarramentoRedis(redis)
+    canais: dict[Canal, CanalPort] = {Canal.WEBCHAT: WebChatAdapter(barramento)}
+    painel = PublicadorPainelBarramento(barramento)
 
     async def processar(conversa_id: UUID) -> None:
         async with factory() as session:
             try:
-                await montar_processar_conversa(session, llm=llm, canais=canais)(conversa_id)
+                await montar_processar_conversa(session, llm=llm, canais=canais, painel=painel)(
+                    conversa_id
+                )
             except BaseException:
                 await session.rollback()
                 raise

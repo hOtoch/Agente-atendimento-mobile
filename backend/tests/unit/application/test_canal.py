@@ -82,3 +82,25 @@ async def test_mensagens_diferentes_da_mesma_sessao_reusam_conversa() -> None:
     c1, _ = await caso(_msg("a"))
     c2, _ = await caso(_msg("b"))
     assert c1 == c2
+
+
+async def test_receber_publica_mensagem_nova_para_o_painel_so_quando_e_nova() -> None:
+    from app.application.painel.memoria import PublicadorEmMemoria
+
+    async def agendar(_: UUID) -> None:
+        return None
+
+    painel = PublicadorEmMemoria()
+    repo = RepoMemoria()
+    receber = ReceberMensagem(repo, agendar, painel=painel)
+
+    conversa_id, _ = await receber(_msg("m1"))
+    await receber(_msg("m1"))  # duplicada: nao publica de novo
+
+    assert len(painel.publicados) == 1
+    loja, evento = painel.publicados[0]
+    assert loja == UUID(int=1)
+    assert evento.nome == "MensagemNova"  # type: ignore[union-attr]
+    assert evento.conversa_id == conversa_id  # type: ignore[union-attr]
+    assert (evento.autor, evento.direcao, evento.texto) == ("cliente", "entrada", "oi")  # type: ignore[union-attr]
+    assert evento.lead_id == repo.leads[(UUID(int=1), Canal.WEBCHAT, "s1")][0]  # type: ignore[union-attr]

@@ -12,7 +12,7 @@ import logging
 import traceback
 from collections.abc import Callable, Mapping
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -40,6 +40,12 @@ from app.application.llm import (
     MensagemLLM,
     ResultadoFerramenta,
     UsoTokens,
+)
+from app.application.painel.eventos import EventoEtapaMudou, EventoMensagemNova
+from app.application.painel.publicador import (
+    PublicadorPainel,
+    PublicadorPainelNulo,
+    publicar_sem_falhar,
 )
 from app.domain.kanban import Ator, atualizar_etapa
 from app.domain.valores import Dinheiro
@@ -90,6 +96,7 @@ class ProcessarConversa:
         config: CasosDeUsoConfig,
         estoque: EstoquePort,
         hoje: Callable[[], date],
+        painel: PublicadorPainel | None = None,
         max_iteracoes: int = 6,
     ) -> None:
         self._conversas = conversas
@@ -102,6 +109,7 @@ class ProcessarConversa:
         self._config = config
         self._estoque = estoque
         self._hoje = hoje
+        self._painel = painel or PublicadorPainelNulo()
         self._max_iteracoes = max_iteracoes
 
     async def __call__(self, conversa_id: UUID) -> None:
@@ -245,6 +253,18 @@ class _Turno:
                 "motivo": mudou.motivo,
             },
         )
+        await publicar_sem_falhar(
+            self._c._painel,
+            self._conversa.loja_id,
+            EventoEtapaMudou(
+                lead_id=self._conversa.lead_id,
+                de=mudou.de,
+                para=mudou.para,
+                ator=mudou.ator.value,
+                motivo=mudou.motivo,
+                em=datetime.now(UTC),
+            ),
+        )
 
     async def _falha_llm(self, exc: ErroLLM) -> None:
         log.error("LLM indisponivel na conversa %s: %r", self._conversa.conversa_id, exc)
@@ -271,6 +291,20 @@ class _Turno:
         )
         await canal.enviar(saida)
         await c._conversas.registrar_saida(conversa.conversa_id, saida)
+        await publicar_sem_falhar(
+            c._painel,
+            conversa.loja_id,
+            EventoMensagemNova(
+                lead_id=conversa.lead_id,
+                conversa_id=conversa.conversa_id,
+                autor="ia",
+                direcao="saida",
+                tipo=saida.tipo.value,
+                texto=saida.texto,
+                midia_url=saida.midia_url,
+                em=datetime.now(UTC),
+            ),
+        )
         if self._chamadas_llm:
             await self._evento(
                 "llm_uso",
