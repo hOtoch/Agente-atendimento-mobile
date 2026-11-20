@@ -40,3 +40,16 @@ def test_settings_defaults_de_banco(monkeypatch: pytest.MonkeyPatch) -> None:
         s.database_url == "postgresql+asyncpg://atendimento:atendimento@localhost:5432/atendimento"
     )
     assert s.test_database_url == "postgresql+asyncpg://teste:teste@localhost:5433/teste"
+
+
+def test_settings_de_midia(monkeypatch: pytest.MonkeyPatch) -> None:
+    for nome in ("MIDIA_DIR", "MIDIA_MAX_BYTES"):
+        monkeypatch.delenv(nome, raising=False)
+    padrao = Settings(_env_file=None)
+    assert padrao.midia_dir == "./.midias"
+    assert padrao.midia_max_bytes == 10 * 1024 * 1024
+
+    monkeypatch.setenv("MIDIA_DIR", "/tmp/m")
+    monkeypatch.setenv("MIDIA_MAX_BYTES", "1024")
+    s = Settings(_env_file=None)
+    assert (s.midia_dir, s.midia_max_bytes) == ("/tmp/m", 1024)

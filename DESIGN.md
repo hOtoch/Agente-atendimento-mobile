@@ -63,6 +63,7 @@ Vitrine viva em **`/design`** (todos os componentes e estados; o botão no topo 
 | Campo | `campo.tsx` | rótulo + controle + dica + erro; `children` recebe `{ id, aria-labelledby, aria-invalid, aria-describedby }` para espalhar no `Input`, `Textarea` ou `SelectTrigger` |
 | Toast | `toast.tsx` | `<Toaster />` no layout raiz; `useToast()` com `sucesso`, `aviso`, `erro`, `info`, `fechar` (pt-BR) |
 | Skeleton | `skeleton.tsx` | `aria-hidden`; pulsa sobre `bg-muted` |
+| MessageBubble | `message-bubble.tsx` | balão de conversa: `lado` (`cliente`/`atendente`, quem escreveu), `tipo` (`texto`, `imagem`, `audio` com `<audio controls>`), `texto`, `midiaUrl`, `horario` (HH:mm pt-BR), `autor`, `erro`; `perspectiva` define quem está olhando (as mensagens dele ficam à direita e em `primary`; padrão `atendente` para a inbox, o simulador usa `cliente`) |
 | EmptyState | `empty-state.tsx` | ícone decorativo, título (h3), descrição e ação |
 
 ### Etapas e donos

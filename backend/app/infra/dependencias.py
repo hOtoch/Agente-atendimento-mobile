@@ -15,6 +15,7 @@ from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
+from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
 from app.application.canal import BarramentoMensagens, ReceberMensagem
@@ -22,6 +23,7 @@ from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import RepositorioLojas
 from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
+from app.application.midia import ArmazenamentoMidia, ReceberMidia
 from app.application.painel.casos_de_uso import CasosPainel
 from app.infra.composicao import criar_agendador, montar_casos_config, montar_casos_painel
 from app.infra.settings import get_settings
@@ -99,3 +101,11 @@ def get_casos_painel(
 
 def get_gerador_modelo() -> GeradorModelo:
     return GeradorModeloXlsx()
+
+
+def get_armazenamento_midia() -> ArmazenamentoMidia:
+    return ArmazenamentoMidiaDisco(get_settings().midia_dir)
+
+
+def get_receber_midia() -> ReceberMidia:
+    return ReceberMidia(get_armazenamento_midia(), get_settings().midia_max_bytes)

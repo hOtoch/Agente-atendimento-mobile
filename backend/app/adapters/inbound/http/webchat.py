@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, File, Path, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
@@ -22,7 +22,13 @@ from app.application.canal import (
 )
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.config.portas import RepositorioLojas
-from app.infra.dependencias import get_barramento, get_lojas, get_receber_mensagem
+from app.application.midia import ReceberMidia
+from app.infra.dependencias import (
+    get_barramento,
+    get_lojas,
+    get_receber_mensagem,
+    get_receber_midia,
+)
 
 router = APIRouter(prefix="/webchat/{loja_id}", tags=["webchat"])
 
@@ -49,6 +55,10 @@ class MensagemIn(BaseModel):
         return self
 
 
+class MidiaSchema(BaseModel):
+    midia_url: str
+
+
 class RecebidaSchema(BaseModel):
     conversa_id: UUID
     nova: bool
@@ -65,6 +75,31 @@ async def criar_sessao(
 ) -> SessaoSchema:
     await _exigir_loja(lojas, loja_id)
     return SessaoSchema(sessao=uuid.uuid4().hex)
+
+
+@router.post(
+    "/midias",
+    status_code=201,
+    response_model=MidiaSchema,
+    summary="Envia uma imagem ou audio do cliente",
+    responses={
+        404: {"description": "Loja nao encontrada."},
+        413: {"description": "Arquivo acima do limite."},
+        415: {"description": "Tipo de arquivo nao suportado."},
+    },
+)
+async def enviar_midia(
+    request: Request,
+    loja_id: UUID,
+    arquivo: Annotated[UploadFile, File()],
+    lojas: Annotated[RepositorioLojas, Depends(get_lojas)],
+    receber: Annotated[ReceberMidia, Depends(get_receber_midia)],
+) -> MidiaSchema:
+    await _exigir_loja(lojas, loja_id)
+    # Le so ate o limite + 1 byte: um arquivo gigante nao vai inteiro para a memoria.
+    dados = await arquivo.read(receber.limite_bytes + 1)
+    nome = await receber(dados, arquivo.content_type or "")
+    return MidiaSchema(midia_url=str(request.url_for("obter_midia", nome=nome)))
 
 
 @router.post("/sessoes/{sessao}/mensagens", status_code=202, response_model=RecebidaSchema)
