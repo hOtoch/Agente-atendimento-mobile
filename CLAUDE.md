@@ -100,6 +100,7 @@ Não altere código. Responda com o veredito e o resumo.
 ## 5. Comandos
 
 > Docker roda dentro do WSL. Se o daemon estiver parado: `wsl -u root service docker start`.
+> Em Linux/macOS (fora do WSL): `bash infra/dev.sh up` direto, `uv` no PATH (`~/.local/bin`) e Node 24 (`nvm use 24`; o Node 20 quebra o vitest).
 > Comandos Docker: `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && docker compose -f infra/docker-compose.yml <cmd>"`.
 
 | O quê | Comando |
@@ -115,6 +116,8 @@ Não altere código. Responda com o veredito e o resumo.
 | Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo) |
 | Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
+| Subir painel | `cd frontend && npm run dev` (http://localhost:3000; API em `NEXT_PUBLIC_API_URL`) |
+| Exportar OpenAPI + gerar cliente TS | `cd backend && uv run python scripts/exportar_openapi.py && cd ../frontend && npm run gerar:api` (o teste `test_openapi.py` quebra se ficar defasado) |
 | Backend — deps | `cd backend && uv sync` |
 | Backend — testes rápidos | `cd backend && uv run pytest -m "not integration"` |
 | Backend — todos os testes | `cd backend && uv run pytest` (precisa do Postgres de teste) |

@@ -221,8 +221,8 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 | M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ✅ concluído (PR #45) |
 | M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ✅ concluído (PR #47) |
 | M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ✅ concluído (PR #48) |
-| M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ✅ concluído (PR em revisão) |
-| M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ⏳ pendente |
+| M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ✅ concluído (PR #50) |
+| M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ✅ concluído (PR em revisão) |
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ⏳ pendente |
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ⏳ pendente |
 | M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ⏳ pendente |
@@ -236,7 +236,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | M1 | #6 value objects, #46 CI exige integração | #7 troca, #8 pagamento, #9 desconto, #10 ficha/trava, #11 kanban | | |
 | M2 | #12 config loja, #13 EstoquePort, #14 ERP simulado | #15 adaptador ERP, #16 resiliência, #17 importador xlsx, #18 seed demo | | |
 | M3 | #19 LLMPort, #20 canal web, #21 fila, #49 ajustes pós-review M2 | #22 ferramentas, #23 prompt | #24 orquestrador | #25 eval |
-| M4 | #26 design system, #27 API painel + SSE | #28 kanban, #29 inbox, #30 onboarding, #31 simulador | | |
+| M4 | #26 design system, #27 API painel + SSE | #28 kanban, #30 onboarding (+ API de vendedores), #31 simulador (+ upload de mídia) | #29 inbox (precisa da API de vendedores) | |
 | M5 | #32 handoff, #33 Evolution, #34 distribuição % | #35 notificação + QR | | |
 | M6 | #36 visão, #37 STT, #38 TTS, #39 follow-up | #40 Instagram | | |
 | M7 | #41 carga k6, #42 custos | #43 README, #44 roteiro demo | | |
@@ -280,6 +280,14 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-20 | Webchat: sessão = `uuid4().hex` (32 chars, cabe em `leads.telefone`); `id_externo` = `{loja}:{sessao}:{id_cliente}` | Sem migration; sem colisão entre lojas |
 | 2026-11-20 | Testes do SDK Anthropic usam `httpx2.MockTransport` injetado (respx não intercepta o SDK atual) | Nenhum teste toca a rede |
 | 2026-11-20 | Eval: modo fake no CI (harness + checagens, com controle negativo); modo real exige `--confirmo-custo` e imprime estimativa (15 cenários: ~US$ 1,84 Sonnet / ~US$ 0,12 Haiku) | Escolha de modelo por dados, custo sob controle |
+| 2026-11-20 | API do painel em `/lojas/{id}/leads*` + SSE `/lojas/{id}/eventos` (tópico Redis `painel:<loja>`; eventos `EtapaMudou`, `MensagemNova`, `DonoMudou`); publicação nunca derruba o atendimento | Painel em tempo real sem Supabase |
+| 2026-11-20 | Cliente TS gerado do OpenAPI (`openapi-typescript` + `openapi-fetch`); `tests/unit/test_openapi.py` quebra se `openapi.json` ficar defasado | Contrato único entre backend e painel |
+| 2026-11-20 | `mensagens.autor` (`cliente`/`ia`/`vendedor`, migration 0003); dono exposto como `ia` ou `vendedor:<id>`; vendedor só responde depois de assumir | Inbox distingue quem falou; handoff explícito |
+| 2026-11-20 | Vendedores: `GET/PUT /lojas/{id}/config/vendedores` substitui a lista e **desativa** (não apaga) quem sai; soma dos ativos = 100 | Leads e conversas referenciam vendedores |
+| 2026-11-20 | Mídia do chat web: `POST /webchat/{loja}/midias` grava em disco local (`MIDIA_DIR`, limite `MIDIA_MAX_BYTES`) via porta `ArmazenamentoMidia`; `GET /midias/{nome}` | Simples para a demo; troca por S3/R2 sem tocar no caso de uso |
+| 2026-11-20 | Painel sem TanStack Query no M4: hooks por feature com o cliente tipado, injetado por props nos testes; loja do painel em `NEXT_PUBLIC_LOJA_ID` (padrão: loja demo) até existir login | Menos peças para 4 telas paralelas |
+| 2026-11-20 | Sem login até o M7: inbox usa seletor "Atendendo como" (localStorage); `/chat/{loja}` é público e sem a barra lateral | Demo e teste do avaliador sem fricção |
+| 2026-11-20 | Ambiente Linux (fora do WSL): `uv` em `~/.local/bin`, Node 24 via nvm (`nvm use 24`; o Node 20 quebra o vitest), `docker compose` direto | Retomada em outra máquina |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -345,17 +353,35 @@ _Atualizado ao final de cada milestone._
     - Depois de `chamar_vendedor` a IA continua dona da conversa até o M5 (handoff real).
     - Mídia (áudio/imagem) vira texto provisório até o M6.
   - Próximo: M4 Painel web.
+- **2026-11-20 — M4 Painel web concluído** (#26–#31).
+  - Design system: Input, Select, Textarea, Card, Badge (etapa/dono), Avatar, Dialog, Sheet, Tabs, Table, DataGrid editável com erro por célula, Toast, Skeleton, EmptyState, Campo, MessageBubble; vitrine em `/design`.
+  - API do painel (leads por etapa, detalhe, mover etapa com 409, assumir/devolver, mensagem do vendedor) + SSE `/lojas/{id}/eventos`, inclusive quando a mudança vem do worker; cliente TS gerado e `assinarEventosLoja`.
+  - Kanban (`/kanban`): 5 colunas, SSE, arrastar com dnd-kit (proibido volta com aviso; 409 reverte), filtro por vendedor.
+  - Inbox (`/conversas`): lista, conversa, ficha + pendências, resumo do handoff montado no front, Assumir/Devolver, resposta do vendedor.
+  - Onboarding (`/onboarding`): 8 passos com checklist da API, grades editáveis, importar planilha (validar → aplicar); API de vendedores.
+  - Simulador (`/simulador`) e chat público `/chat/{loja}` com imagem e áudio gravado no navegador; upload de mídia no backend.
+  - Teste ponta a ponta manual no navegador (API + worker + painel, sem chave de LLM): mensagem no simulador → lead aparece no kanban e muda de coluna sozinho → assumir, responder e devolver na inbox.
+  - Correções do teste ponta a ponta: card e inbox não mostram o id da sessão do webchat; inbox com breakpoints que consideram a barra lateral; motivo `falha_llm` legível.
+  - Testes: backend 1000, frontend 234, erp-mock 35.
+  - Pontos de atenção:
+    - A barra lateral do painel (`AppShell`) não recolhe no celular (o chat do cliente não é afetado).
+    - Silenciar a IA de verdade, "devolver lendo o que o vendedor falou" e o resumo gerado pela IA são do M5 (#32); WhatsApp ainda registra a mensagem do vendedor com `enviada:false`.
+    - `MensagemNova` não leva o id da mensagem (a inbox deduplica a do vendedor por autor+texto+tempo); não há evento de "lead novo" (o painel recarrega ao ver um lead desconhecido).
+    - Mensagens do próprio cliente só aparecem localmente no simulador (o SSE da sessão publica só IA/vendedor).
+    - Mídia em disco local não serve para várias instâncias; `npm audit` com avisos.
+    - Sem tela para reativar vendedor desativado (a API permite).
+  - Próximo: M5 Handoff, WhatsApp e distribuição.
 
 ---
 
 ## 13. Retomar em outra máquina
 
-1. Pré-requisitos: Git, `gh` autenticado (conta com acesso ao repo), Python 3.12 + `uv`, Node 24 + npm, Docker (nesta máquina original ele roda dentro do WSL; em Linux/macOS use `docker compose` direto).
+1. Pré-requisitos: Git, `gh` autenticado (conta com acesso ao repo), Python 3.12 + `uv`, Node 24 + npm (com nvm: `nvm use 24`), Docker (na máquina original ele roda dentro do WSL; em Linux/macOS use `docker compose` direto, ex. `bash infra/dev.sh up`).
 2. `git clone https://github.com/hOtoch/Agente-atendimento-mobile.git && cd Agente-atendimento-mobile`
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (884 testes) e `cd ../frontend && npm ci && npm test -- --run`.
-7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, ou `uv run python scripts/conversar.py --fake`.
-8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M4 — Painel web** (issues #26–#31). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1000 testes) e `cd ../frontend && npm ci && npm test -- --run` (234 testes).
+7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
+8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M5 — Handoff, WhatsApp e distribuição** (issues #32–#35). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
