@@ -7,8 +7,10 @@ dependencies = [
     "asyncpg>=0.32.0",
     "fastapi>=0.165.0",
     "httpx>=0.28.1",
+    "openpyxl>=3.1.5",
     "pydantic>=2",
     "pydantic-settings>=2.16.3",
+    "python-multipart>=0.0.34",
     "sqlalchemy[asyncio]>=2",
 ]
 
@@ -43,6 +45,10 @@ select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["openpyxl", "openpyxl.*"]
+ignore_missing_imports = true
 
 [tool.importlinter]
 root_package = "app"
