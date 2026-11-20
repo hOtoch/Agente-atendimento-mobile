@@ -28,3 +28,15 @@ def test_settings_defaults_de_modelo(monkeypatch: pytest.MonkeyPatch) -> None:
     assert s.llm_model == "claude-sonnet-5-5"
     assert s.llm_fallback_model == "claude-haiku-5-5"
     assert s.anthropic_api_key is None
+
+
+def test_settings_defaults_de_banco(monkeypatch: pytest.MonkeyPatch) -> None:
+    for nome in ("DATABASE_URL", "TEST_DATABASE_URL"):
+        monkeypatch.delenv(nome, raising=False)
+
+    s = Settings(_env_file=None)
+
+    assert (
+        s.database_url == "postgresql+asyncpg://atendimento:atendimento@localhost:5432/atendimento"
+    )
+    assert s.test_database_url == "postgresql+asyncpg://teste:teste@localhost:5433/teste"
