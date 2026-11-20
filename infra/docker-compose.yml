@@ -113,6 +113,22 @@ services:
       retries: 12
       start_period: 40s
 
+  # --- ERP simulado (contrato HTTP em services/erp-mock/README.md) ---
+  erp-mock:
+    build: ../services/erp-mock
+    environment:
+      ERP_MOCK_TOKEN: ${ERP_MOCK_TOKEN:-token-dev}
+      ERP_MOCK_LATENCIA_MS: ${ERP_MOCK_LATENCIA_MS:-0}
+      ERP_MOCK_ERRO_PCT: ${ERP_MOCK_ERRO_PCT:-0}
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8090/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   # --- Placeholders (habilitar quando as issues correspondentes existirem) ---
   # backend:
   #   build: ../backend
@@ -137,10 +153,6 @@ services:
   #   ports: ["5173:80"]
   #   depends_on: [backend]
   #
-  # erp-mock:
-  #   build: ../services/erp-mock
-  #   env_file: ../.env
-  #   ports: ["9000:9000"]
 
 volumes:
   pgdata:
