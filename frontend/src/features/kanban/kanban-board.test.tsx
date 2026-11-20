@@ -100,6 +100,15 @@ describe("KanbanBoard", () => {
     expect(within(joao).getByText("Ana Paula")).toBeInTheDocument()
   })
 
+  it("lead do chat web mostra 'Chat web' em vez do id da sessão", async () => {
+    const sessao = "78920b7f01d641f5984b1ec66b8426aa"
+    carregar([CARD_A, { ...CARD_C, nome: null, telefone: sessao, canal: "webchat" }])
+    await abrir()
+    const card = screen.getByRole("group", { name: "Visitante do chat web" })
+    expect(within(card).getByText("Chat web")).toBeInTheDocument()
+    expect(screen.queryByText(sessao)).not.toBeInTheDocument()
+  })
+
   it("estado vazio por coluna", async () => {
     carregar([CARD_A])
     await abrir()
