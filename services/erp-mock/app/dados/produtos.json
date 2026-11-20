@@ -1,0 +1,296 @@
+[
+  {
+    "sku": "APL-000001",
+    "descricao": "IPHONE 11 64GB PRETO SEMINOVO BAT 82",
+    "preco": "1899.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-02T09:07:00-03:00"
+  },
+  {
+    "sku": "APL-000002",
+    "descricao": "IPH 11 128 BRANCO SN BAT 85",
+    "preco": "2199.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-03T10:14:00-03:00"
+  },
+  {
+    "sku": "APL-000003",
+    "descricao": "APPLE IPHONE 12 64GB AZUL SEMINOVO BAT 84",
+    "preco": "2499.00",
+    "estoque": 3,
+    "atualizado_em": "2026-11-04T11:21:00-03:00"
+  },
+  {
+    "sku": "APL-000004",
+    "descricao": "IPH 12 128GB PRETO SN BAT 80",
+    "preco": "2699.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-05T12:28:00-03:00"
+  },
+  {
+    "sku": "APL-000005",
+    "descricao": "IPHONE 13 128 AZUL SEMINOVO BAT 87",
+    "preco": "3299.00",
+    "estoque": 4,
+    "atualizado_em": "2026-11-06T13:35:00-03:00"
+  },
+  {
+    "sku": "APL-000006",
+    "descricao": "IPH 13 256 ESTELAR SN BAT 89",
+    "preco": "3799.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-07T14:42:00-03:00"
+  },
+  {
+    "sku": "APL-000007",
+    "descricao": "APPLE IPHONE 13 128GB MEIA-NOITE LACRADO",
+    "preco": "4199.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-08T15:49:00-03:00"
+  },
+  {
+    "sku": "APL-000008",
+    "descricao": "IP 14 128 ROXO SN",
+    "preco": "3999.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-09T16:56:00-03:00"
+  },
+  {
+    "sku": "APL-000009",
+    "descricao": "IPH 14 PLUS 128 AZUL SEMINOVO BAT 90",
+    "preco": "4399.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-10T17:03:00-03:00"
+  },
+  {
+    "sku": "APL-000010",
+    "descricao": "IP 14 PM 512 ROXO SN",
+    "preco": "6299.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-11T08:10:00-03:00"
+  },
+  {
+    "sku": "APL-000011",
+    "descricao": "APPLE IPHONE 14 PRO 256GB PRETO ESPACIAL",
+    "preco": "6899.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-12T09:17:00-03:00"
+  },
+  {
+    "sku": "APL-000012",
+    "descricao": "IPHONE 15 128GB ROSA NOVO LACRADO",
+    "preco": "4999.00",
+    "estoque": 5,
+    "atualizado_em": "2026-11-13T10:24:00-03:00"
+  },
+  {
+    "sku": "APL-000013",
+    "descricao": "IPH 15 PLUS 256 AZUL",
+    "preco": "5999.00",
+    "estoque": 3,
+    "atualizado_em": "2026-11-14T11:31:00-03:00"
+  },
+  {
+    "sku": "APL-000014",
+    "descricao": "IPH 15 PRO 256 TIT NAT",
+    "preco": "7499.00",
+    "estoque": 4,
+    "atualizado_em": "2026-11-15T12:38:00-03:00"
+  },
+  {
+    "sku": "APL-000015",
+    "descricao": "IPH 15 PRO 128 TIT AZUL SN BAT 91",
+    "preco": "6299.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-16T13:45:00-03:00"
+  },
+  {
+    "sku": "APL-000016",
+    "descricao": "IP 15 PM 256 TIT PRETO",
+    "preco": "8599.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-17T14:52:00-03:00"
+  },
+  {
+    "sku": "APL-000017",
+    "descricao": "IPH 15 PRO MAX 512 TIT BRANCO SN BAT 93",
+    "preco": "8999.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-18T15:59:00-03:00"
+  },
+  {
+    "sku": "APL-000018",
+    "descricao": "APPLE IPHONE 16E 128GB BRANCO",
+    "preco": "4299.00",
+    "estoque": 6,
+    "atualizado_em": "2026-11-01T16:06:00-03:00"
+  },
+  {
+    "sku": "APL-000019",
+    "descricao": "IPH 16E 256 PRETO",
+    "preco": "5099.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-02T17:13:00-03:00"
+  },
+  {
+    "sku": "APL-000020",
+    "descricao": "IPHONE 16 128 ULTRAMARINO NOVO",
+    "preco": "5999.00",
+    "estoque": 4,
+    "atualizado_em": "2026-11-03T08:20:00-03:00"
+  },
+  {
+    "sku": "APL-000021",
+    "descricao": "IPH 16 256GB ROSA",
+    "preco": "6799.00",
+    "estoque": 3,
+    "atualizado_em": "2026-11-04T09:27:00-03:00"
+  },
+  {
+    "sku": "APL-000022",
+    "descricao": "IP 16 PLUS 128 VERDE-AZULADO",
+    "preco": "6999.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-05T10:34:00-03:00"
+  },
+  {
+    "sku": "APL-000023",
+    "descricao": "IPH 16 PRO 128 TIT DESERTO",
+    "preco": "7999.00",
+    "estoque": 3,
+    "atualizado_em": "2026-11-06T11:41:00-03:00"
+  },
+  {
+    "sku": "APL-000024",
+    "descricao": "IPHONE 16 PRO 256GB TITANIO NATURAL SEMINOVO BAT 95",
+    "preco": "7799.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-07T12:48:00-03:00"
+  },
+  {
+    "sku": "APL-000025",
+    "descricao": "IP 16 PRO 512 TIT PRETO",
+    "preco": "9499.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-08T13:55:00-03:00"
+  },
+  {
+    "sku": "APL-000026",
+    "descricao": "IPH 16 PM 256 TIT DESERTO",
+    "preco": "9299.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-09T14:02:00-03:00"
+  },
+  {
+    "sku": "APL-000027",
+    "descricao": "APPLE IPHONE 16 PRO MAX 512GB TIT NAT",
+    "preco": "10499.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-10T15:09:00-03:00"
+  },
+  {
+    "sku": "APL-000028",
+    "descricao": "IP 16 PM 1TB TIT BRANCO SN BAT 96",
+    "preco": "10999.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-11T16:16:00-03:00"
+  },
+  {
+    "sku": "APL-000029",
+    "descricao": "IPHONE 17 256GB LAVANDA",
+    "preco": "6999.00",
+    "estoque": 5,
+    "atualizado_em": "2026-11-12T17:23:00-03:00"
+  },
+  {
+    "sku": "APL-000030",
+    "descricao": "IPH 17 256 PRETO",
+    "preco": "6999.00",
+    "estoque": 4,
+    "atualizado_em": "2026-11-13T08:30:00-03:00"
+  },
+  {
+    "sku": "APL-000031",
+    "descricao": "IPH 17 512GB AZUL NEBLINA",
+    "preco": "8499.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-14T09:37:00-03:00"
+  },
+  {
+    "sku": "APL-000032",
+    "descricao": "IPHONE AIR 256 PRETO ESPACIAL",
+    "preco": "7999.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-15T10:44:00-03:00"
+  },
+  {
+    "sku": "APL-000033",
+    "descricao": "IPH 17 AIR 512GB DOURADO NUVEM",
+    "preco": "9499.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-16T11:51:00-03:00"
+  },
+  {
+    "sku": "APL-000034",
+    "descricao": "IPH 17 PRO 256 LARANJA COSMICO",
+    "preco": "9999.00",
+    "estoque": 3,
+    "atualizado_em": "2026-11-17T12:58:00-03:00"
+  },
+  {
+    "sku": "APL-000035",
+    "descricao": "APPLE IPHONE 17 PRO 512GB AZUL PROFUNDO",
+    "preco": "11499.00",
+    "estoque": 2,
+    "atualizado_em": "2026-11-18T13:05:00-03:00"
+  },
+  {
+    "sku": "APL-000036",
+    "descricao": "IP 17 PRO 256 PRATA SN BAT 98",
+    "preco": "9299.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-01T14:12:00-03:00"
+  },
+  {
+    "sku": "APL-000037",
+    "descricao": "IPH 17 PRO MAX 256 AZUL PROF",
+    "preco": "11299.00",
+    "estoque": 3,
+    "atualizado_em": "2026-11-02T15:19:00-03:00"
+  },
+  {
+    "sku": "APL-000038",
+    "descricao": "IPH 17 PRO MAX 512 PRATA",
+    "preco": "12499.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-03T16:26:00-03:00"
+  },
+  {
+    "sku": "APL-000039",
+    "descricao": "IPH 17 PRO MAX 1TB LARANJA CÓSMICO",
+    "preco": "14999.00",
+    "estoque": 1,
+    "atualizado_em": "2026-11-04T17:33:00-03:00"
+  },
+  {
+    "sku": "APL-000040",
+    "descricao": "CAPA SILICONE P/ IPHONE 15 PRO PRETA ORIG",
+    "preco": "349.00",
+    "estoque": 12,
+    "atualizado_em": "2026-11-05T08:40:00-03:00"
+  },
+  {
+    "sku": "APL-000041",
+    "descricao": "CARREGADOR TURBO 20W USB-C APPLE",
+    "preco": "199.00",
+    "estoque": 20,
+    "atualizado_em": "2026-11-06T09:47:00-03:00"
+  },
+  {
+    "sku": "APL-000042",
+    "descricao": "CABO USB-C LIGHTNING 1M PRETO",
+    "preco": "129.00",
+    "estoque": 0,
+    "atualizado_em": "2026-11-07T10:54:00-03:00"
+  }
+]
