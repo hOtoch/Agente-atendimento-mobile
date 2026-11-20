@@ -1,0 +1,55 @@
+[project]
+name = "agente-atendimento"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.165.0",
+    "pydantic>=2",
+    "pydantic-settings>=2.16.3",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "import-linter>=2.17",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "ruff>=0.17.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: testes que precisam de Postgres/Redis (excluir com -m 'not integration')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.importlinter]
+root_package = "app"
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "domain nao importa application, adapters nem infra"
+type = "forbidden"
+source_modules = ["app.domain"]
+forbidden_modules = ["app.application", "app.adapters", "app.infra"]
+
+[[tool.importlinter.contracts]]
+name = "application nao importa adapters nem infra"
+type = "forbidden"
+source_modules = ["app.application"]
+forbidden_modules = ["app.adapters", "app.infra"]
