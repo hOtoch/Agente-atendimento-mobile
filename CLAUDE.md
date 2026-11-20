@@ -108,13 +108,17 @@ Não altere código. Responda com o veredito e o resumo.
 | Smoke da infra | `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/smoke.sh"` |
 | Migrations | `cd backend && uv run alembic upgrade head` (`downgrade base`, `revision --autogenerate -m "..."`) |
 | Subir API | `cd backend && uv run uvicorn app.main:app --reload` |
+| Subir worker (agente) | `cd backend && uv run arq app.infra.worker.WorkerSettings` |
+| Conversar pelo terminal | `cd backend && uv run python scripts/conversar.py --fake` (grátis); sem `--fake` usa a LLM real (pago, exige `ANTHROPIC_API_KEY`) |
+| Eval (fake, CI) | `cd backend && uv run python -m evals.rodar --modo fake` |
+| Eval (real, pago) | `cd backend && uv run python -m evals.rodar --modo real --modelo claude-sonnet-5-5` mostra a estimativa; só roda com `--confirmo-custo` **e OK do usuário** |
 | Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo) |
 | Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
 | Backend — deps | `cd backend && uv sync` |
 | Backend — testes rápidos | `cd backend && uv run pytest -m "not integration"` |
 | Backend — todos os testes | `cd backend && uv run pytest` (precisa do Postgres de teste) |
-| Backend — lint/tipos/camadas | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run lint-imports` |
+| Backend — lint/tipos/camadas | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app evals && uv run lint-imports` |
 | Frontend — deps | `cd frontend && npm ci` |
 | Frontend — testes | `cd frontend && npm test -- --run` |
 | Frontend — lint/tipos/build | `cd frontend && npm run lint && npm run typecheck && npm run build` |

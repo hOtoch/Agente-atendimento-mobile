@@ -219,9 +219,9 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 | # | Milestone | Branch | Meta de data | Status |
 |---|---|---|---|---|
 | M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ✅ concluído (PR #45) |
-| M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ✅ concluído (PR em revisão) |
-| M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ✅ concluído (PR em revisão) |
-| M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ⏳ pendente |
+| M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ✅ concluído (PR #47) |
+| M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ✅ concluído (PR #48) |
+| M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ✅ concluído (PR em revisão) |
 | M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ⏳ pendente |
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ⏳ pendente |
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ⏳ pendente |
@@ -235,7 +235,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | M0 | #1 backend, #2 frontend, #3 infra | #4 CI, #5 banco | | |
 | M1 | #6 value objects, #46 CI exige integração | #7 troca, #8 pagamento, #9 desconto, #10 ficha/trava, #11 kanban | | |
 | M2 | #12 config loja, #13 EstoquePort, #14 ERP simulado | #15 adaptador ERP, #16 resiliência, #17 importador xlsx, #18 seed demo | | |
-| M3 | #19 LLMPort, #20 canal web, #21 fila | #22 ferramentas, #23 prompt | #24 orquestrador | #25 eval |
+| M3 | #19 LLMPort, #20 canal web, #21 fila, #49 ajustes pós-review M2 | #22 ferramentas, #23 prompt | #24 orquestrador | #25 eval |
 | M4 | #26 design system, #27 API painel + SSE | #28 kanban, #29 inbox, #30 onboarding, #31 simulador | | |
 | M5 | #32 handoff, #33 Evolution, #34 distribuição % | #35 notificação + QR | | |
 | M6 | #36 visão, #37 STT, #38 TTS, #39 follow-up | #40 Instagram | | |
@@ -271,6 +271,15 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-20 | Importação xlsx: `validar` (padrão) nunca grava; `aplicar` valida tudo e grava numa transação; erros apontam a célula (`troca!D7`); planilha vazia é erro | Não apagar config por engano |
 | 2026-11-20 | Estoque: `PlanilhaAdapter(FonteEstoqueLocalSql)` lê o estoque do banco; `ErpSimuladoAdapter` usa mapeamento de SKU da loja e só cai no parser heurístico com confiança alta; tudo envolvido por `EstoqueResiliente` | Troca de fonte sem tocar no agente |
 | 2026-11-20 | Seed da loja demo com `LOJA_DEMO_ID` fixo, gravado pelos casos de uso; iPhone 16 128GB novo a R$ 4.830 (casa com o exemplo da parcela) | Demo coerente com os exemplos oficiais |
+| 2026-11-20 | LLM: Sonnet 5.5 (principal) e Haiku 5.5 (reserva em 429/5xx/rede), `effort=low`, thinking omitido (adaptive), `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) só na Sonnet; `cache_control` no prefixo do sistema e na última tool | Regras atuais da API; custo e latência baixos em chat |
+| 2026-11-20 | Transcrição do LLM só por acréscimo em `eventos` (`llm_mensagem` com `seq`, `llm_cursor`); o `bruto` do assistant volta intacto a cada turno; estado da ficha entra como mensagem `system` no meio da conversa | Preserved thinking e cache do prefixo |
+| 2026-11-20 | `consultar_estoque` nunca devolve preço; troca, parcelas e desconto só via `calcular_proposta`/`liberar_desconto`, bloqueadas enquanto houver pendência | A trava de preço mora no código |
+| 2026-11-20 | Qualquer `ErroLLM` (inclusive sem chave) vira mensagem de espera + handoff (`falha_llm`) | Nunca deixar o cliente sem resposta |
+| 2026-11-20 | Fila: debounce com `_job_id` `conversa:{id}:{ts_ms}` (arq não substitui job adiado) + `TravaRedis` (SET NX PX + Lua) | Uma resposta por rajada, sem perder mensagem |
+| 2026-11-20 | `redis>=5.2,<6` (arq 0.28 exige redis<6) | Compatibilidade |
+| 2026-11-20 | Webchat: sessão = `uuid4().hex` (32 chars, cabe em `leads.telefone`); `id_externo` = `{loja}:{sessao}:{id_cliente}` | Sem migration; sem colisão entre lojas |
+| 2026-11-20 | Testes do SDK Anthropic usam `httpx2.MockTransport` injetado (respx não intercepta o SDK atual) | Nenhum teste toca a rede |
+| 2026-11-20 | Eval: modo fake no CI (harness + checagens, com controle negativo); modo real exige `--confirmo-custo` e imprime estimativa (15 cenários: ~US$ 1,84 Sonnet / ~US$ 0,12 Haiku) | Escolha de modelo por dados, custo sob controle |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -318,3 +327,35 @@ _Atualizado ao final de cada milestone._
     - Ainda não há CRUD de vendedores (só validação de pesos).
     - `oportunidade_conta_no_teto` não tem pergunta na planilha (fixo em `False`).
   - Próximo: M3 Agente conversacional.
+- **2026-11-20 — M3 Agente conversacional concluído** (#19–#25, #49).
+  - `LLMPort` + `AnthropicAdapter` (fallback de modelo, recusa, cache, preserved thinking) + `FakeLLM`.
+  - Chat web: `POST /webchat/{loja}/sessoes[/{sessao}/mensagens]` + SSE `/stream` via Redis pub/sub.
+  - Fila arq com debounce (~4 s) e trava por conversa; worker `uv run arq app.infra.worker.WorkerSettings`.
+  - 8 ferramentas com a trava de preço; `EstadoAtendimento` versionado em `fichas`.
+  - Prompt: prefixo estável (~1,1k tokens, cacheável) + bloco da loja + mensagem de estado por turno com a próxima pergunta.
+  - `ProcessarConversa`: loop LLM + ferramentas, kanban recalculado, saída pelo canal, eventos de uso; composição real em `app/infra/composicao.py`.
+  - Script `scripts/conversar.py` (`--fake` grátis; sem flag usa a LLM real e exige `ANTHROPIC_API_KEY`).
+  - Eval em `backend/evals/` (15 cenários + controle negativo, 11 checagens).
+  - #49: credencial do ERP sem retry, uvicorn, openpyxl em adapters, import-linter proibindo libs externas em domain/application, `Condicao` unificado.
+  - Testes: backend 884, frontend 29, erp-mock 35.
+  - Pontos de atenção:
+    - O eval com LLM real ainda NÃO foi rodado (precisa de chave com crédito e do OK de custo); o custo por conversa no README ainda é estimativa.
+    - `mypy tests` acusa ~17 erros (o CI checa só `app` e `evals`).
+    - `hoje` usa UTC-3 fixo (sem `tzdata` no Windows).
+    - Depois de `chamar_vendedor` a IA continua dona da conversa até o M5 (handoff real).
+    - Mídia (áudio/imagem) vira texto provisório até o M6.
+  - Próximo: M4 Painel web.
+
+---
+
+## 13. Retomar em outra máquina
+
+1. Pré-requisitos: Git, `gh` autenticado (conta com acesso ao repo), Python 3.12 + `uv`, Node 24 + npm, Docker (nesta máquina original ele roda dentro do WSL; em Linux/macOS use `docker compose` direto).
+2. `git clone https://github.com/hOtoch/Agente-atendimento-mobile.git && cd Agente-atendimento-mobile`
+3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
+4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
+5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (884 testes) e `cd ../frontend && npm ci && npm test -- --run`.
+7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, ou `uv run python scripts/conversar.py --fake`.
+8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M4 — Painel web** (issues #26–#31). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
