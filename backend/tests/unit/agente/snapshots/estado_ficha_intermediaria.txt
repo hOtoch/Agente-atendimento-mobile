@@ -1,0 +1,24 @@
+ESTADO DO ATENDIMENTO (atualizado a cada turno; é só para você, não repita ao cliente)
+Hoje é 2026-11-20 (sexta-feira).
+
+O que já sabemos:
+- Aparelho desejado: iPhone 15 Pro 256GB, cor Titânio natural (item de estoque confirmado)
+- Troca: sim, com aparelho usado
+- Usado: iPhone 13 128GB
+- Usado, tela: sem danos
+- Usado, traseira: danificada
+
+Pendências, em ordem:
+1. marcas na carcaça do usado
+2. saúde da bateria do usado
+3. funcionamento da câmera do usado
+4. outros defeitos do usado
+5. peça já trocada no usado
+6. data prevista da compra
+7. forma de pagamento
+PRÓXIMA PERGUNTA: Pergunte se a carcaça (laterais e bordas) tem marcas ou amassados.
+NÃO chame calcular_proposta ainda (faltam 7 itens). Se o cliente pedir preço, explique que faltam informações e faça a próxima pergunta.
+
+Lembretes: uma pergunta por mensagem, no máximo 3 frases, sem inventar valores.
+Registre cada resposta do cliente com a ferramenta certa antes da próxima pergunta.
+Se o cliente pedir um vendedor, quiser fechar, reclamar ou sair do escopo: chamar_vendedor.
