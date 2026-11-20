@@ -27,6 +27,7 @@ from app.adapters.outbound.db.config import (
     RepositorioMapeamentoSkuSql,
     RepositorioVendedoresSql,
 )
+from app.adapters.outbound.db.distribuicao import AtribuicoesLeadSql
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.processamento import RegistroEventosSql, RepositorioProcessamentoSql
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
@@ -38,6 +39,7 @@ from app.application.agente.processar_conversa import ProcessarConversa
 from app.application.canal import BarramentoMensagens, Canal, CanalPort
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
+from app.application.distribuir_lead import DistribuirLead
 from app.application.estoque_resiliente import EstoqueResiliente
 from app.application.handoff import AoSolicitarHandoff, CasosHandoff
 from app.application.llm import LLMPort
@@ -72,6 +74,14 @@ def montar_casos_config(session: AsyncSession) -> CasosDeUsoConfig:
         vendedores=RepositorioVendedoresSql(session),
         integracao=SemIntegracaoEstoque(),
     )
+
+
+def montar_distribuir_lead(session: AsyncSession) -> DistribuirLead:
+    """Distribuicao de leads por porcentagem sobre uma sessao.
+
+    Nao faz commit: o chamador (handoff) commita; a trava por loja dura ate la.
+    """
+    return DistribuirLead(RepositorioVendedoresSql(session), AtribuicoesLeadSql(session))
 
 
 def montar_casos_handoff(
