@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, MessageCircle } from "lucide-react"
+import { Check } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
@@ -8,7 +8,6 @@ import { useCallback, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState } from "@/components/ui/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -24,6 +23,7 @@ import {
 import { PassoGrade } from "./passo-grade"
 import { PassoPerfil } from "./passo-perfil"
 import { PassoPreco } from "./passo-preco"
+import { PassoWhatsapp } from "./passo-whatsapp"
 import {
   PASSOS,
   passoCompleto,
@@ -108,21 +108,7 @@ function ConteudoDoPasso({
         </div>
       )
     case "whatsapp":
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Conectar WhatsApp</CardTitle>
-            <CardDescription>Leia o QR Code com o celular da loja.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              icon={MessageCircle}
-              title="Conexão pelo QR Code em breve"
-              description="A integração com o WhatsApp chega no próximo marco. Enquanto isso, teste o atendimento no simulador."
-            />
-          </CardContent>
-        </Card>
-      )
+      return <PassoWhatsapp cliente={cliente} lojaId={lojaId} />
     case "teste":
       return (
         <Card>

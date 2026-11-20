@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     """Segredo compartilhado: a Evolution o envia em `X-Webhook-Token` (ou `?token=`)."""
     whatsapp_eco_graca_s: float = 0.5
     """Espera antes de tratar um `fromMe` desconhecido como do vendedor (corrida com o envio)."""
+    painel_url: str = "http://localhost:3000"
+    """Base do painel: vira o link `/conversas?lead=<id>` enviado ao vendedor no handoff."""
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 

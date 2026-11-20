@@ -5,7 +5,8 @@ API e worker compartilham `criar_agendador` (mesmo prefixo de chaves e mesma jan
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, timedelta, timezone
 from uuid import UUID
 
@@ -43,6 +44,7 @@ from app.application.distribuir_lead import DistribuirLead
 from app.application.estoque_resiliente import EstoqueResiliente
 from app.application.handoff import AoSolicitarHandoff, CasosHandoff
 from app.application.llm import LLMPort
+from app.application.notificar_vendedor import NotificarVendedorNoHandoff, ServicosDaDistribuicao
 from app.application.painel.casos_de_uso import CasosPainel
 from app.application.painel.publicador import PublicadorPainel, PublicadorPainelNulo
 from app.application.whatsapp import RegistroEnviadas, WhatsAppGateway
@@ -82,6 +84,62 @@ def montar_distribuir_lead(session: AsyncSession) -> DistribuirLead:
     Nao faz commit: o chamador (handoff) commita; a trava por loja dura ate la.
     """
     return DistribuirLead(RepositorioVendedoresSql(session), AtribuicoesLeadSql(session))
+
+
+def montar_aviso_handoff(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    gateway: WhatsAppGateway,
+    registro: RegistroEnviadas,
+    publicador: PublicadorPainel,
+    settings: Settings | None = None,
+) -> NotificarVendedorNoHandoff:
+    """Gancho do handoff: distribui o lead, atribui o dono e avisa o vendedor no WhatsApp.
+
+    A distribuicao roda numa sessao PROPRIA (commit ao fim; a trava da loja nao dura durante o
+    envio HTTP), por isso recebe a `factory` e nao a sessao do atendimento.
+    """
+    settings = settings or get_settings()
+
+    @asynccontextmanager
+    async def abrir() -> AsyncIterator[ServicosDaDistribuicao]:
+        async with factory() as session:
+            try:
+                yield ServicosDaDistribuicao(
+                    distribuir=montar_distribuir_lead(session),
+                    repo=RepositorioPainelSql(session),
+                    vendedores=RepositorioVendedoresSql(session),
+                )
+                await session.commit()  # solta a trava da loja (tambem sem mudancas)
+            except BaseException:
+                await session.rollback()
+                raise
+
+    return NotificarVendedorNoHandoff(
+        abrir=abrir,
+        gateway=gateway,
+        registro=registro,
+        publicador=publicador,
+        url_painel=settings.painel_url,
+    )
+
+
+def criar_aviso_handoff(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    redis: Redis,
+    barramento: BarramentoMensagens | None = None,
+    settings: Settings | None = None,
+) -> NotificarVendedorNoHandoff:
+    """`montar_aviso_handoff` com Evolution, registro de enviadas e painel em tempo real reais."""
+    settings = settings or get_settings()
+    return montar_aviso_handoff(
+        factory,
+        gateway=criar_gateway_whatsapp(settings),
+        registro=RegistroEnviadasRedis(redis),
+        publicador=PublicadorPainelBarramento(barramento or BarramentoRedis(redis)),
+        settings=settings,
+    )
 
 
 def montar_casos_handoff(
