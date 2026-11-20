@@ -13,7 +13,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/atendimento"
+    database_url: str = "postgresql+asyncpg://atendimento:atendimento@localhost:5432/atendimento"
+    test_database_url: str = "postgresql+asyncpg://teste:teste@localhost:5433/teste"
     redis_url: str = "redis://localhost:6379/0"
     llm_model: str = "claude-sonnet-5-5"
     llm_fallback_model: str = "claude-haiku-5-5"
