@@ -18,11 +18,11 @@ from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.canal.webchat import WebChatAdapter
 from app.adapters.outbound.db.atendimento import RepositorioAtendimentoSql
 from app.adapters.outbound.db.config import (
-    LeitorVendedoresSql,
     RepositorioConfigLojaSql,
     RepositorioEstoqueLocalSql,
     RepositorioLojasSql,
     RepositorioMapeamentoSkuSql,
+    RepositorioVendedoresSql,
 )
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.processamento import RegistroEventosSql, RepositorioProcessamentoSql
@@ -63,7 +63,7 @@ def montar_casos_config(session: AsyncSession) -> CasosDeUsoConfig:
         config=RepositorioConfigLojaSql(session),
         estoque=RepositorioEstoqueLocalSql(session),
         mapeamento=RepositorioMapeamentoSkuSql(session),
-        vendedores=LeitorVendedoresSql(session),
+        vendedores=RepositorioVendedoresSql(session),
         integracao=SemIntegracaoEstoque(),
     )
 

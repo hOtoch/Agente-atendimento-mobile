@@ -6,6 +6,7 @@ import re
 from collections.abc import Sequence
 from decimal import Decimal
 from typing import Final
+from uuid import UUID
 
 from app.application.config.entradas import (
     EntradaLinhaEstoque,
@@ -13,6 +14,7 @@ from app.application.config.entradas import (
     EntradaLinhaTroca,
     EntradaPreco,
     EntradaTaxa,
+    EntradaVendedor,
 )
 from app.application.config.modelos import (
     CONDICOES,
@@ -415,9 +417,53 @@ def montar_mapeamento(entradas: Sequence[EntradaLinhaMapeamento]) -> list[LinhaM
 
 
 def validar_pesos_vendedores(pesos: Sequence[Decimal]) -> list[ErroCampo]:
-    """Percentual de cada vendedor deve estar em 0..100 (CRUD de vendedores: outra issue)."""
+    """Percentual de cada vendedor deve estar em 0..100."""
     return [
         ErroCampo(f"vendedores[{i}].peso_percentual", "Percentual deve ser de 0 a 100.")
         for i, p in enumerate(pesos)
         if not _finito(p) or not _ZERO <= p <= _CEM
     ]
+
+
+def validar_vendedores(
+    entradas: Sequence[EntradaVendedor], ids_da_loja: set[UUID]
+) -> list[ErroCampo]:
+    """Nome obrigatorio, peso 0..100, telefone plausivel, ids da loja e sem repeticao.
+
+    A soma dos pesos dos ativos precisa dar 100 (erro no caminho `vendedores`).
+    """
+    erros: list[ErroCampo] = []
+    vistos: set[UUID] = set()
+    for i, e in enumerate(entradas):
+        base = f"vendedores[{i}]"
+        if not e.nome.strip():
+            erros.append(ErroCampo(f"{base}.nome", "Informe o nome do vendedor."))
+        telefone = (e.telefone or "").strip()
+        if telefone and not 10 <= len(re.sub(r"\D", "", telefone)) <= 15:
+            erros.append(ErroCampo(f"{base}.telefone", "Telefone deve ter de 10 a 15 dígitos."))
+        if e.id is not None:
+            if e.id in vistos:
+                erros.append(ErroCampo(f"{base}.id", "Vendedor repetido na lista."))
+            elif e.id not in ids_da_loja:
+                erros.append(ErroCampo(f"{base}.id", "Vendedor não encontrado nesta loja."))
+            vistos.add(e.id)
+    erros_peso = validar_pesos_vendedores([e.peso_percentual for e in entradas])
+    erros.extend(erros_peso)
+    erros.sort(key=lambda x: _ordem_caminho(x.caminho))
+    soma = sum(
+        (e.peso_percentual for e in entradas if e.ativo and _finito(e.peso_percentual)), _ZERO
+    )
+    if not erros_peso and soma != _CEM:
+        erros.append(
+            ErroCampo(
+                "vendedores",
+                "Os percentuais dos vendedores ativos devem somar 100% "
+                f"(somam {soma.normalize():f}%).",
+            )
+        )
+    return erros
+
+
+def _ordem_caminho(caminho: str) -> int:
+    achado = re.match(r"vendedores\[(\d+)\]", caminho)
+    return int(achado.group(1)) if achado else -1

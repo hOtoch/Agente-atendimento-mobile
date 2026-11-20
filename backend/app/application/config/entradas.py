@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,3 +68,13 @@ class EntradaLinhaMapeamento:
     capacidade_gb: int
     cor: str
     condicao: str
+
+
+@dataclass(frozen=True, slots=True)
+class EntradaVendedor:
+    id: UUID | None
+    """None = vendedor novo; com id = atualiza o existente da loja."""
+    nome: str
+    telefone: str | None
+    peso_percentual: Decimal
+    ativo: bool = True

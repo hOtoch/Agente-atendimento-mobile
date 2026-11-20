@@ -1669,6 +1669,132 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VendedorIn": {
+        "properties": {
+          "ativo": {
+            "default": true,
+            "title": "Ativo",
+            "type": "boolean"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "peso_percentual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Peso Percentual"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          }
+        },
+        "required": [
+          "nome",
+          "peso_percentual"
+        ],
+        "title": "VendedorIn",
+        "type": "object"
+      },
+      "VendedorSchema": {
+        "properties": {
+          "ativo": {
+            "title": "Ativo",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "peso_percentual": {
+            "title": "Peso Percentual",
+            "type": "string"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "telefone",
+          "peso_percentual",
+          "ativo"
+        ],
+        "title": "VendedorSchema",
+        "type": "object"
+      },
+      "VendedoresIn": {
+        "properties": {
+          "vendedores": {
+            "items": {
+              "$ref": "#/components/schemas/VendedorIn"
+            },
+            "title": "Vendedores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "vendedores"
+        ],
+        "title": "VendedoresIn",
+        "type": "object"
+      },
+      "VendedoresSchema": {
+        "properties": {
+          "vendedores": {
+            "items": {
+              "$ref": "#/components/schemas/VendedorSchema"
+            },
+            "title": "Vendedores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "vendedores"
+        ],
+        "title": "VendedoresSchema",
+        "type": "object"
       }
     }
   },
@@ -2316,6 +2442,100 @@
           }
         },
         "summary": "Atualizar Troca",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/vendedores": {
+      "get": {
+        "operationId": "obter_vendedores_lojas__loja_id__config_vendedores_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendedoresSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Vendedores",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_vendedores_lojas__loja_id__config_vendedores_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendedoresIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendedoresSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Vendedores",
         "tags": [
           "config"
         ]

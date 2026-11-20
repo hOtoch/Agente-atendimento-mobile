@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import delete, select
@@ -23,11 +24,13 @@ from app.adapters.outbound.db.models import (
     TrocaRow,
     Vendedor,
 )
+from app.application.config.entradas import EntradaVendedor
 from app.application.config.modelos import (
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
     PerfilLoja,
+    VendedorLoja,
 )
 from app.domain.bandeira import Bandeira
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
@@ -350,3 +353,54 @@ class LeitorVendedoresSql:
             )
         )
         return [p for (p,) in rows]
+
+
+def _vendedor_de_row(r: Vendedor) -> VendedorLoja:
+    return VendedorLoja(r.id, r.nome, r.telefone, r.peso_percentual, r.ativo)
+
+
+class RepositorioVendedoresSql(LeitorVendedoresSql):
+    async def listar(self, loja_id: uuid.UUID) -> list[VendedorLoja]:
+        rows = (
+            await self._s.execute(
+                select(Vendedor)
+                .where(Vendedor.loja_id == loja_id)
+                .order_by(Vendedor.criado_em, Vendedor.nome, Vendedor.id)
+                .execution_options(populate_existing=True)
+            )
+        ).scalars()
+        return [_vendedor_de_row(r) for r in rows]
+
+    async def substituir(
+        self, loja_id: uuid.UUID, entradas: Sequence[EntradaVendedor]
+    ) -> list[VendedorLoja]:
+        existentes = {
+            r.id: r
+            for r in (
+                await self._s.execute(
+                    select(Vendedor)
+                    .where(Vendedor.loja_id == loja_id)
+                    .execution_options(populate_existing=True)
+                )
+            ).scalars()
+        }
+        mantidos: set[uuid.UUID] = set()
+        base = datetime.now(UTC)
+        for i, e in enumerate(entradas):
+            row = existentes.get(e.id) if e.id is not None else None
+            if row is None:
+                # criado_em crescente preserva a ordem da lista
+                row = Vendedor(loja_id=loja_id, criado_em=base + timedelta(microseconds=i))
+                self._s.add(row)
+            row.nome = e.nome.strip()
+            row.telefone = (e.telefone or "").strip() or None
+            row.peso_percentual = e.peso_percentual
+            row.ativo = e.ativo
+            await self._s.flush()
+            mantidos.add(row.id)
+        # ausentes saem da distribuicao, sem apagar: leads e conversas referenciam o vendedor
+        for vid, row in existentes.items():
+            if vid not in mantidos:
+                row.ativo = False
+        await self._s.flush()
+        return await self.listar(loja_id)

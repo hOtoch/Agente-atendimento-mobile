@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
+from uuid import UUID
 
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
 from app.domain.estoque import Condicao
@@ -78,3 +80,12 @@ class ItemChecklist:
     rotulo_ptbr: str
     completo: bool
     detalhe: str
+
+
+@dataclass(frozen=True, slots=True)
+class VendedorLoja:
+    id: UUID
+    nome: str
+    telefone: str | None
+    peso_percentual: Decimal
+    ativo: bool

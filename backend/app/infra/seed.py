@@ -18,11 +18,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.outbound.db.config import (
-    LeitorVendedoresSql,
     RepositorioConfigLojaSql,
     RepositorioEstoqueLocalSql,
     RepositorioLojasSql,
     RepositorioMapeamentoSkuSql,
+    RepositorioVendedoresSql,
 )
 from app.adapters.outbound.db.models import Loja, Vendedor
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
@@ -100,7 +100,7 @@ def _casos(session: AsyncSession) -> CasosDeUsoConfig:
         config=RepositorioConfigLojaSql(session),
         estoque=RepositorioEstoqueLocalSql(session),
         mapeamento=RepositorioMapeamentoSkuSql(session),
-        vendedores=LeitorVendedoresSql(session),
+        vendedores=RepositorioVendedoresSql(session),
         integracao=SemIntegracaoEstoque(),
     )
 

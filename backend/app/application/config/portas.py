@@ -7,11 +7,13 @@ from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
+from app.application.config.entradas import EntradaVendedor
 from app.application.config.modelos import (
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
     PerfilLoja,
+    VendedorLoja,
 )
 from app.domain.pagamento import TabelaTaxas
 from app.domain.troca import TabelaTroca
@@ -56,9 +58,21 @@ class RepositorioMapeamentoSku(Protocol):
 
 
 class LeitorVendedores(Protocol):
-    """Leitura minima de vendedores para o checklist (CRUD de vendedores e de outra issue)."""
+    """Leitura minima de vendedores para o checklist."""
 
     async def pesos_ativos(self, loja_id: UUID) -> list[Decimal]: ...
+
+
+class RepositorioVendedores(LeitorVendedores, Protocol):
+    """Vendedores da loja. Leads e conversas referenciam vendedor: nunca se apaga, so desativa."""
+
+    async def listar(self, loja_id: UUID) -> list[VendedorLoja]: ...
+
+    async def substituir(
+        self, loja_id: UUID, entradas: Sequence[EntradaVendedor]
+    ) -> list[VendedorLoja]:
+        """Atualiza os que vierem com id, cria os sem id e desativa os ausentes."""
+        ...
 
 
 class IntegracaoEstoque(Protocol):
