@@ -11,7 +11,7 @@ Tudo roda local (Windows + WSL). O Docker vive **dentro do WSL (Ubuntu)**; no Gi
 | redis (7) | 6379 | volume `redisdata` |
 | evolution-api (v2.3.7) | 8080 | imagem oficial `evoapicloud/evolution-api` (o repo `atendai/*` foi descontinuado); usa `evolution-postgres` e `evolution-redis` próprios, sem porta publicada |
 
-Backend, worker, frontend e erp-mock estão como placeholders comentados no compose.
+O ERP simulado (`erp-mock`, porta 8090, token em `ERP_MOCK_TOKEN`) sobe junto com a infra. Backend, worker e frontend ainda estão como placeholders comentados no compose.
 
 ## Subir
 
