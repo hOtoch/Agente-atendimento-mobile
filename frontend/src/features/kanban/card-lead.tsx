@@ -6,13 +6,14 @@ import Link from "next/link"
 import { DonoBadge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import type { CardLead } from "@/lib/api"
+import { contatoDoLead } from "@/lib/lead"
 import { cn } from "@/lib/utils"
 
 import { formatarValor, tempoNaEtapa } from "./regras"
 
 /** Conteúdo visual do card (também usado no overlay durante o arrasto). */
 export function ConteudoCard({ lead, agora, link = true }: { lead: CardLead; agora: Date; link?: boolean }) {
-  const titulo = lead.nome ?? "Sem nome"
+  const { titulo, detalhe } = contatoDoLead(lead)
   const valor = formatarValor(lead.valor_estimado)
   const dono = lead.dono === "ia" ? "ia" : "vendedor"
   return (
@@ -30,7 +31,7 @@ export function ConteudoCard({ lead, agora, link = true }: { lead: CardLead; ago
         )}
         {valor ? <span className="shrink-0 font-mono text-xs text-foreground">{valor}</span> : null}
       </div>
-      <span className="font-mono text-xs text-muted-foreground">{lead.telefone}</span>
+      <span className="font-mono text-xs text-muted-foreground">{detalhe}</span>
       <span className={cn("truncate text-xs", lead.aparelho_desejado ? "text-foreground" : "text-muted-foreground")}>
         {lead.aparelho_desejado ?? "Aparelho não definido"}
       </span>
@@ -59,7 +60,7 @@ export function CardDoLead({ lead, agora }: { lead: CardLead; agora: Date }) {
         {...attributes}
         {...listeners}
         role="group"
-        aria-label={lead.nome ?? lead.telefone}
+        aria-label={contatoDoLead(lead).titulo}
         data-lead-id={lead.id}
         data-arrastando={isDragging || undefined}
         className={cn(
