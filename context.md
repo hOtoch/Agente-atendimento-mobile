@@ -222,8 +222,8 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 | M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ✅ concluído (PR #47) |
 | M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ✅ concluído (PR #48) |
 | M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ✅ concluído (PR #50) |
-| M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ✅ concluído (PR em revisão) |
-| M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ⏳ pendente |
+| M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ✅ concluído (PR #51) |
+| M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR em revisão) |
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ⏳ pendente |
 | M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ⏳ pendente |
 
@@ -287,6 +287,14 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-20 | Mídia do chat web: `POST /webchat/{loja}/midias` grava em disco local (`MIDIA_DIR`, limite `MIDIA_MAX_BYTES`) via porta `ArmazenamentoMidia`; `GET /midias/{nome}` | Simples para a demo; troca por S3/R2 sem tocar no caso de uso |
 | 2026-11-20 | Painel sem TanStack Query no M4: hooks por feature com o cliente tipado, injetado por props nos testes; loja do painel em `NEXT_PUBLIC_LOJA_ID` (padrão: loja demo) até existir login | Menos peças para 4 telas paralelas |
 | 2026-11-20 | Sem login até o M7: inbox usa seletor "Atendendo como" (localStorage); `/chat/{loja}` é público e sem a barra lateral | Demo e teste do avaliador sem fricção |
+| 2026-11-20 | Handoff da IA (`chamar_vendedor` ou `falha_llm`) passa a conversa para `dono = vendedor` e a IA silencia; sem vendedor atribuído = "aguardando vendedor" (qualquer um assume) | Handoff real, sem a IA atropelar o vendedor |
+| 2026-11-20 | Resumo do handoff = campos determinísticos da ficha + 2–3 frases do LLM (`observacoes`, `None` se o LLM falhar); gravado no evento `handoff_resumo` e exposto em `DetalheLead.resumo_handoff` | O código garante os fatos; o LLM só comenta |
+| 2026-11-20 | Devolver grava na transcrição (por acréscimo) uma mensagem `system` com as falas do vendedor e a instrução de continuar dali; zera `handoff_solicitado` | IA não repete o que o vendedor já perguntou; cache do prefixo preservado |
+| 2026-11-20 | Distribuição por déficit (`peso − participação`, comparação exata em Decimal, desempate por peso e id), pesos lidos a cada lead, `pg_advisory_xact_lock` por loja; contagem sobre todo o histórico | Proporção exata (1.000 leads 50/30/20 → 500/300/200) e segura sob concorrência |
+| 2026-11-20 | No handoff, o gancho `AoSolicitarHandoff` distribui e atribui o vendedor numa sessão própria (commit antes de qualquer rede), publica `DonoMudou` e manda o resumo + link do painel no WhatsApp do vendedor; falhas de envio não desfazem a atribuição | Trava da loja nunca segura chamada HTTP |
+| 2026-11-20 | Evolution: instância `loja-<uuid>` por loja (sem migration), webhook por instância em `POST /webhooks/evolution` com token; `fromMe` digitado no celular pausa a IA; ecos das mensagens enviadas pela API ficam no `RegistroEnviadas` (Redis, TTL 1 h) e são ignorados | Vendedor responde pelo celular sem a IA atropelar |
+| 2026-11-20 | Documento recebido pelo WhatsApp vira texto (`[documento recebido: ...]`); figurinha, vídeo e reação ignorados | CHECK de `mensagens.tipo` sem migration |
+| 2026-11-20 | Python 3.12 fixado com `.python-version` (backend e erp-mock) | CI usava 3.14 e o OpenAPI gerado mudava |
 | 2026-11-20 | Ambiente Linux (fora do WSL): `uv` em `~/.local/bin`, Node 24 via nvm (`nvm use 24`; o Node 20 quebra o vitest), `docker compose` direto | Retomada em outra máquina |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
@@ -371,6 +379,20 @@ _Atualizado ao final de cada milestone._
     - Mídia em disco local não serve para várias instâncias; `npm audit` com avisos.
     - Sem tela para reativar vendedor desativado (a API permite).
   - Próximo: M5 Handoff, WhatsApp e distribuição.
+- **2026-11-20 — M5 Handoff, WhatsApp e distribuição concluído** (#32–#35).
+  - Handoff (`application/handoff.py`): Assumir/Devolver/ChamarVendedor, "aguardando vendedor", resumo estruturado + observações do LLM, devolução com contexto do vendedor; inbox mostra o resumo do backend.
+  - WhatsApp (Evolution): webhook com token (texto, áudio, imagem, documento; grupos/status ignorados; LID resolvido), download de mídia, envio de texto/áudio/imagem, `fromMe` pausa a IA, eco ignorado, resposta do vendedor pelo painel sai no WhatsApp; rotas `GET /lojas/{id}/whatsapp/status` e `POST .../conectar` (QR).
+  - Distribuição por porcentagem (`domain/distribuicao.py`, `application/distribuir_lead.py`) com trava por loja.
+  - Notificação: no handoff, distribui, atribui e manda resumo + link do painel ao vendedor; passo "Conectar WhatsApp" do onboarding com QR e status ao vivo.
+  - Validado ponta a ponta sem chave de LLM: mensagem no chat web → `falha_llm` → resumo → lead atribuído pela distribuição (`vendedor:<id>`) → envio ao WhatsApp falha sem derrubar nada (instância não conectada). Contra a Evolution real: criar instância, status e QR.
+  - Testes: backend 1199, frontend 251, erp-mock 35, eval fake 6/6.
+  - Pontos de atenção:
+    - Ainda NÃO validado com um celular pareado: formato real dos webhooks, download de mídia, entrega das mensagens ao cliente e ao vendedor. Precisa de um ensaio com chip secundário.
+    - A conversa com a LLM real ainda não foi testada (sem chave com crédito; precisa de OK de custo).
+    - Depois do handoff só o vendedor atribuído assume (outro recebe 409); devolver + novo handoff redistribui.
+    - `fromMe` usa a pausa provisória (`PausarIAProvisorio`), já coerente com o "aguardando vendedor" da #32.
+    - `httpx.AsyncClient` da Evolution não é fechado no shutdown; "digitando" existe no adaptador mas o agente ainda não chama; horário por vendedor não existe (todos disponíveis).
+  - Próximo: M6 Diferenciais.
 
 ---
 
@@ -381,7 +403,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1000 testes) e `cd ../frontend && npm ci && npm test -- --run` (234 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1199 testes) e `cd ../frontend && npm ci && npm test -- --run` (251 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M5 — Handoff, WhatsApp e distribuição** (issues #32–#35). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M6 — Diferenciais** (issues #36–#40). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
