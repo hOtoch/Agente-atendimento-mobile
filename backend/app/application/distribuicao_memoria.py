@@ -15,8 +15,8 @@ class MemoriaAtribuicoes:
         self._vendedores: dict[UUID, UUID | None] = {}  # lead -> vendedor
         self.lojas_travadas: list[UUID] = []
 
-    def criar_lead(self, loja_id: UUID) -> UUID:
-        lead_id = uuid4()
+    def criar_lead(self, loja_id: UUID, lead_id: UUID | None = None) -> UUID:
+        lead_id = lead_id or uuid4()
         self._lojas[lead_id] = loja_id
         self._vendedores[lead_id] = None
         return lead_id

@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.application.canal import Canal
+from app.application.notificar_vendedor import NotificarVendedorNoHandoff
 from app.infra import composicao, dependencias, worker
 from app.infra.fila import AgendadorArq
 from app.infra.settings import Settings
@@ -60,3 +63,31 @@ def test_canal_whatsapp_usa_a_url_publica_da_api_para_midia_local() -> None:
     settings = Settings(_env_file=None, api_publica_url="http://api.exemplo/")
     canal = composicao.criar_canal_whatsapp(MagicMock(), MagicMock(), settings)
     assert canal._prefixo_midia == "http://api.exemplo/midias/"
+
+
+def test_aviso_de_handoff_usa_o_painel_url_das_settings() -> None:
+    settings = Settings(_env_file=None, painel_url="https://painel.exemplo")
+    aviso = composicao.criar_aviso_handoff(MagicMock(), redis=MagicMock(), settings=settings)
+    assert isinstance(aviso, NotificarVendedorNoHandoff)
+    assert aviso._url_painel == "https://painel.exemplo"
+
+
+async def test_worker_liga_o_aviso_de_handoff_no_processador(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recebido: dict[str, Any] = {}
+
+    def falso(*args: Any, **kwargs: Any) -> Any:
+        recebido.update(kwargs)
+
+        async def processar(conversa_id: Any) -> None: ...
+
+        return processar
+
+    monkeypatch.setattr(worker, "criar_processador", falso)
+    ctx: dict[str, Any] = {"redis": _Redis()}
+    await worker.iniciar(ctx)
+    try:
+        assert isinstance(recebido["aviso_handoff"], NotificarVendedorNoHandoff)
+    finally:
+        await worker.encerrar(ctx)

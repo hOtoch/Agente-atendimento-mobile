@@ -14,9 +14,10 @@ from uuid import UUID
 from arq.connections import RedisSettings
 from arq.worker import func
 
+from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.application.agendamento import ProcessarQuandoQuieto
-from app.infra.composicao import criar_agendador, criar_processador
+from app.infra.composicao import criar_agendador, criar_aviso_handoff, criar_processador
 from app.infra.fila import FUNCAO_PROCESSAR, RelogioParede, TravaRedis
 from app.infra.settings import get_settings
 
@@ -30,8 +31,16 @@ async def iniciar(ctx: dict[str, Any]) -> None:
     if "processar" not in ctx:
         engine = criar_engine(settings.database_url)
         ctx["engine"] = engine
+        factory = criar_session_factory(engine)
+        barramento = BarramentoRedis(redis)
         ctx["processar"] = criar_processador(
-            criar_session_factory(engine), redis=redis, settings=settings
+            factory,
+            redis=redis,
+            settings=settings,
+            barramento=barramento,
+            aviso_handoff=criar_aviso_handoff(
+                factory, redis=redis, barramento=barramento, settings=settings
+            ),
         )
     ctx["caso"] = ProcessarQuandoQuieto(
         agendador=criar_agendador(redis, settings),

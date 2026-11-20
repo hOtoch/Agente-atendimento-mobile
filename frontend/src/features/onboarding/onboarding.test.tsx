@@ -110,11 +110,14 @@ describe("Onboarding: checklist", () => {
     ).toHaveAttribute("aria-current", "step")
   })
 
-  it("o passo do WhatsApp é um placeholder e o de teste leva ao simulador", async () => {
-    const { cliente } = apiFalsa({ [`GET ${CHECKLIST}`]: { corpo: { itens: ITENS } } })
+  it("o passo do WhatsApp mostra a conexão e o de teste leva ao simulador", async () => {
+    const { cliente } = apiFalsa({
+      [`GET ${CHECKLIST}`]: { corpo: { itens: ITENS } },
+      [`GET /lojas/${LOJA}/whatsapp/status`]: { corpo: { status: "desconectado" } },
+    })
     params = new URLSearchParams("passo=whatsapp")
     const { unmount } = render(<Onboarding cliente={cliente} lojaId={LOJA} />)
-    expect(await screen.findByText(/em breve/i)).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: "Conectar" })).toBeInTheDocument()
     unmount()
 
     params = new URLSearchParams("passo=teste")
