@@ -9,6 +9,8 @@ import asyncpg
 import pytest
 from alembic import command
 from alembic.config import Config
+from arq.connections import ArqRedis, RedisSettings, create_pool
+from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
@@ -91,3 +93,30 @@ async def session(db_url: str) -> AsyncIterator[AsyncSession]:
     async with factory() as s:
         yield s
     await engine.dispose()
+
+
+@pytest.fixture
+async def redis_pool() -> AsyncIterator[ArqRedis]:
+    """Pool arq/Redis; pula se o Redis estiver fora (falha com `EXIGIR_INTEGRACAO=1`).
+
+    Cada teste usa um prefixo de chave e uma fila proprios (ver `prefixo_redis`), entao nada
+    precisa ser limpo entre testes nem colide com o Redis de desenvolvimento.
+    """
+    url = get_settings().redis_url
+    try:
+        pool = await create_pool(RedisSettings.from_dsn(url), retry=0)
+        await pool.ping()
+    except (OSError, TimeoutError, RedisError) as exc:
+        msg = f"Redis inacessivel em {url}: {exc!r}"
+        if os.environ.get("EXIGIR_INTEGRACAO") == "1":
+            pytest.fail(f"EXIGIR_INTEGRACAO=1 e o {msg}", pytrace=False)
+        pytest.skip(msg)
+    try:
+        yield pool
+    finally:
+        await pool.aclose()
+
+
+@pytest.fixture
+def prefixo_redis() -> str:
+    return f"teste:{uuid.uuid4().hex[:8]}:"

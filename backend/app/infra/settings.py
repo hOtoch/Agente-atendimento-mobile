@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://atendimento:atendimento@localhost:5432/atendimento"
     test_database_url: str = "postgresql+asyncpg://teste:teste@localhost:5433/teste"
     redis_url: str = "redis://localhost:6379/0"
+    fila_janela_s: float = 4.0  # debounce: espera sem mensagem nova antes de processar
+    fila_trava_ttl_s: float = 120.0  # a trava de conversa expira se o worker morrer
     llm_model: str = "claude-sonnet-5-5"
     llm_fallback_model: str = "claude-haiku-5-5"
     anthropic_api_key: str | None = None
