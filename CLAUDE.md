@@ -28,11 +28,15 @@ A sessão principal é o **agente orquestrador**. Para executar um milestone (ex
 4. Montar as **ondas** a partir do label `onda-N` e da linha `Depende de:` de cada issue. Uma onda = issues sem dependência pendente entre si.
 
 ### 2.2 Executar cada onda
+- **Criar as worktrees à mão** (NÃO usar `isolation: "worktree"` do Agent: este repo está aninhado dentro de outro repo git em `D:\Otoch IA Solutions`, e a isolação automática cria a worktree no repo errado):
+  `git worktree add .worktrees/issue-<N> -b issue/<N>-<slug> <SHA_BASE>` para cada issue da onda (`.worktrees/` está no `.gitignore`/`.git/info/exclude`).
 - **Número de subagentes = número de issues da onda.** Um subagente por issue, todos lançados na **mesma mensagem** (em paralelo), com:
   - `model: "sonnet"` (Claude Sonnet 5.5)
-  - `isolation: "worktree"`
+  - sem `isolation` — o brief manda trabalhar só no caminho absoluto da worktree
   - `description`: `Issue #<N> — <título curto>`
-  - `prompt`: o **brief do subagente** (§3) preenchido com o corpo da issue e o SHA base (`git rev-parse HEAD` da branch do milestone).
+  - `prompt`: o **brief do subagente** (§3) preenchido com o corpo da issue e o caminho da worktree.
+- Docker: ligar o daemon antes da onda se alguma issue precisar (`wsl -u root service docker start`).
+- Depois de integrar: `git worktree remove .worktrees/issue-<N>` e `git branch -D issue/<N>-<slug>`.
 - Esperar todos terminarem. Cada um devolve: branch, SHA do commit único, arquivos alterados, saída dos testes (red e green).
 - **Integrar** na branch do milestone, em ordem de número de issue: `git cherry-pick <sha>`. Resolver conflitos mantendo as duas intenções; se o conflito mudar comportamento, rodar os testes das duas issues.
 - Depois de integrar a onda: rodar a bateria completa (§5). Se quebrar, corrigir antes da próxima onda (correção dobrada no commit da issue culpada via `git commit --amend` se for o último, ou um commit `fix(<escopo>): ... (#N)`).
@@ -60,7 +64,8 @@ Leia CLAUDE.md e context.md antes de começar.
 Issue #<N>: <título>
 <corpo completo da issue>
 
-Base: comece com `git checkout -B issue/<N>-<slug> <SHA_BASE>`.
+Worktree: <CAMINHO_ABSOLUTO>/.worktrees/issue-<N> (já na branch issue/<N>-<slug>, criada pelo orquestrador).
+Trabalhe SOMENTE nesse caminho: `cd "<caminho>" && ...` em todo comando, ou caminhos absolutos.
 
 Processo obrigatório (TDD):
 1. Escreva os testes dos critérios de aceite primeiro. Rode e confirme que FALHAM (guarde a saída resumida).
@@ -99,7 +104,11 @@ Não altere código. Responda com o veredito e o resumo.
 
 | O quê | Comando |
 |---|---|
-| Subir infra local | `docker compose -f infra/docker-compose.yml up -d` (via WSL) |
+| Subir infra local | `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/dev.sh up"` (também: `down`, `logs [servico]`, `ps`, `reset`) |
+| Smoke da infra | `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/smoke.sh"` |
+| Migrations | `cd backend && uv run alembic upgrade head` (`downgrade base`, `revision --autogenerate -m "..."`) |
+| Subir API | `cd backend && uv run uvicorn app.main:app --reload` |
+| Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
 | Backend — deps | `cd backend && uv sync` |
 | Backend — testes rápidos | `cd backend && uv run pytest -m "not integration"` |
 | Backend — todos os testes | `cd backend && uv run pytest` (precisa do Postgres de teste) |
@@ -109,7 +118,9 @@ Não altere código. Responda com o veredito e o resumo.
 | Frontend — lint/tipos/build | `cd frontend && npm run lint && npm run typecheck && npm run build` |
 | ERP simulado — testes | `cd services/erp-mock && uv run pytest` |
 
-Manter esta tabela atualizada quando os scripts mudarem (o M0 cria os scripts).
+Manter esta tabela atualizada quando os scripts mudarem.
+
+Portas locais: Postgres dev 5432 (`atendimento`/`atendimento`), Postgres de teste 5433 (`teste`/`teste`, tmpfs), Redis 6379, Evolution 8080. Os testes de integração leem `TEST_DATABASE_URL` e são pulados se o banco de teste estiver fora.
 
 ---
 
