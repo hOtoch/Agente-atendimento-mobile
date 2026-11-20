@@ -48,6 +48,26 @@ migrations e dropam no final; se o Postgres de teste estiver fora, sao PULADOS c
 
 Marcador `integration`: testes que precisam de Postgres/Redis (`@pytest.mark.integration`).
 
+## Dados de demonstração
+O seed cria (ou atualiza) a **"Loja Demo Celulares"** com ID fixo (`LOJA_DEMO_ID`,
+`00000000-0000-4000-8000-00000000de30`), com tudo fictício, para a demo ao vivo:
+
+```
+uv run alembic upgrade head
+uv run python -m app.infra.seed                      # usa DATABASE_URL
+uv run python -m app.infra.seed --database-url postgresql+asyncpg://user:senha@host:5432/banco
+```
+
+Conteúdo: perfil (tom amigável e direto, seg–sáb), 3 vendedores (pesos 50/30/20), regras de preço
+(até 18x, repassa taxa, preço à vista = Pix, teto R$ 100 em degraus de R$ 50, oportunidade única
+de R$ 100 por fora do teto, entrada + cartão), taxas das 5 bandeiras de 1x a 18x e débito
+(Mastercard do exemplo oficial; Visa "igual"), tabela de troca de iPhone 11 a 17 Pro Max e
+estoque local com ~28 itens (novos e seminovos, alguns com quantidade 0).
+
+Perfil, preço, taxas, troca e estoque são gravados pelos casos de uso (mesma validação do painel).
+É idempotente: rodar de novo atualiza os valores sem duplicar, e o checklist de onboarding da loja
+fica 100% completo. Os dados ficam em `app/infra/seed_data/`, separados da lógica (`app/infra/seed.py`).
+
 ## Verificando o contrato de camadas
 Um import proibido deve quebrar o `lint-imports`:
 ```
