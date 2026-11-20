@@ -3,7 +3,7 @@
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from fastapi import Depends
@@ -20,9 +20,9 @@ from app.adapters.outbound.db.config import (
 )
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
-from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
+from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import RepositorioLojas, SemIntegracaoEstoque
 from app.application.importacao.importar import ImportarPlanilha
@@ -75,7 +75,7 @@ logger = logging.getLogger(__name__)
 
 @lru_cache
 def _redis() -> Redis:
-    return Redis.from_url(get_settings().redis_url)
+    return cast(Redis, Redis.from_url(get_settings().redis_url))
 
 
 def get_barramento() -> BarramentoMensagens:
