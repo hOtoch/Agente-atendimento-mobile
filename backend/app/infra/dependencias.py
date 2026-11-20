@@ -1,32 +1,27 @@
 """Injecao de dependencias do FastAPI: sessao do banco e casos de uso."""
 
-import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from functools import lru_cache
 from typing import Annotated, cast
 from uuid import UUID
 
+from arq.connections import ArqRedis
 from fastapi import Depends
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.adapters.outbound.barramento.redis import BarramentoRedis
-from app.adapters.outbound.db.config import (
-    LeitorVendedoresSql,
-    RepositorioConfigLojaSql,
-    RepositorioEstoqueLocalSql,
-    RepositorioLojasSql,
-    RepositorioMapeamentoSkuSql,
-)
+from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
 from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
-from app.application.config.portas import RepositorioLojas, SemIntegracaoEstoque
+from app.application.config.portas import RepositorioLojas
 from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
+from app.infra.composicao import criar_agendador, montar_casos_config
 from app.infra.settings import get_settings
 
 
@@ -45,17 +40,6 @@ async def get_session() -> AsyncIterator[AsyncSession]:
             raise
 
 
-def montar_casos_config(session: AsyncSession) -> CasosDeUsoConfig:
-    return CasosDeUsoConfig(
-        lojas=RepositorioLojasSql(session),
-        config=RepositorioConfigLojaSql(session),
-        estoque=RepositorioEstoqueLocalSql(session),
-        mapeamento=RepositorioMapeamentoSkuSql(session),
-        vendedores=LeitorVendedoresSql(session),
-        integracao=SemIntegracaoEstoque(),
-    )
-
-
 def get_casos_config(session: Annotated[AsyncSession, Depends(get_session)]) -> CasosDeUsoConfig:
     return montar_casos_config(session)
 
@@ -68,9 +52,6 @@ def get_importador(session: Annotated[AsyncSession, Depends(get_session)]) -> Im
         commit=session.commit,
         rollback=session.rollback,
     )
-
-
-logger = logging.getLogger(__name__)
 
 
 @lru_cache
@@ -87,17 +68,14 @@ def get_lojas(session: Annotated[AsyncSession, Depends(get_session)]) -> Reposit
     return RepositorioLojasSql(session)
 
 
+@lru_cache
+def _redis_arq() -> ArqRedis:
+    return cast(ArqRedis, ArqRedis.from_url(get_settings().redis_url))
+
+
 def get_agendar() -> Callable[[UUID], Awaitable[None]]:
-    """PLACEHOLDER: so registra em log. O orquestrador troca pelo `agendar` da fila.
-
-    Contrato: `agendar(conversa_id)` enfileira o atendimento da conversa para o worker e
-    precisa ser rapido (a rota de entrada responde 202 sem esperar o processamento).
-    """
-
-    async def agendar(conversa_id: UUID) -> None:
-        logger.info("conversa agendada (placeholder, sem fila): %s", conversa_id)
-
-    return agendar
+    """`agendar(conversa_id)` da fila arq (mesmo prefixo e janela do worker); so enfileira."""
+    return criar_agendador(_redis_arq()).agendar
 
 
 def get_receber_mensagem(

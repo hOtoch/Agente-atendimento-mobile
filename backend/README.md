@@ -76,3 +76,49 @@ uv run lint-imports   # FALHA: app.domain is not allowed to import app.adapters
 rm app/domain/tmp_violacao.py
 uv run lint-imports   # volta a passar
 ```
+
+## Atendimento ponta a ponta (API + worker + infra)
+O orquestrador (`ProcessarConversa`) roda no **worker**: a API só grava a mensagem e agenda; depois
+de ~4 s sem mensagem nova (debounce) o worker monta o turno, chama o LLM + ferramentas e publica a
+resposta no tópico do webchat (Redis pub/sub -> SSE).
+
+```
+# 1. infra (Postgres 5432, Redis 6379): ver CLAUDE.md §5 (bash infra/dev.sh up, dentro do WSL)
+cd backend
+uv run alembic upgrade head
+uv run python -m app.infra.seed                      # loja demo (LOJA_DEMO_ID)
+# 2. API e worker, em dois terminais (ANTHROPIC_API_KEY no .env; sem chave o cliente recebe a
+#    mensagem de espera e o lead vai para "Com o vendedor")
+uv run uvicorn app.main:app
+uv run arq app.infra.worker.WorkerSettings
+```
+
+Conversar pelo webchat com `curl` (loja demo `00000000-0000-4000-8000-00000000de30`):
+
+```
+LOJA=00000000-0000-4000-8000-00000000de30
+SESSAO=$(curl -s -X POST localhost:8000/webchat/$LOJA/sessoes | python -c "import sys,json;print(json.load(sys.stdin)['sessao'])")
+curl -N localhost:8000/webchat/$LOJA/sessoes/$SESSAO/stream &          # respostas (SSE)
+curl -X POST localhost:8000/webchat/$LOJA/sessoes/$SESSAO/mensagens \
+  -H 'content-type: application/json' \
+  -d '{"id_cliente":"m1","tipo":"texto","texto":"oi, quero um iphone 16 128"}'   # 202
+```
+
+Conversar pelo terminal, sem Postgres/Redis (loja demo em memória, ferramentas reais):
+
+```
+uv run python scripts/conversar.py --fake   # LLM eco, sem custo, testa o fio
+uv run python scripts/conversar.py          # LLM REAL: precisa de ANTHROPIC_API_KEY (pago)
+```
+
+Transcrição do LLM: cada mensagem trocada com o modelo (user, assistant com `bruto`, tool_result e
+a mensagem de estado do turno) é gravada só por acréscimo em `eventos` (`tipo="llm_mensagem"`,
+payload com `conversa_id` e `seq`; detalhes em `app/adapters/outbound/db/transcricao.py`). Consulta:
+
+```sql
+SELECT payload FROM eventos
+WHERE lead_id = :lead AND tipo = 'llm_mensagem' AND payload->>'conversa_id' = :conversa
+ORDER BY (payload->>'seq')::int;
+```
+Outros eventos do turno: `ferramenta`, `ferramenta_erro`, `etapa_mudou`, `handoff`, `limite_iteracoes`
+e `llm_uso` (tokens).

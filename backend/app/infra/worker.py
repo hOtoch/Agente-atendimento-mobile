@@ -1,8 +1,8 @@
 """Worker arq. Comando (a partir de backend/): `uv run arq app.infra.worker.WorkerSettings`.
 
-`processar_conversa` so aplica o debounce e a trava (`ProcessarQuandoQuieto`); o trabalho de
-verdade e um hook injetavel (`ctx["processar"]`), que o orquestrador do agente (#24) vai
-fornecer. Por ora o hook so registra em log.
+`processar_conversa` aplica o debounce e a trava (`ProcessarQuandoQuieto`) e chama o hook
+`ctx["processar"]`: por padrao o `ProcessarConversa` real (`composicao.criar_processador`);
+testes injetam o proprio hook (ex.: com FakeLLM) em `ctx` antes do startup.
 """
 
 from __future__ import annotations
@@ -14,29 +14,39 @@ from uuid import UUID
 from arq.connections import RedisSettings
 from arq.worker import func
 
+from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.application.agendamento import ProcessarQuandoQuieto
-from app.infra.fila import FUNCAO_PROCESSAR, AgendadorArq, RelogioParede, TravaRedis
+from app.infra.composicao import criar_agendador, criar_processador
+from app.infra.fila import FUNCAO_PROCESSAR, RelogioParede, TravaRedis
 from app.infra.settings import get_settings
 
 log = logging.getLogger(__name__)
 
 
-async def registrar_em_log(conversa_id: UUID) -> None:
-    log.info("processar conversa %s (hook padrao: so registra)", conversa_id)
-
-
 async def iniciar(ctx: dict[str, Any]) -> None:
-    """Monta o caso de uso. `ctx["processar"]` substitui o hook padrao (orquestrador do agente)."""
+    """Monta o caso de uso. `ctx["processar"]` ja presente substitui o orquestrador real."""
     settings = get_settings()
     redis = ctx["redis"]
+    if "processar" not in ctx:
+        engine = criar_engine(settings.database_url)
+        ctx["engine"] = engine
+        ctx["processar"] = criar_processador(
+            criar_session_factory(engine), redis=redis, settings=settings
+        )
     ctx["caso"] = ProcessarQuandoQuieto(
-        agendador=AgendadorArq(redis, janela_s=settings.fila_janela_s),
+        agendador=criar_agendador(redis, settings),
         trava=TravaRedis(redis),
         relogio=RelogioParede(),
-        processar=ctx.get("processar", registrar_em_log),
+        processar=ctx["processar"],
         janela_s=settings.fila_janela_s,
         trava_ttl_s=settings.fila_trava_ttl_s,
     )
+
+
+async def encerrar(ctx: dict[str, Any]) -> None:
+    engine = ctx.get("engine")
+    if engine is not None:
+        await engine.dispose()
 
 
 async def processar_conversa(ctx: dict[str, Any], conversa_id: str) -> None:
@@ -46,4 +56,5 @@ async def processar_conversa(ctx: dict[str, Any], conversa_id: str) -> None:
 class WorkerSettings:
     functions = [func(processar_conversa, name=FUNCAO_PROCESSAR, keep_result=0)]
     on_startup = iniciar
+    on_shutdown = encerrar
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
