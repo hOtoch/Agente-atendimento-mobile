@@ -10,7 +10,21 @@ from tests.integration.conftest import aplicar_migrations
 
 pytestmark = pytest.mark.integration
 
-TABELAS = {"lojas", "vendedores", "leads", "conversas", "mensagens", "fichas", "eventos"}
+TABELAS = {
+    "lojas",
+    "vendedores",
+    "leads",
+    "conversas",
+    "mensagens",
+    "fichas",
+    "eventos",
+    "perfil_loja",
+    "regras_preco",
+    "taxas",
+    "tabela_troca",
+    "estoque_local",
+    "mapeamento_sku",
+}
 
 
 async def _tabelas(url: str) -> set[str]:
