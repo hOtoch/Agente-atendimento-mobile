@@ -1,19 +1,32 @@
 """Fixtures de integracao: um banco Postgres ISOLADO por teste, com as migrations aplicadas."""
 
+import os
 import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+import asyncpg
 import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infra.settings import get_settings
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+_ERROS_DE_CONEXAO = (
+    OSError,
+    TimeoutError,
+    asyncpg.PostgresError,
+    asyncpg.InterfaceError,
+    OperationalError,
+    InterfaceError,
+    DBAPIError,
+)
 
 
 def alembic_config(database_url: str) -> Config:
@@ -45,16 +58,22 @@ async def aplicar_migrations(database_url: str, revisao: str = "head") -> None:
 
 @pytest.fixture
 async def db_url() -> AsyncIterator[str]:
-    """Cria `teste_<id>` no Postgres de teste e dropa no final. Pula se o servidor estiver fora."""
+    """Cria `teste_<id>` no Postgres de teste e dropa no final.
+
+    Servidor fora: pula; ou falha se `EXIGIR_INTEGRACAO=1` (CI), para nao ficar verde sem testar.
+    """
     admin_url = make_url(get_settings().test_database_url)
     admin = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
     nome = f"teste_{uuid.uuid4().hex[:8]}"
     try:
         async with admin.connect() as conn:
             await conn.execute(text(f'CREATE DATABASE "{nome}"'))
-    except (OSError, Exception) as exc:  # noqa: BLE001
+    except _ERROS_DE_CONEXAO as exc:
         await admin.dispose()
-        pytest.skip(f"Postgres de teste inacessivel em {admin_url.host}:{admin_url.port}: {exc!r}")
+        msg = f"Postgres de teste inacessivel em {admin_url.host}:{admin_url.port}: {exc!r}"
+        if os.environ.get("EXIGIR_INTEGRACAO") == "1":
+            pytest.fail(f"EXIGIR_INTEGRACAO=1 e o {msg}", pytrace=False)
+        pytest.skip(msg)
     try:
         yield admin_url.set(database=nome).render_as_string(hide_password=False)
     finally:
