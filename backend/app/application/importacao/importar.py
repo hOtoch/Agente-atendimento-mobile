@@ -11,12 +11,7 @@ from uuid import UUID
 from app.application.config import validacao
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
-from app.application.importacao.leitor import (
-    LINHA,
-    ler_estoque,
-    ler_taxas,
-    ler_troca,
-)
+from app.application.importacao.portas import LINHA, LeitorPlanilha
 
 type TipoImportacao = Literal["troca", "taxas", "estoque"]
 type ModoImportacao = Literal["validar", "aplicar"]
@@ -74,9 +69,15 @@ class ImportarPlanilha:
     """
 
     def __init__(
-        self, casos: CasosDeUsoConfig, *, commit: Acao | None = None, rollback: Acao | None = None
+        self,
+        casos: CasosDeUsoConfig,
+        leitor: LeitorPlanilha,
+        *,
+        commit: Acao | None = None,
+        rollback: Acao | None = None,
     ) -> None:
         self._casos = casos
+        self._leitor = leitor
         self._commit = commit or _nada
         self._rollback = rollback or _nada
 
@@ -108,7 +109,7 @@ class ImportarPlanilha:
     def _troca(
         self, loja_id: UUID, conteudo: bytes
     ) -> tuple[list[ErroCampo], dict[str, Any], Acao]:
-        leitura = ler_troca(conteudo)
+        leitura = self._leitor.ler_troca(conteudo)
         erros = list(leitura.erros)
         if not leitura.entradas and not erros:
             erros.append(ErroCampo("troca", "Nenhuma linha preenchida na tabela de troca."))
@@ -132,7 +133,7 @@ class ImportarPlanilha:
     def _estoque(
         self, loja_id: UUID, conteudo: bytes
     ) -> tuple[list[ErroCampo], dict[str, Any], Acao]:
-        leitura = ler_estoque(conteudo)
+        leitura = self._leitor.ler_estoque(conteudo)
         erros = list(leitura.erros)
         if not leitura.entradas and not erros:
             erros.append(ErroCampo("estoque", "Nenhuma linha preenchida no estoque."))
@@ -153,7 +154,7 @@ class ImportarPlanilha:
     def _taxas(
         self, loja_id: UUID, conteudo: bytes
     ) -> tuple[list[ErroCampo], dict[str, Any], Acao]:
-        taxas, regras = ler_taxas(conteudo)
+        taxas, regras = self._leitor.ler_taxas(conteudo)
         erros = [*regras.erros, *taxas.erros]
         if not taxas.entradas and not taxas.erros:
             erros.append(ErroCampo("taxas", "Nenhuma taxa preenchida."))

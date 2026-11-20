@@ -125,6 +125,22 @@ async def test_falha_duas_vezes_e_acerta_na_terceira() -> None:
     assert resiliente.metricas.fallbacks == 0
 
 
+async def test_erro_de_configuracao_nao_e_retentado() -> None:
+    class ErroDeConfiguracao(EstoqueIndisponivel):
+        retentavel = False
+
+    def comportamento(n: int) -> list[ItemEstoque]:
+        raise ErroDeConfiguracao("credencial invalida")
+
+    adapter = AdapterFalso(comportamento)
+    resiliente, relogio = _montar(adapter)
+    with pytest.raises(EstoqueIndisponivel):
+        await resiliente.buscar(LOJA_A, MODELO)
+    assert adapter.chamadas == 1
+    assert resiliente.metricas.tentativas == 1
+    assert relogio.dormidos == []
+
+
 @pytest.mark.parametrize("erro", [TimeoutError("t"), OSError("rede")])
 async def test_faz_retry_em_timeout_e_oserror(erro: Exception) -> None:
     def comportamento(n: int) -> list[ItemEstoque]:

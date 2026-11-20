@@ -205,3 +205,10 @@ def gerar_modelo(tipo: str) -> bytes:
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+class GeradorModeloXlsx:
+    """Implementa `GeradorModelo` sobre openpyxl."""
+
+    def gerar(self, tipo: str) -> bytes:
+        return gerar_modelo(tipo)

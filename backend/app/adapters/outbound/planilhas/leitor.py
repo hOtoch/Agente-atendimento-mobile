@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from decimal import Decimal
 from io import BytesIO
 from typing import Any
@@ -18,14 +17,7 @@ from openpyxl.cell import Cell
 from openpyxl.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from app.application.config.entradas import (
-    EntradaLinhaEstoque,
-    EntradaLinhaTroca,
-    EntradaPreco,
-    EntradaTaxa,
-)
-from app.application.config.modelos import ErroCampo
-from app.application.importacao.celulas import (
+from app.adapters.outbound.planilhas.celulas import (
     CelulaInvalida,
     eh_igual,
     eh_sem,
@@ -37,28 +29,19 @@ from app.application.importacao.celulas import (
     texto,
     vazio,
 )
+from app.application.config.entradas import (
+    EntradaLinhaEstoque,
+    EntradaLinhaTroca,
+    EntradaPreco,
+    EntradaTaxa,
+)
+from app.application.config.modelos import ErroCampo
+from app.application.importacao.portas import LINHA, Leitura, LeituraPreco
 from app.domain.bandeira import Bandeira
 from app.domain.pagamento import DEBITO
 
-LINHA = "_linha"
-"""Chave de `origens` com a celula inicial da linha (usada quando o campo nao tem celula)."""
-
 _FALHA: Any = object()
 _MARCA_APPLE = "Apple"
-
-
-@dataclass(frozen=True, slots=True)
-class Leitura[T]:
-    entradas: list[T]
-    origens: list[dict[str, str]]
-    erros: list[ErroCampo]
-
-
-@dataclass(frozen=True, slots=True)
-class LeituraPreco:
-    entrada: EntradaPreco | None
-    origens: dict[str, str]
-    erros: list[ErroCampo] = field(default_factory=list)
 
 
 # --- infraestrutura ---------------------------------------------------------------------------
@@ -534,3 +517,16 @@ def ler_estoque(conteudo: bytes) -> Leitura[EntradaLinhaEstoque]:
         origem[LINHA] = f"{chave}!A{linha}"
         origens.append(origem)
     return Leitura(entradas, origens, erros)
+
+
+class LeitorXlsx:
+    """Implementa `LeitorPlanilha` sobre openpyxl."""
+
+    def ler_troca(self, conteudo: bytes) -> Leitura[EntradaLinhaTroca]:
+        return ler_troca(conteudo)
+
+    def ler_taxas(self, conteudo: bytes) -> tuple[Leitura[EntradaTaxa], LeituraPreco]:
+        return ler_taxas(conteudo)
+
+    def ler_estoque(self, conteudo: bytes) -> Leitura[EntradaLinhaEstoque]:
+        return ler_estoque(conteudo)

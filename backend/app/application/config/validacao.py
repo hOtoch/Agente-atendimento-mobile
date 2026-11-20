@@ -25,6 +25,7 @@ from app.application.config.modelos import (
 )
 from app.domain.bandeira import Bandeira
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
+from app.domain.estoque import Condicao
 from app.domain.pagamento import (
     DEBITO,
     PARCELAS_MAX,
@@ -367,7 +368,7 @@ def montar_estoque(entradas: Sequence[EntradaLinhaEstoque]) -> list[LinhaEstoque
                 modelo=modelo,
                 capacidade=capacidade,
                 cor=e.cor.strip(),
-                condicao=e.condicao,
+                condicao=Condicao(e.condicao),
                 preco_pix=preco,
                 quantidade=e.quantidade,
                 bateria_pct=e.bateria_pct,
@@ -403,7 +404,7 @@ def montar_mapeamento(entradas: Sequence[EntradaLinhaMapeamento]) -> list[LinhaM
                 modelo=modelo,
                 capacidade=capacidade,
                 cor=e.cor.strip(),
-                condicao=e.condicao,
+                condicao=Condicao(e.condicao),
             )
         )
     _levantar(erros)

@@ -5,7 +5,7 @@ uv run python scripts/gerar_modelos_xlsx.py
 
 from pathlib import Path
 
-from app.application.importacao.modelos_xlsx import TIPOS, gerar_modelo
+from app.adapters.outbound.planilhas.modelos_xlsx import TIPOS, gerar_modelo
 
 DESTINO = Path(__file__).resolve().parents[2] / "docs" / "modelos"
 

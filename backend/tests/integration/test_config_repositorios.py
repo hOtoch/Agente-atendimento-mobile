@@ -25,6 +25,7 @@ from app.application.config.modelos import (
 )
 from app.domain.bandeira import Bandeira
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
+from app.domain.estoque import Condicao
 from app.domain.pagamento import DescontoPixNenhum, DescontoPixValor, RegrasPreco, TabelaTaxas
 from app.domain.troca import SEM, LinhaTroca, TabelaTroca
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
@@ -194,7 +195,7 @@ async def test_estoque_local_ida_e_volta(session: AsyncSession) -> None:
             ModeloAparelho.de("iPhone 16"),
             Capacidade(128),
             "Preto",
-            "novo",
+            Condicao.NOVO,
             Dinheiro.de("4500.90"),
             3,
             None,
@@ -204,7 +205,7 @@ async def test_estoque_local_ida_e_volta(session: AsyncSession) -> None:
             ModeloAparelho.de("iPhone 13"),
             Capacidade(256),
             "Azul",
-            "seminovo",
+            Condicao.SEMINOVO,
             Dinheiro.de("2800"),
             1,
             88,
@@ -224,14 +225,14 @@ async def test_mapeamento_sku_ida_e_volta(session: AsyncSession) -> None:
     repo = RepositorioMapeamentoSkuSql(session)
     linhas = [
         LinhaMapeamentoSku(
-            "ERP-1", ModeloAparelho.de("iPhone 16 Pro"), Capacidade(256), "Titanio", "novo"
+            "ERP-1", ModeloAparelho.de("iPhone 16 Pro"), Capacidade(256), "Titanio", Condicao.NOVO
         ),
         LinhaMapeamentoSku(
             "ERP-2",
             ModeloAparelho.de("Galaxy S23", "Samsung"),
             Capacidade(128),
             "Preto",
-            "seminovo",
+            Condicao.SEMINOVO,
         ),
     ]
     await repo.substituir(loja, linhas)
@@ -248,7 +249,7 @@ async def test_isolamento_entre_lojas(session: AsyncSession) -> None:
         ModeloAparelho.de("iPhone 16"),
         Capacidade(128),
         "Preto",
-        "novo",
+        Condicao.NOVO,
         Dinheiro.de("1"),
         1,
         None,

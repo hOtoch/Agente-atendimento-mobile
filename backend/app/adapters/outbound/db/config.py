@@ -31,6 +31,7 @@ from app.application.config.modelos import (
 )
 from app.domain.bandeira import Bandeira
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
+from app.domain.estoque import Condicao
 from app.domain.pagamento import (
     DEBITO,
     ChaveTaxa,
@@ -267,7 +268,7 @@ class RepositorioEstoqueLocalSql:
                 modelo=ModeloAparelho.de(r.modelo, r.marca),
                 capacidade=Capacidade(r.capacidade_gb),
                 cor=r.cor,
-                condicao=r.condicao,
+                condicao=Condicao(r.condicao),
                 preco_pix=Dinheiro(r.preco_pix),
                 quantidade=r.quantidade,
                 bateria_pct=r.bateria_pct,
@@ -286,7 +287,7 @@ class RepositorioEstoqueLocalSql:
                 marca=x.modelo.marca,
                 capacidade_gb=int(x.capacidade),
                 cor=x.cor,
-                condicao=x.condicao,
+                condicao=x.condicao.value,
                 preco_pix=x.preco_pix.valor,
                 quantidade=x.quantidade,
                 bateria_pct=x.bateria_pct,
@@ -315,7 +316,7 @@ class RepositorioMapeamentoSkuSql:
                 modelo=ModeloAparelho.de(r.modelo, r.marca),
                 capacidade=Capacidade(r.capacidade_gb),
                 cor=r.cor,
-                condicao=r.condicao,
+                condicao=Condicao(r.condicao),
             )
             for r in rows
         ]
@@ -331,7 +332,7 @@ class RepositorioMapeamentoSkuSql:
                 marca=x.modelo.marca,
                 capacidade_gb=int(x.capacidade),
                 cor=x.cor,
-                condicao=x.condicao,
+                condicao=x.condicao.value,
             )
             for i, x in enumerate(linhas)
         )

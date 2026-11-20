@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.memoria import criar_casos_em_memoria
 from app.application.config.modelos import LojaNaoEncontrada
@@ -26,7 +27,7 @@ Ctx = tuple[CasosDeUsoConfig, ImportarPlanilha, UUID]
 async def ctx() -> Ctx:
     casos = criar_casos_em_memoria()
     loja = await casos.criar_loja("Loja")
-    return casos, ImportarPlanilha(casos), loja
+    return casos, ImportarPlanilha(casos, LeitorXlsx()), loja
 
 
 async def test_validar_nao_grava(ctx: Ctx) -> None:
@@ -124,7 +125,7 @@ async def test_commit_e_rollback_chamados() -> None:
     async def rollback() -> None:
         eventos.append("rollback")
 
-    imp = ImportarPlanilha(casos, commit=commit, rollback=rollback)
+    imp = ImportarPlanilha(casos, LeitorXlsx(), commit=commit, rollback=rollback)
     await imp.executar(loja, "troca", troca_xlsx(TROCA_OK), "validar")
     assert eventos == []
     await imp.executar(loja, "troca", troca_xlsx(TROCA_OK), "aplicar")

@@ -100,7 +100,9 @@ class EstoqueResiliente:
             self.metricas.tentativas += 1
             try:
                 valor = await asyncio.wait_for(chamar(), self._timeout)
-            except _RETRYAVEIS:
+            except _RETRYAVEIS as exc:
+                if not getattr(exc, "retentavel", True):
+                    raise
                 if n < self._tentativas - 1:
                     await self._relogio.dormir(self._backoff * 2**n + self._jitter())
                 continue

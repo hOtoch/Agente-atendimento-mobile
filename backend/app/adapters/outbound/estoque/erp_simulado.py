@@ -18,8 +18,20 @@ _TAMANHO_PAGINA = 100
 _MAX_PAGINAS = 1000
 
 
+class _ItemMalformado(Exception):
+    """Um item do ERP sem os campos esperados: ignorado, nao derruba a busca."""
+
+
+def _sku_de(bruto: Any) -> str:
+    if isinstance(bruto, dict) and bruto.get("sku") is not None:
+        return str(bruto["sku"])
+    return "<sem sku>"
+
+
 class ErpCredencialInvalida(EstoqueIndisponivel):
     """O ERP recusou o token (401): erro de configuracao, retry nao resolve."""
+
+    retentavel = False
 
 
 class ErpSimuladoAdapter:
@@ -41,10 +53,15 @@ class ErpSimuladoAdapter:
         self._mapeamentos = mapeamentos
         self._timeout_s = timeout_s
         self._nao_mapeados: dict[UUID, set[str]] = {}
+        self._invalidos: dict[UUID, set[str]] = {}
 
     def skus_nao_mapeados(self, loja_id: UUID) -> list[str]:
         """SKUs do ERP ignorados por falta de mapeamento (alimenta o checklist do onboarding)."""
         return sorted(self._nao_mapeados.get(loja_id, set()))
+
+    def itens_invalidos(self, loja_id: UUID) -> list[str]:
+        """SKUs (ou `<sem sku>`) de itens malformados do ERP, ignorados sem derrubar a busca."""
+        return sorted(self._invalidos.get(loja_id, set()))
 
     async def buscar(
         self,
@@ -56,13 +73,19 @@ class ErpSimuladoAdapter:
         mapa = await self._mapeamentos.listar(loja_id)
         itens: list[ItemEstoque] = []
         ignorados: set[str] = set()
+        invalidos: set[str] = set()
         for bruto in await self._listar_todos():
-            item = self._converter(bruto, mapa)
+            try:
+                item = self._converter(bruto, mapa)
+            except _ItemMalformado:
+                invalidos.add(_sku_de(bruto))
+                continue
             if item is None:
-                ignorados.add(str(bruto.get("sku")))
+                ignorados.add(_sku_de(bruto))
             else:
                 itens.append(item)
         self._nao_mapeados[loja_id] = ignorados
+        self._invalidos[loja_id] = invalidos
         return filtrar(itens, modelo, capacidade, cor)
 
     async def obter(self, loja_id: UUID, sku: str) -> ItemEstoque | None:
@@ -70,7 +93,11 @@ class ErpSimuladoAdapter:
         if resposta is None:
             return None
         bruto = self._json(resposta)
-        item = self._converter(bruto, await self._mapeamentos.listar(loja_id))
+        try:
+            item = self._converter(bruto, await self._mapeamentos.listar(loja_id))
+        except _ItemMalformado:
+            self._invalidos.setdefault(loja_id, set()).add(sku)
+            return None
         if item is None:
             self._nao_mapeados.setdefault(loja_id, set()).add(sku)
         return item
@@ -120,14 +147,14 @@ class ErpSimuladoAdapter:
         return corpo
 
     @staticmethod
-    def _converter(bruto: dict[str, Any], mapa: dict[str, MapeamentoSku]) -> ItemEstoque | None:
+    def _converter(bruto: Any, mapa: dict[str, MapeamentoSku]) -> ItemEstoque | None:
         try:
             sku = str(bruto["sku"])
             descricao = str(bruto.get("descricao", ""))
             preco = Dinheiro.de(str(bruto["preco"]))
             quantidade = max(0, int(bruto["estoque"]))
-        except (KeyError, TypeError, ValueError, InvalidOperation) as exc:
-            raise EstoqueIndisponivel(f"item do ERP malformado: {exc!r}") from exc
+        except (KeyError, TypeError, ValueError, InvalidOperation, AttributeError) as exc:
+            raise _ItemMalformado(repr(exc)) from exc
 
         mapeamento = mapa.get(sku)
         if mapeamento is not None:
