@@ -1,0 +1,150 @@
+name: atendimento
+
+# Infra local do Agente de Atendimento Mobile.
+# Segredos/variaveis vem de ../.env (veja ../.env.example); todos tem default para dev.
+# Uso: bash infra/dev.sh up   (ou: docker compose -f infra/docker-compose.yml up -d --wait)
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-atendimento}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atendimento}
+      POSTGRES_DB: ${POSTGRES_DB:-atendimento}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-teste}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-teste}
+      POSTGRES_DB: teste
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # --- Evolution API v2 (canal WhatsApp) com postgres/redis proprios (so rede interna) ---
+  evolution-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:-evolution}
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  evolution-redis:
+    image: redis:7
+    volumes:
+      - evolution_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  evolution-api:
+    image: ${EVOLUTION_IMAGE:-evoapicloud/evolution-api:v2.3.7}
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    environment:
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      SERVER_URL: http://localhost:8080
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-troque-esta-chave}
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD:-evolution}@evolution-postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_atendimento
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://evolution-redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      # Webhook global para o backend (habilite quando o backend existir)
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      LOG_LEVEL: ERROR,WARN,INFO
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # --- Placeholders (habilitar quando as issues correspondentes existirem) ---
+  # backend:
+  #   build: ../backend
+  #   env_file: ../.env
+  #   depends_on:
+  #     postgres: {condition: service_healthy}
+  #     redis: {condition: service_healthy}
+  #   ports: ["8000:8000"]
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+  #
+  # worker:
+  #   build: ../backend
+  #   command: ["python", "-m", "app.worker"]
+  #   env_file: ../.env
+  #   depends_on:
+  #     postgres: {condition: service_healthy}
+  #     redis: {condition: service_healthy}
+  #
+  # frontend:
+  #   build: ../frontend
+  #   ports: ["5173:80"]
+  #   depends_on: [backend]
+  #
+  # erp-mock:
+  #   build: ../services/erp-mock
+  #   env_file: ../.env
+  #   ports: ["9000:9000"]
+
+volumes:
+  pgdata:
+  redisdata:
+  evolution_pgdata:
+  evolution_redis:
+  evolution_instances:
