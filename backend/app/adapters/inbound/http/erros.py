@@ -14,6 +14,7 @@ from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoE
 from app.application.handoff import ConflitoDono, LeadNaoEncontrado, VendedorNaoEncontrado
 from app.application.midia import MidiaGrandeDemais, MidiaNaoEncontrada, TipoMidiaNaoSuportado
 from app.application.painel.casos_de_uso import MovimentoEtapaInvalido
+from app.application.whatsapp import ErroGateway
 
 
 def _caminho(loc: Sequence[str | int]) -> str:
@@ -85,3 +86,8 @@ def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(MidiaNaoEncontrada)
     async def _midia(_: Request, exc: MidiaNaoEncontrada) -> JSONResponse:
         return JSONResponse(_corpo([ErroCampo("nome", "Mídia não encontrada.")]), status_code=404)
+
+    @app.exception_handler(ErroGateway)
+    async def _gateway(_: Request, exc: ErroGateway) -> JSONResponse:
+        erro = ErroCampo("whatsapp", "Não foi possível falar com o WhatsApp (Evolution API).")
+        return JSONResponse(_corpo([erro]), status_code=502)

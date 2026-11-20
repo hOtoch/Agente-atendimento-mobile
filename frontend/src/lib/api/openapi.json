@@ -196,6 +196,30 @@
         "title": "ColunaKanbanSchema",
         "type": "object"
       },
+      "ConexaoWhatsAppSchema": {
+        "properties": {
+          "qr_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qr Base64"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EstadoConexao"
+          }
+        },
+        "required": [
+          "status",
+          "qr_base64"
+        ],
+        "title": "ConexaoWhatsAppSchema",
+        "type": "object"
+      },
       "DetalheLeadSchema": {
         "properties": {
           "card": {
@@ -352,6 +376,16 @@
         ],
         "title": "ErrosSchema",
         "type": "object"
+      },
+      "EstadoConexao": {
+        "enum": [
+          "conectado",
+          "conectando",
+          "desconectado",
+          "inexistente"
+        ],
+        "title": "EstadoConexao",
+        "type": "string"
       },
       "EstoqueSchema-Input": {
         "properties": {
@@ -1654,6 +1688,18 @@
           "sessao"
         ],
         "title": "SessaoSchema",
+        "type": "object"
+      },
+      "StatusWhatsAppSchema": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/EstadoConexao"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StatusWhatsAppSchema",
         "type": "object"
       },
       "TaxaSchema-Input": {
@@ -3303,6 +3349,104 @@
         "summary": "Checklist",
         "tags": [
           "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/whatsapp/conectar": {
+      "post": {
+        "operationId": "conectar_whatsapp_lojas__loja_id__whatsapp_conectar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoWhatsAppSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Loja nao encontrada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "description": "Evolution fora."
+          }
+        },
+        "summary": "Cria a instancia (se preciso) e devolve o QR para conectar o numero",
+        "tags": [
+          "whatsapp"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/whatsapp/status": {
+      "get": {
+        "operationId": "status_whatsapp_lojas__loja_id__whatsapp_status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusWhatsAppSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Loja nao encontrada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "description": "Evolution fora."
+          }
+        },
+        "summary": "Estado da conexao do WhatsApp da loja",
+        "tags": [
+          "whatsapp"
         ]
       }
     },

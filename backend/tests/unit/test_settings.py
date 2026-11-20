@@ -53,3 +53,25 @@ def test_settings_de_midia(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MIDIA_MAX_BYTES", "1024")
     s = Settings(_env_file=None)
     assert (s.midia_dir, s.midia_max_bytes) == ("/tmp/m", 1024)
+
+
+def test_settings_da_evolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    for nome in (
+        "EVOLUTION_API_URL",
+        "EVOLUTION_API_KEY",
+        "EVOLUTION_WEBHOOK_URL",
+        "EVOLUTION_WEBHOOK_TOKEN",
+        "API_PUBLICA_URL",
+        "WHATSAPP_ECO_GRACA_S",
+    ):
+        monkeypatch.delenv(nome, raising=False)
+    padrao = Settings(_env_file=None)
+    assert padrao.evolution_api_url == "http://localhost:8080"
+    assert padrao.evolution_webhook_url == "http://host.docker.internal:8000/webhooks/evolution"
+    assert padrao.api_publica_url == "http://localhost:8000"
+    assert padrao.whatsapp_eco_graca_s == 0.5
+
+    monkeypatch.setenv("EVOLUTION_API_KEY", "k")
+    monkeypatch.setenv("EVOLUTION_WEBHOOK_TOKEN", "t")
+    s = Settings(_env_file=None)
+    assert (s.evolution_api_key, s.evolution_webhook_token) == ("k", "t")

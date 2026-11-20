@@ -1,0 +1,33 @@
+{
+  "event": "messages.upsert",
+  "instance": "loja-00000000-0000-4000-8000-00000000de30",
+  "data": {
+    "key": {
+      "remoteJid": "5511987654321@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0A1B2C3D4E5F60007"
+    },
+    "pushName": "Maria Silva",
+    "status": "DELIVERY_ACK",
+    "message": {
+      "documentWithCaptionMessage": {
+        "message": {
+          "documentMessage": {
+            "mimetype": "application/pdf",
+            "fileName": "orcamento.pdf",
+            "caption": "Orçamento anterior"
+          }
+        }
+      }
+    },
+    "messageType": "documentWithCaptionMessage",
+    "messageTimestamp": 1763644500,
+    "instanceId": "00000000-aaaa-bbbb-cccc-000000000001",
+    "source": "android"
+  },
+  "destination": "http://host.docker.internal:8000/webhooks/evolution",
+  "date_time": "2026-11-20T10:15:00.000-03:00",
+  "sender": "5511900000000@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "ficticia-0000"
+}

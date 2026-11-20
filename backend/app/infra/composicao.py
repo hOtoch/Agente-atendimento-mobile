@@ -15,6 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
 from app.adapters.outbound.barramento.redis import BarramentoRedis
+from app.adapters.outbound.canal.enviadas import RegistroEnviadasRedis
+from app.adapters.outbound.canal.evolution import EvolutionAdapter
+from app.adapters.outbound.canal.evolution_api import EvolutionGateway, criar_cliente_http
 from app.adapters.outbound.canal.webchat import WebChatAdapter
 from app.adapters.outbound.db.atendimento import RepositorioAtendimentoSql
 from app.adapters.outbound.db.config import (
@@ -29,6 +32,7 @@ from app.adapters.outbound.db.processamento import RegistroEventosSql, Repositor
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
 from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
+from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.processar_conversa import ProcessarConversa
 from app.application.canal import BarramentoMensagens, Canal, CanalPort
@@ -39,6 +43,7 @@ from app.application.handoff import AoSolicitarHandoff, CasosHandoff
 from app.application.llm import LLMPort
 from app.application.painel.casos_de_uso import CasosPainel
 from app.application.painel.publicador import PublicadorPainel, PublicadorPainelNulo
+from app.application.whatsapp import RegistroEnviadas, WhatsAppGateway
 from app.infra.fila import AgendadorArq, RelogioParede
 from app.infra.llm import criar_llm
 from app.infra.settings import Settings, get_settings
@@ -87,14 +92,44 @@ def montar_casos_handoff(
     )
 
 
-def montar_casos_painel(session: AsyncSession, barramento: BarramentoMensagens) -> CasosPainel:
-    """Painel: leitura/gravacao em SQL, eventos pelo barramento e envio pelo webchat."""
+def criar_gateway_whatsapp(settings: Settings | None = None) -> EvolutionGateway:
+    """Cliente da Evolution (um `httpx.AsyncClient` por chamada: o dono decide o ciclo de vida)."""
+    settings = settings or get_settings()
+    return EvolutionGateway(
+        criar_cliente_http(settings.evolution_api_url, settings.evolution_api_key),
+        webhook_url=settings.evolution_webhook_url,
+        webhook_token=settings.evolution_webhook_token,
+    )
+
+
+def criar_canal_whatsapp(
+    gateway: WhatsAppGateway, registro: RegistroEnviadas, settings: Settings | None = None
+) -> EvolutionAdapter:
+    settings = settings or get_settings()
+    return EvolutionAdapter(
+        gateway,
+        registro,
+        armazenamento=ArmazenamentoMidiaDisco(settings.midia_dir),
+        base_midia=settings.api_publica_url,
+    )
+
+
+def montar_casos_painel(
+    session: AsyncSession,
+    barramento: BarramentoMensagens,
+    *,
+    whatsapp: CanalPort | None = None,
+) -> CasosPainel:
+    """Painel: leitura/gravacao em SQL, eventos pelo barramento e envio por webchat/WhatsApp."""
+    canais: dict[Canal, CanalPort] = {Canal.WEBCHAT: WebChatAdapter(barramento)}
+    if whatsapp is not None:
+        canais[Canal.WHATSAPP] = whatsapp
     publicador = PublicadorPainelBarramento(barramento)
     return CasosPainel(
         repo=RepositorioPainelSql(session),
         publicador=publicador,
         handoff=montar_casos_handoff(session, publicador=publicador),
-        canais={Canal.WEBCHAT: WebChatAdapter(barramento)},
+        canais=canais,
     )
 
 
@@ -148,7 +183,12 @@ def criar_processador(
     settings = settings or get_settings()
     llm = llm or criar_llm(settings)
     barramento = barramento or BarramentoRedis(redis)
-    canais: dict[Canal, CanalPort] = {Canal.WEBCHAT: WebChatAdapter(barramento)}
+    canais: dict[Canal, CanalPort] = {
+        Canal.WEBCHAT: WebChatAdapter(barramento),
+        Canal.WHATSAPP: criar_canal_whatsapp(
+            criar_gateway_whatsapp(settings), RegistroEnviadasRedis(redis), settings
+        ),
+    }
     painel = PublicadorPainelBarramento(barramento)
 
     async def processar(conversa_id: UUID) -> None:

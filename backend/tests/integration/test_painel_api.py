@@ -465,7 +465,7 @@ async def test_mensagem_em_canal_sem_adaptador_e_persistida_com_enviada_false(
     loja = await amb.loja()
     vend = await amb.vendedor(loja)
     lead, _ = await amb.lead(
-        loja, telefone="5511", canal="whatsapp", dono="vendedor", vendedor_id=vend
+        loja, telefone="5511", canal="instagram", dono="vendedor", vendedor_id=vend
     )
     r = await amb.client.post(f"/lojas/{loja}/leads/{lead}/mensagens", json={"texto": "oi"})
     assert r.status_code == 201

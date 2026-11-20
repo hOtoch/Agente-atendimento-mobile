@@ -7,13 +7,13 @@ enxergar o que foi gravado antes de ser agendado.
 import uuid
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.outbound.db.models import Conversa, Lead
 from app.adapters.outbound.db.repositorios import MensagemRepositorio
-from app.application.canal import Canal, MensagemEntrada
+from app.application.canal import Canal, MensagemEntrada, TipoMensagem
 
 
 class RepositorioConversasSql:
@@ -72,3 +72,45 @@ class RepositorioConversasSql:
         )
         await self._session.commit()
         return nova
+
+    async def registrar_saida_vendedor(
+        self,
+        conversa_id: UUID,
+        *,
+        loja_id: UUID,
+        canal: Canal,
+        id_externo: str,
+        tipo: TipoMensagem,
+        texto: str | None,
+        midia_url: str | None,
+    ) -> bool:
+        """Mensagem que o vendedor digitou fora do painel (ex.: celular da loja). Idempotente."""
+        nova = await self._mensagens.inserir_se_nova(
+            id=uuid.uuid4(),
+            loja_id=loja_id,
+            conversa_id=conversa_id,
+            canal=canal.value,
+            direcao="saida",
+            autor="vendedor",
+            tipo=tipo.value,
+            conteudo=texto,
+            midia_url=midia_url,
+            id_externo=id_externo,
+        )
+        await self._session.commit()
+        return nova
+
+    async def definir_nome_se_vazio(
+        self, loja_id: UUID, canal: Canal, contato: str, nome: str
+    ) -> None:
+        await self._session.execute(
+            update(Lead)
+            .where(
+                Lead.loja_id == loja_id,
+                Lead.canal == canal.value,
+                Lead.telefone == contato,
+                Lead.nome.is_(None),
+            )
+            .values(nome=nome[:200])
+        )
+        await self._session.commit()
