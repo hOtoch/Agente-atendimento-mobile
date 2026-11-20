@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     fila_trava_ttl_s: float = 120.0  # a trava de conversa expira se o worker morrer
     llm_model: str = "claude-sonnet-5-5"
     llm_fallback_model: str = "claude-haiku-5-5"
+    llm_effort: str = "low"
     anthropic_api_key: str | None = None
 
 
