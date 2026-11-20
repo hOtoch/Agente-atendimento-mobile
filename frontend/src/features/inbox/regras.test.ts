@@ -18,6 +18,11 @@ describe("dono", () => {
     expect(interpretarDono(`vendedor:${VENDEDOR_ANA}`)).toEqual({ tipo: "vendedor", vendedorId: VENDEDOR_ANA })
   })
 
+  it("`vendedor` sem id é a conversa aguardando vendedor", () => {
+    expect(interpretarDono("vendedor")).toEqual({ tipo: "vendedor", vendedorId: null })
+    expect(podeResponder("vendedor", VENDEDOR_ANA)).toBe(false)
+  })
+
   it("só pode responder quando o dono é o vendedor atual", () => {
     expect(podeResponder("ia", VENDEDOR_ANA)).toBe(false)
     expect(podeResponder(`vendedor:${VENDEDOR_ANA}`, VENDEDOR_ANA)).toBe(true)

@@ -5,13 +5,14 @@ Dinheiro trafega como Decimal (JSON: string `"5339.40"`), como no resto da API.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.application.handoff import ResumoHandoff
 from app.application.painel.casos_de_uso import (
     CardLead,
     ColunaKanban,
@@ -46,7 +47,12 @@ class CardLeadSchema(BaseModel):
     canal: CanalLiteral
     etapa: Etapa
     etapa_desde: datetime
-    dono: str = Field(description="`ia` ou `vendedor:<id do vendedor>`.")
+    dono: str = Field(
+        description=(
+            "`ia`, `vendedor:<id do vendedor>` ou `vendedor` (aguardando vendedor: "
+            "a IA chamou um vendedor e ninguem assumiu ainda)."
+        )
+    )
     vendedor_id: UUID | None
     vendedor_nome: str | None
     aparelho_desejado: str | None
@@ -127,6 +133,38 @@ class EventoLeadSchema(BaseModel):
         return cls(id=e.id, tipo=e.tipo, payload=e.payload, criado_em=e.criado_em)
 
 
+class ResumoHandoffSchema(BaseModel):
+    """Resumo para o vendedor: campos estruturados (deterministicos) + observacoes do LLM."""
+
+    motivo: str
+    aparelho_desejado: str | None
+    troca: str | None
+    valor_troca: Decimal | None
+    proposta: str | None
+    valor_proposta: Decimal | None
+    forma_pagamento: str | None
+    data_prevista: date | None
+    pendencias: list[str]
+    observacoes: str | None = Field(description="2 a 3 frases do LLM; null se ele falhou.")
+    gerado_em: datetime
+
+    @classmethod
+    def de(cls, r: ResumoHandoff) -> ResumoHandoffSchema:
+        return cls(
+            motivo=r.motivo,
+            aparelho_desejado=r.aparelho_desejado,
+            troca=r.troca,
+            valor_troca=r.valor_troca,
+            proposta=r.proposta,
+            valor_proposta=r.valor_proposta,
+            forma_pagamento=r.forma_pagamento,
+            data_prevista=r.data_prevista,
+            pendencias=r.pendencias,
+            observacoes=r.observacoes,
+            gerado_em=r.gerado_em,
+        )
+
+
 class DetalheLeadSchema(BaseModel):
     card: CardLeadSchema
     ficha: dict[str, Any] = Field(description="Ficha de qualificacao (JSON do dominio).")
@@ -136,6 +174,9 @@ class DetalheLeadSchema(BaseModel):
     proposta: dict[str, Any] | None
     handoff_solicitado: bool
     motivo_handoff: str | None
+    resumo_handoff: ResumoHandoffSchema | None = Field(
+        description="Resumo gerado quando a IA chamou o vendedor; null caso contrario."
+    )
 
     @classmethod
     def de(cls, d: DetalheLead) -> DetalheLeadSchema:
@@ -148,6 +189,9 @@ class DetalheLeadSchema(BaseModel):
             proposta=d.proposta,
             handoff_solicitado=d.handoff_solicitado,
             motivo_handoff=d.motivo_handoff,
+            resumo_handoff=(
+                None if d.resumo_handoff is None else ResumoHandoffSchema.de(d.resumo_handoff)
+            ),
         )
 
 

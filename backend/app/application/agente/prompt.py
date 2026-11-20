@@ -212,7 +212,7 @@ def _conhecido(ficha: Ficha) -> list[str]:
     if ficha.data_prevista_compra is not None:
         itens.append(f"Compra prevista para {ficha.data_prevista_compra.isoformat()}")
     if ficha.pagamento.tipo is not None:
-        itens.append(f"Pagamento: {_pagamento_texto(ficha)}")
+        itens.append(f"Pagamento: {descrever_pagamento(ficha)}")
     return itens or ["Nada ainda: é o início da conversa."]
 
 
@@ -242,7 +242,7 @@ def _conhecido_usado(ficha: Ficha) -> list[str]:
     return itens
 
 
-def _pagamento_texto(ficha: Ficha) -> str:
+def descrever_pagamento(ficha: Ficha) -> str:
     p = ficha.pagamento
     assert p.tipo is not None
     partes = [_PAGAMENTO_NOME[p.tipo]]

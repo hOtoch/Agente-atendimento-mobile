@@ -33,8 +33,15 @@ function ResumoHandoff({ detalhe }: { detalhe: DetalheLead }) {
             <Linha rotulo="Aparelho" valor={r.aparelho} />
             <Linha rotulo="Troca" valor={r.troca} />
             <Linha rotulo="Pagamento" valor={r.pagamento} />
+            {r.proposta ? <Linha rotulo="Proposta" valor={r.proposta} /> : null}
             <Linha rotulo="Próximo passo" valor={r.proximoPasso} />
           </dl>
+          {r.observacoes ? (
+            <div className="flex flex-col gap-1">
+              <h4 className="text-xs text-muted-foreground">Observações da IA</h4>
+              <p className="text-sm text-foreground">{r.observacoes}</p>
+            </div>
+          ) : null}
           {r.ultimasMensagens.length ? (
             <div className="flex flex-col gap-1">
               <h4 className="text-xs text-muted-foreground">Últimas mensagens</h4>

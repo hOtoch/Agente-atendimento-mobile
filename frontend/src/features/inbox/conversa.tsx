@@ -13,7 +13,7 @@ import type { DetalheLead, MensagemLead } from "@/lib/api"
 import { contatoDoLead } from "@/lib/lead"
 import { cn } from "@/lib/utils"
 
-import { interpretarDono, podeResponder } from "./regras"
+import { interpretarDono, podeAssumir, podeResponder } from "./regras"
 import type { StatusCarga } from "./use-inbox"
 
 type Props = {
@@ -40,6 +40,7 @@ function autorDoBalao(m: MensagemLead): string | undefined {
 function situacao(detalhe: DetalheLead, vendedorAtualId: string | null): string {
   const dono = interpretarDono(detalhe.card.dono)
   if (dono.tipo === "ia") return "IA atendendo"
+  if (dono.vendedorId === null) return "Aguardando vendedor"
   if (podeResponder(detalhe.card.dono, vendedorAtualId)) return "Você está atendendo"
   return `Atendida por ${detalhe.card.vendedor_nome ?? "outro vendedor"}`
 }
@@ -115,6 +116,7 @@ export function Conversa({
   const contato = contatoDoLead(card)
   const dono = interpretarDono(card.dono)
   const habilitado = podeResponder(card.dono, vendedorAtualId)
+  const assumivel = podeAssumir(card.dono)
   const vazio = texto.trim() === ""
 
   async function enviar() {
@@ -174,7 +176,7 @@ export function Conversa({
             <UserRound aria-hidden className="size-4 text-muted-foreground" />
             {situacao(detalhe, vendedorAtualId)}
           </p>
-          {dono.tipo === "ia" ? (
+          {assumivel ? (
             <Button size="sm" disabled={ocupado || vendedorAtualId === null} onClick={onAssumir}>
               Assumir conversa
             </Button>
@@ -184,7 +186,7 @@ export function Conversa({
             </Button>
           ) : null}
         </div>
-        {dono.tipo === "ia" && vendedorAtualId === null ? (
+        {assumivel && vendedorAtualId === null ? (
           <p className="text-xs text-muted-foreground">Cadastre um vendedor ativo para poder assumir.</p>
         ) : null}
         <div className="flex items-end gap-2">

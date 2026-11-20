@@ -463,7 +463,7 @@ export interface components {
             criado_em: string;
             /**
              * Dono
-             * @description `ia` ou `vendedor:<id do vendedor>`.
+             * @description `ia`, `vendedor:<id do vendedor>` ou `vendedor` (aguardando vendedor: a IA chamou um vendedor e ninguem assumiu ainda).
              */
             dono: string;
             etapa: components["schemas"]["Etapa"];
@@ -528,6 +528,8 @@ export interface components {
             proposta: {
                 [key: string]: unknown;
             } | null;
+            /** @description Resumo gerado quando a IA chamou o vendedor; null caso contrario. */
+            resumo_handoff: components["schemas"]["ResumoHandoffSchema"] | null;
         };
         /** EnvioMensagemSchema */
         EnvioMensagemSchema: {
@@ -1047,6 +1049,40 @@ export interface components {
             resumo: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * ResumoHandoffSchema
+         * @description Resumo para o vendedor: campos estruturados (deterministicos) + observacoes do LLM.
+         */
+        ResumoHandoffSchema: {
+            /** Aparelho Desejado */
+            aparelho_desejado: string | null;
+            /** Data Prevista */
+            data_prevista: string | null;
+            /** Forma Pagamento */
+            forma_pagamento: string | null;
+            /**
+             * Gerado Em
+             * Format: date-time
+             */
+            gerado_em: string;
+            /** Motivo */
+            motivo: string;
+            /**
+             * Observacoes
+             * @description 2 a 3 frases do LLM; null se ele falhou.
+             */
+            observacoes: string | null;
+            /** Pendencias */
+            pendencias: string[];
+            /** Proposta */
+            proposta: string | null;
+            /** Troca */
+            troca: string | null;
+            /** Valor Proposta */
+            valor_proposta: string | null;
+            /** Valor Troca */
+            valor_troca: string | null;
         };
         /** SessaoSchema */
         SessaoSchema: {

@@ -2,12 +2,20 @@ import type { CardLead, ColunaKanban, EventoDonoMudou, EventoMensagemNova, Mensa
 
 export type VendedorResumo = { id: string; nome: string; ativo: boolean }
 
-export type DonoLead = { tipo: "ia" } | { tipo: "vendedor"; vendedorId: string }
+/** `vendedorId` null = aguardando vendedor (a IA chamou um e ninguém assumiu ainda). */
+export type DonoLead = { tipo: "ia" } | { tipo: "vendedor"; vendedorId: string | null }
 
-/** `CardLead.dono` é `ia` ou `vendedor:<uuid>`. */
+/** `CardLead.dono` é `ia`, `vendedor:<uuid>` ou `vendedor` (aguardando vendedor). */
 export function interpretarDono(dono: string): DonoLead {
   if (dono.startsWith("vendedor:")) return { tipo: "vendedor", vendedorId: dono.slice("vendedor:".length) }
+  if (dono === "vendedor") return { tipo: "vendedor", vendedorId: null }
   return { tipo: "ia" }
+}
+
+/** Conversa que o vendedor ainda pode pegar: com a IA ou aguardando vendedor. */
+export function podeAssumir(dono: string): boolean {
+  const d = interpretarDono(dono)
+  return d.tipo === "ia" || d.vendedorId === null
 }
 
 /** O campo de resposta só vale quando o dono é exatamente o vendedor que está atendendo. */

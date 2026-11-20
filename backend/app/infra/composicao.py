@@ -35,9 +35,10 @@ from app.application.canal import BarramentoMensagens, Canal, CanalPort
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
 from app.application.estoque_resiliente import EstoqueResiliente
+from app.application.handoff import AoSolicitarHandoff, CasosHandoff
 from app.application.llm import LLMPort
 from app.application.painel.casos_de_uso import CasosPainel
-from app.application.painel.publicador import PublicadorPainel
+from app.application.painel.publicador import PublicadorPainel, PublicadorPainelNulo
 from app.infra.fila import AgendadorArq, RelogioParede
 from app.infra.llm import criar_llm
 from app.infra.settings import Settings, get_settings
@@ -68,11 +69,31 @@ def montar_casos_config(session: AsyncSession) -> CasosDeUsoConfig:
     )
 
 
+def montar_casos_handoff(
+    session: AsyncSession,
+    *,
+    publicador: PublicadorPainel,
+    llm: LLMPort | None = None,
+    aviso: AoSolicitarHandoff | None = None,
+) -> CasosHandoff:
+    """Handoff em SQL. `aviso` e o gancho `AoSolicitarHandoff` (nulo por padrao)."""
+    return CasosHandoff(
+        repo=RepositorioPainelSql(session),
+        publicador=publicador,
+        transcricao=RepositorioTranscricaoSql(session),
+        atendimento=RepositorioAtendimentoSql(session),
+        llm=llm,
+        aviso=aviso,
+    )
+
+
 def montar_casos_painel(session: AsyncSession, barramento: BarramentoMensagens) -> CasosPainel:
     """Painel: leitura/gravacao em SQL, eventos pelo barramento e envio pelo webchat."""
+    publicador = PublicadorPainelBarramento(barramento)
     return CasosPainel(
         repo=RepositorioPainelSql(session),
-        publicador=PublicadorPainelBarramento(barramento),
+        publicador=publicador,
+        handoff=montar_casos_handoff(session, publicador=publicador),
         canais={Canal.WEBCHAT: WebChatAdapter(barramento)},
     )
 
@@ -83,6 +104,7 @@ def montar_processar_conversa(
     llm: LLMPort,
     canais: Mapping[Canal, CanalPort],
     painel: PublicadorPainel | None = None,
+    aviso_handoff: AoSolicitarHandoff | None = None,
     hoje: Callable[[], date] = hoje_brasil,
     max_iteracoes: int = 6,
 ) -> ProcessarConversa:
@@ -103,6 +125,12 @@ def montar_processar_conversa(
         estoque=estoque,
         hoje=hoje,
         painel=painel,
+        handoff=montar_casos_handoff(
+            session,
+            publicador=painel or PublicadorPainelNulo(),
+            llm=llm,
+            aviso=aviso_handoff,
+        ),
         max_iteracoes=max_iteracoes,
     )
 
@@ -114,6 +142,7 @@ def criar_processador(
     settings: Settings | None = None,
     llm: LLMPort | None = None,
     barramento: BarramentoMensagens | None = None,
+    aviso_handoff: AoSolicitarHandoff | None = None,
 ) -> Callable[[UUID], Awaitable[None]]:
     """`processar(conversa_id)` do worker: uma sessao nova por job, LLM/canal compartilhados."""
     settings = settings or get_settings()
@@ -125,9 +154,9 @@ def criar_processador(
     async def processar(conversa_id: UUID) -> None:
         async with factory() as session:
             try:
-                await montar_processar_conversa(session, llm=llm, canais=canais, painel=painel)(
-                    conversa_id
-                )
+                await montar_processar_conversa(
+                    session, llm=llm, canais=canais, painel=painel, aviso_handoff=aviso_handoff
+                )(conversa_id)
             except BaseException:
                 await session.rollback()
                 raise

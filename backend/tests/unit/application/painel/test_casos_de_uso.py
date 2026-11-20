@@ -9,13 +9,18 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.application.agente.estado import EstadoAtendimento
+from app.application.agente.repositorio import RepositorioAtendimentoEmMemoria
+from app.application.agente.transcricao import RepositorioTranscricaoEmMemoria
 from app.application.canal import Canal, MensagemSaida
-from app.application.painel.casos_de_uso import (
-    CasosPainel,
+from app.application.handoff import (
+    CasosHandoff,
     ConflitoDono,
     LeadNaoEncontrado,
-    MovimentoEtapaInvalido,
     VendedorNaoEncontrado,
+)
+from app.application.painel.casos_de_uso import (
+    CasosPainel,
+    MovimentoEtapaInvalido,
 )
 from app.application.painel.eventos import (
     EventoDonoMudou,
@@ -49,6 +54,13 @@ class Cenario:
         self.casos = CasosPainel(
             repo=self.repo,
             publicador=self.publicador,
+            handoff=CasosHandoff(
+                repo=self.repo,
+                publicador=self.publicador,
+                transcricao=RepositorioTranscricaoEmMemoria(),
+                atendimento=RepositorioAtendimentoEmMemoria(),
+                agora=lambda: AGORA,
+            ),
             canais={Canal.WEBCHAT: self.canal},
             agora=lambda: AGORA,
         )

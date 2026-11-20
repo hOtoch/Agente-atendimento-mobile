@@ -63,3 +63,11 @@ def fatos_do_lead(estado: EstadoAtendimento) -> FatosDoLead:
         qualificado=pode_passar_preco(estado.ficha),
         handoff_realizado=estado.handoff_solicitado,
     )
+
+
+def aparelho_desejado(estado: EstadoAtendimento) -> str | None:
+    """`iPhone 16 128GB` (ou so o modelo); None sem modelo na ficha."""
+    i = estado.ficha.interesse
+    if i.modelo is None:
+        return None
+    return f"{i.modelo.nome} {i.capacidade}" if i.capacidade is not None else i.modelo.nome

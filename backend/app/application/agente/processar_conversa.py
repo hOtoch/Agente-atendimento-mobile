@@ -33,6 +33,7 @@ from app.application.canal import Canal, CanalPort, MensagemSaida, TipoMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.modelos import PerfilLoja
 from app.application.estoque import EstoquePort
+from app.application.handoff import CasosHandoff
 from app.application.llm import (
     BlocoTexto,
     ErroLLM,
@@ -97,6 +98,7 @@ class ProcessarConversa:
         estoque: EstoquePort,
         hoje: Callable[[], date],
         painel: PublicadorPainel | None = None,
+        handoff: CasosHandoff | None = None,
         max_iteracoes: int = 6,
     ) -> None:
         self._conversas = conversas
@@ -110,6 +112,7 @@ class ProcessarConversa:
         self._estoque = estoque
         self._hoje = hoje
         self._painel = painel or PublicadorPainelNulo()
+        self._handoff = handoff
         self._max_iteracoes = max_iteracoes
 
     async def __call__(self, conversa_id: UUID) -> None:
@@ -146,6 +149,22 @@ class _Turno:
         )
 
     async def rodar(self, entradas: list[EntradaConversa], ate: CursorEntrada) -> None:
+        await self._conversar(entradas, ate)
+        await self._passar_ao_vendedor()
+
+    async def _passar_ao_vendedor(self) -> None:
+        """Depois de responder ao cliente: se a IA pediu o vendedor (ferramenta ou falha do
+        LLM), a conversa passa a "aguardando vendedor" e a IA fica em silencio."""
+        c = self._c
+        if c._handoff is None or not self._estado.handoff_solicitado:
+            return
+        motivo = self._estado.motivo_handoff or "solicitado pela IA"
+        try:
+            await c._handoff.chamar_vendedor(self._conversa.loja_id, self._conversa.lead_id, motivo)
+        except Exception:
+            log.exception("falha ao passar a conversa %s ao vendedor", self._conversa.conversa_id)
+
+    async def _conversar(self, entradas: list[EntradaConversa], ate: CursorEntrada) -> None:
         c, conversa = self._c, self._conversa
         loja_id, lead_id = conversa.loja_id, conversa.lead_id
         self._estado = await c._atendimento.obter(loja_id, lead_id)
