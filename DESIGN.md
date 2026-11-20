@@ -42,3 +42,36 @@ Para criar um token novo: declare em `tokens.css` nos **dois** temas, ligue em `
 6. **Tema escuro** é a classe `dark` no `<html>`; nenhum componente ramifica por tema (`dark:` só em casos que os tokens não resolvem, e nunca com cor crua).
 7. **Acessibilidade**: foco visível (`ring`), `aria-current="page"` na rota ativa, `aria-label` em landmarks, texto em pt-BR.
 8. **Texto da interface** em pt-BR, com acentos; identificadores de código seguem as convenções do `CLAUDE.md`.
+
+## 9. Componentes base (`frontend/src/components/ui`)
+
+Vitrine viva em **`/design`** (todos os componentes e estados; o botão no topo alterna tema claro/escuro). Features importam só de `@/components/ui/...`.
+
+| Componente | Arquivo | Notas |
+|---|---|---|
+| Button | `button.tsx` | variantes `default`, `secondary`, `outline`, `ghost`, `destructive`, `link`; tamanhos `xs` a `lg` e `icon*` |
+| Input, Textarea | `input.tsx`, `textarea.tsx` | erro via `aria-invalid` (borda `danger`); sempre associar `<label htmlFor>` |
+| Select | `select.tsx` | base-ui; `SelectTrigger` precisa de `aria-labelledby` ou `aria-label` |
+| Card | `card.tsx` | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`; `size="sm"` para listas densas |
+| Badge | `badge.tsx` | variantes semânticas `success`, `warning`, `danger`; `EtapaBadge etapa=...` (5 etapas, tokens `stage-*`); `DonoBadge dono="ia"` ou `dono="vendedor"` |
+| Avatar | `avatar.tsx` | `Avatar`, `AvatarFallback` (iniciais); tamanhos `sm`, `default`, `lg` |
+| Dialog | `dialog.tsx` | foco entra no diálogo e volta ao gatilho; Esc fecha; `DialogFooter showCloseButton` |
+| Sheet | `sheet.tsx` | painel lateral (`side`), mesmo contrato de acessibilidade do Dialog |
+| Tabs | `tabs.tsx` | `role` tablist/tab/tabpanel; setas navegam |
+| Table | `table.tsx` | tabela somente leitura |
+| DataGrid | `data-grid.tsx` | tabela editável (base do onboarding): colunas tipadas, `onChange` por célula, erro por célula, adicionar/remover linha |
+| Toast | `toast.tsx` | `<Toaster />` no layout raiz; `useToast()` com `sucesso`, `aviso`, `erro`, `info`, `fechar` (pt-BR) |
+| Skeleton | `skeleton.tsx` | `aria-hidden`; pulsa sobre `bg-muted` |
+| EmptyState | `empty-state.tsx` | ícone decorativo, título (h3), descrição e ação |
+
+### Etapas e donos
+
+`@/lib/etapas` exporta `ETAPAS` (valor, rótulo pt-BR, token) na ordem do funil, espelhando `Etapa` do backend (`novo_contato`, `interesse_identificado`, `interesse_qualificado`, `com_o_vendedor`, `venda_fechada`). O ponto colorido do badge usa `--stage-*`; o texto fica em `foreground` para manter o contraste. Dono: `ia` (`primary` suave) e `vendedor` (`secondary`).
+
+### DataGrid
+
+- `columns`: `{ key, header, type?: "text" | "number" | "select", options?, readOnly?, align?, widthClass? }[]`; `rows`: `Record<string, string | number | null>[]`.
+- Controlado: o pai guarda `rows`. `onChange({ rowIndex, columnKey, value, row })` dispara a cada edição; coluna `number` aceita vírgula e entrega `number | null`.
+- `errors`: `{ [linha]: { [coluna]: mensagem } }` (linha 0-based). `errosDeCelulas([{ linha, coluna, mensagem }])` monta o mapa a partir de erros da API. A célula recebe `aria-invalid` e `aria-describedby` apontando para a mensagem (cor `danger`).
+- `onAddRow` e `onRemoveRow(rowIndex)` ligam os botões "Adicionar linha" e "Remover linha N"; sem os callbacks, os botões não aparecem.
+- Cada campo tem rótulo acessível `"<Coluna>, linha <n>"`.
