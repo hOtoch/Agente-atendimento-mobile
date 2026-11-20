@@ -14,6 +14,7 @@ dependencies = [
     "python-multipart>=0.0.34",
     "redis>=8.1.0",
     "sqlalchemy[asyncio]>=2",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
@@ -54,7 +55,7 @@ ignore_missing_imports = true
 
 [tool.importlinter]
 root_package = "app"
-include_external_packages = false
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "domain nao importa application, adapters nem infra"
@@ -67,3 +68,9 @@ name = "application nao importa adapters nem infra"
 type = "forbidden"
 source_modules = ["app.application"]
 forbidden_modules = ["app.adapters", "app.infra"]
+
+[[tool.importlinter.contracts]]
+name = "domain e application nao importam bibliotecas de infraestrutura"
+type = "forbidden"
+source_modules = ["app.domain", "app.application"]
+forbidden_modules = ["openpyxl", "sqlalchemy", "httpx", "fastapi", "anthropic", "redis", "arq"]

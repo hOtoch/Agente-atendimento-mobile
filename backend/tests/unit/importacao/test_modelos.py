@@ -5,8 +5,8 @@ from io import BytesIO
 import pytest
 from openpyxl import load_workbook
 
-from app.application.importacao.leitor import ler_estoque, ler_taxas, ler_troca
-from app.application.importacao.modelos_xlsx import TIPOS, gerar_modelo
+from app.adapters.outbound.planilhas.leitor import ler_estoque, ler_taxas, ler_troca
+from app.adapters.outbound.planilhas.modelos_xlsx import TIPOS, gerar_modelo
 from app.domain.aparelho import MODELOS_IPHONE
 
 

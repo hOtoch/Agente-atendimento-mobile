@@ -15,8 +15,8 @@ from app.application.importacao.importar import (
     RelatorioImportacao,
     TipoImportacao,
 )
-from app.application.importacao.modelos_xlsx import gerar_modelo
-from app.infra.dependencias import get_importador
+from app.application.importacao.portas import GeradorModelo
+from app.infra.dependencias import get_gerador_modelo, get_importador
 
 router = APIRouter(tags=["importacao"])
 
@@ -24,6 +24,7 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 TAMANHO_MAXIMO = 10 * 1024 * 1024
 
 Importador = Annotated[ImportarPlanilha, Depends(get_importador)]
+Gerador = Annotated[GeradorModelo, Depends(get_gerador_modelo)]
 
 
 class ErroSchema(BaseModel):
@@ -73,9 +74,9 @@ async def importar(
 
 
 @router.get("/modelos/{tipo}", response_class=Response, responses={200: {"content": {XLSX: {}}}})
-async def baixar_modelo(tipo: TipoImportacao) -> Response:
+async def baixar_modelo(tipo: TipoImportacao, gerador: Gerador) -> Response:
     return Response(
-        gerar_modelo(tipo),
+        gerador.gerar(tipo),
         media_type=XLSX,
         headers={"Content-Disposition": f'attachment; filename="modelo-{tipo}.xlsx"'},
     )

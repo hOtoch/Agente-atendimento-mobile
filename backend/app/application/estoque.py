@@ -13,6 +13,9 @@ from app.domain.valores import Capacidade, ModeloAparelho
 class EstoqueIndisponivel(Exception):
     """A fonte de estoque falhou (timeout, erro de rede, ERP fora)."""
 
+    retentavel: bool = True
+    """False para erros de configuracao (ex.: credencial invalida): retry nao resolve."""
+
 
 @dataclass(frozen=True, slots=True)
 class CapacidadesEstoque:

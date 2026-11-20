@@ -14,6 +14,8 @@ import respx
 from app.adapters.outbound.estoque.erp_simulado import ErpCredencialInvalida, ErpSimuladoAdapter
 from app.adapters.outbound.estoque.memoria import FonteMapeamentoEmMemoria
 from app.application.estoque import EstoqueIndisponivel
+from app.application.estoque_resiliente import EstoqueResiliente
+from app.application.relogio import RelogioFalso
 from app.domain.estoque import Condicao, MapeamentoSku
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
 from tests.erp_falso import BASE_URL, TOKEN, montar_erp, produto
@@ -176,6 +178,44 @@ async def test_401_vira_credencial_invalida(
     with pytest.raises(ErpCredencialInvalida):
         await a.obter(LOJA, "A")
     assert issubclass(ErpCredencialInvalida, EstoqueIndisponivel)
+
+
+async def test_401_nao_e_retentado_pelo_decorator(
+    router: respx.MockRouter, cliente: httpx.AsyncClient
+) -> None:
+    montar_erp(router, [produto("A", "x")])
+    a = adaptador(cliente, {"A": mapa("A")}, token="errado")
+    resiliente = EstoqueResiliente(a, RelogioFalso(), tentativas=3, jitter=lambda: 0.0)
+    with pytest.raises(ErpCredencialInvalida):
+        await resiliente.buscar(LOJA, "iPhone 15 Pro")
+    assert resiliente.metricas.tentativas == 1
+    assert len(router.calls) == 1
+
+
+async def test_item_malformado_e_ignorado_e_registrado(
+    router: respx.MockRouter, cliente: httpx.AsyncClient
+) -> None:
+    ruim = produto("RUIM", "x")
+    ruim["preco"] = "nao-e-numero"
+    sem_estoque = produto("SEM-ESTOQUE", "x")
+    del sem_estoque["estoque"]
+    montar_erp(router, [produto("A", "x"), ruim, sem_estoque])
+    a = adaptador(cliente, {"A": mapa("A")})
+    itens = await a.buscar(LOJA, "iPhone 15 Pro")
+    assert [i.sku for i in itens] == ["A"]
+    assert a.itens_invalidos(LOJA) == ["RUIM", "SEM-ESTOQUE"]
+    assert a.skus_nao_mapeados(LOJA) == []
+
+
+async def test_obter_item_malformado_retorna_none_e_registra(
+    router: respx.MockRouter, cliente: httpx.AsyncClient
+) -> None:
+    ruim = produto("RUIM", "x")
+    ruim["preco"] = None
+    montar_erp(router, [ruim])
+    a = adaptador(cliente, {})
+    assert await a.obter(LOJA, "RUIM") is None
+    assert a.itens_invalidos(LOJA) == ["RUIM"]
 
 
 async def test_timeout_vira_estoque_indisponivel(

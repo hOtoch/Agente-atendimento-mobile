@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
 
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
+from app.domain.estoque import Condicao
 from app.domain.pagamento import RegrasPreco
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
 
-type Condicao = Literal["novo", "seminovo"]
-CONDICOES: tuple[str, ...] = ("novo", "seminovo")
+CONDICOES: tuple[str, ...] = tuple(c.value for c in Condicao)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +57,7 @@ class LinhaEstoqueLocal:
     modelo: ModeloAparelho
     capacidade: Capacidade
     cor: str
-    condicao: str
+    condicao: Condicao
     preco_pix: Dinheiro
     quantidade: int
     bateria_pct: int | None
@@ -70,7 +69,7 @@ class LinhaMapeamentoSku:
     modelo: ModeloAparelho
     capacidade: Capacidade
     cor: str
-    condicao: str
+    condicao: Condicao
 
 
 @dataclass(frozen=True, slots=True)

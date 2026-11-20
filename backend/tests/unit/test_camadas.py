@@ -39,3 +39,18 @@ def test_import_proibido_no_dominio_quebra_o_lint_imports(tmp_path: Path) -> Non
 
     assert resultado.returncode != 0, resultado.stdout + resultado.stderr
     assert "violacao" in resultado.stdout
+
+
+def test_biblioteca_externa_na_application_quebra_o_lint_imports(tmp_path: Path) -> None:
+    shutil.copytree(
+        BACKEND_DIR / "app", tmp_path / "app", ignore=shutil.ignore_patterns("__pycache__")
+    )
+    shutil.copy(BACKEND_DIR / "pyproject.toml", tmp_path / "pyproject.toml")
+    (tmp_path / "app" / "application" / "violacao_externa.py").write_text(
+        "import openpyxl\n\n__all__ = ['openpyxl']\n", encoding="utf-8"
+    )
+
+    resultado = _lint(tmp_path)
+
+    assert resultado.returncode != 0, resultado.stdout + resultado.stderr
+    assert "violacao_externa" in resultado.stdout

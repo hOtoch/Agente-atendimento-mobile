@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.adapters.outbound.db.config import RepositorioEstoqueLocalSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
 from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
+from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.application.importacao.importar import ImportarPlanilha
 from app.domain.estoque import Condicao
 from app.infra.dependencias import montar_casos_config
@@ -25,7 +26,7 @@ async def _loja(session: AsyncSession) -> UUID:
 
 async def test_estoque_importado_chega_ao_planilha_adapter(session: AsyncSession) -> None:
     loja = await _loja(session)
-    imp = ImportarPlanilha(montar_casos_config(session), commit=session.commit)
+    imp = ImportarPlanilha(montar_casos_config(session), LeitorXlsx(), commit=session.commit)
     planilha = estoque_xlsx(
         [
             ["A1", "iPhone 15 Pro", "256GB", "Titânio Natural", "novo", "R$ 7.500", 2, None],
@@ -49,7 +50,7 @@ async def test_estoque_importado_chega_ao_planilha_adapter(session: AsyncSession
 
 async def test_validar_nao_grava_no_banco(session: AsyncSession) -> None:
     loja = await _loja(session)
-    imp = ImportarPlanilha(montar_casos_config(session), commit=session.commit)
+    imp = ImportarPlanilha(montar_casos_config(session), LeitorXlsx(), commit=session.commit)
     r = await imp.executar(
         loja,
         "estoque",
@@ -62,7 +63,7 @@ async def test_validar_nao_grava_no_banco(session: AsyncSession) -> None:
 
 async def test_aplicar_com_erro_nao_grava_nada(session: AsyncSession) -> None:
     loja = await _loja(session)
-    imp = ImportarPlanilha(montar_casos_config(session), commit=session.commit)
+    imp = ImportarPlanilha(montar_casos_config(session), LeitorXlsx(), commit=session.commit)
     ruim = estoque_xlsx(
         [
             ["A1", "iPhone 15", 128, "Preto", "novo", 1, 1, None],
@@ -86,7 +87,7 @@ async def test_taxas_sao_gravadas_numa_transacao(session: AsyncSession, db_url: 
 
     original = casos.atualizar_taxas
     casos.atualizar_taxas = quebra  # type: ignore[method-assign]
-    imp = ImportarPlanilha(casos, commit=session.commit, rollback=session.rollback)
+    imp = ImportarPlanilha(casos, LeitorXlsx(), commit=session.commit, rollback=session.rollback)
     planilha = taxas_xlsx([[1, 1.99, None, None, None, None]])
     with pytest.raises(RuntimeError):
         await imp.executar(loja, "taxas", planilha, "aplicar")

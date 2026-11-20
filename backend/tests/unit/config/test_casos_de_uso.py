@@ -21,6 +21,7 @@ from app.application.config.modelos import (
     PerfilLoja,
 )
 from app.domain.bandeira import Bandeira
+from app.domain.estoque import Condicao
 from app.domain.pagamento import DescontoPixPercentual, DescontoPixValor
 from app.domain.troca import SEM
 from app.domain.valores import Dinheiro
@@ -371,7 +372,8 @@ async def test_estoque_ida_e_volta(casos: CasosDeUsoConfig) -> None:
     assert linhas[0].preco_pix == Dinheiro.de("4500")
     assert linhas[0].bateria_pct is None
     assert linhas[1].bateria_pct == 88
-    assert linhas[1].condicao == "seminovo"
+    assert linhas[0].condicao is Condicao.NOVO
+    assert linhas[1].condicao is Condicao.SEMINOVO
 
 
 async def test_estoque_invalido(casos: CasosDeUsoConfig) -> None:

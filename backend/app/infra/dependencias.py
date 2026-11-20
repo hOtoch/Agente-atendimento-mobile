@@ -21,9 +21,12 @@ from app.adapters.outbound.db.config import (
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.application.canal import BarramentoMensagens, ReceberMensagem
+from app.adapters.outbound.planilhas.leitor import LeitorXlsx
+from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import RepositorioLojas, SemIntegracaoEstoque
 from app.application.importacao.importar import ImportarPlanilha
+from app.application.importacao.portas import GeradorModelo
 from app.infra.settings import get_settings
 
 
@@ -60,7 +63,10 @@ def get_casos_config(session: Annotated[AsyncSession, Depends(get_session)]) -> 
 def get_importador(session: Annotated[AsyncSession, Depends(get_session)]) -> ImportarPlanilha:
     """Importador na sessao da requisicao: uma transacao, commit so apos validar e gravar tudo."""
     return ImportarPlanilha(
-        montar_casos_config(session), commit=session.commit, rollback=session.rollback
+        montar_casos_config(session),
+        LeitorXlsx(),
+        commit=session.commit,
+        rollback=session.rollback,
     )
 
 
@@ -99,3 +105,7 @@ def get_receber_mensagem(
     agendar: Annotated[Callable[[UUID], Awaitable[None]], Depends(get_agendar)],
 ) -> ReceberMensagem:
     return ReceberMensagem(RepositorioConversasSql(session), agendar)
+
+
+def get_gerador_modelo() -> GeradorModelo:
+    return GeradorModeloXlsx()

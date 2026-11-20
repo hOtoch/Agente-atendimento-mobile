@@ -2,8 +2,8 @@
 
 from decimal import Decimal
 
+from app.adapters.outbound.planilhas.leitor import ler_estoque, ler_taxas, ler_troca
 from app.application.config.modelos import ErroCampo
-from app.application.importacao.leitor import ler_estoque, ler_taxas, ler_troca
 from tests.unit.importacao.planilhas import (
     CAB_TAXAS,
     REGRAS_OK,

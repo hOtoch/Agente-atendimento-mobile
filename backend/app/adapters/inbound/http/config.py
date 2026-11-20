@@ -33,6 +33,7 @@ from app.domain.pagamento import (
     TabelaTaxas,
 )
 from app.domain.troca import SEM, DescontoTroca, LinhaTroca, TabelaTroca
+from app.domain.valores import Dinheiro
 from app.infra.dependencias import get_casos_config, get_session
 
 router = APIRouter(tags=["config"])
@@ -96,7 +97,8 @@ def _taxas_out(t: TabelaTaxas) -> s.TaxasSchema:
 def _desc(d: DescontoTroca) -> tuple[Decimal | None, bool]:
     if d is SEM:
         return None, True
-    assert not isinstance(d, type(SEM))
+    if not isinstance(d, Dinheiro):
+        raise TypeError(f"desconto de troca inesperado: {d!r}")
     return d.valor, False
 
 
@@ -137,7 +139,7 @@ def _estoque_out(linhas: list[LinhaEstoqueLocal]) -> s.EstoqueSchema:
                 modelo=x.modelo.nome,
                 capacidade_gb=int(x.capacidade),
                 cor=x.cor,
-                condicao=x.condicao,
+                condicao=x.condicao.value,
                 preco_pix=x.preco_pix.valor,
                 quantidade=x.quantidade,
                 bateria_pct=x.bateria_pct,
@@ -156,7 +158,7 @@ def _mapeamento_out(linhas: list[LinhaMapeamentoSku]) -> s.MapeamentoSchema:
                 modelo=x.modelo.nome,
                 capacidade_gb=int(x.capacidade),
                 cor=x.cor,
-                condicao=x.condicao,
+                condicao=x.condicao.value,
             )
             for x in linhas
         ]
