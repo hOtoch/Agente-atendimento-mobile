@@ -1,0 +1,709 @@
+{
+  "data": "2026-11-20",
+  "modo": "fake",
+  "modelo": "fake",
+  "modelo_cliente": null,
+  "total_cenarios": 6,
+  "aprovados": 6,
+  "taxa_aprovacao": 1.0,
+  "controles_total": 1,
+  "controles_como_esperado": 1,
+  "cenarios": [
+    {
+      "id": "preco_logo_de_cara",
+      "titulo": "Pede preço logo de cara",
+      "aprovado": true,
+      "deve_reprovar": false,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 1,
+      "etapa_final": "interesse_identificado",
+      "handoff": false,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "sem proposta na conversa"
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 3200,
+        "saida": 240,
+        "cache_leitura": 6000,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    },
+    {
+      "id": "sem_troca_pix",
+      "titulo": "Sem troca, Pix",
+      "aprovado": true,
+      "deve_reprovar": false,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 2,
+      "etapa_final": "interesse_qualificado",
+      "handoff": false,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 5600,
+        "saida": 420,
+        "cache_leitura": 10500,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    },
+    {
+      "id": "desconto_tres_vezes",
+      "titulo": "Pede desconto 3 vezes (teto segura)",
+      "aprovado": true,
+      "deve_reprovar": false,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 5,
+      "etapa_final": "interesse_qualificado",
+      "handoff": false,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 10400,
+        "saida": 780,
+        "cache_leitura": 19500,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    },
+    {
+      "id": "so_oi",
+      "titulo": "Só 'oi'",
+      "aprovado": true,
+      "deve_reprovar": false,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 1,
+      "etapa_final": "novo_contato",
+      "handoff": false,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "sem proposta na conversa"
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 800,
+        "saida": 60,
+        "cache_leitura": 1500,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    },
+    {
+      "id": "pede_humano",
+      "titulo": "Pede para falar com humano",
+      "aprovado": true,
+      "deve_reprovar": false,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 1,
+      "etapa_final": "com_o_vendedor",
+      "handoff": true,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "sem proposta na conversa"
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 1600,
+        "saida": 120,
+        "cache_leitura": 3000,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    },
+    {
+      "id": "exemplo_oficial",
+      "titulo": "Exemplo oficial completo (troca de R$ 2.310)",
+      "aprovado": true,
+      "deve_reprovar": false,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 4,
+      "etapa_final": "interesse_qualificado",
+      "handoff": false,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 8800,
+        "saida": 660,
+        "cache_leitura": 16500,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    },
+    {
+      "id": "controle_preco_sem_ficha",
+      "titulo": "Controle negativo: agente fala preço sem qualificar",
+      "aprovado": false,
+      "deve_reprovar": true,
+      "como_esperado": true,
+      "erro": null,
+      "turnos": 1,
+      "etapa_final": "novo_contato",
+      "handoff": false,
+      "checagens": [
+        {
+          "nome": "sem_valor_antes_da_proposta",
+          "passou": false,
+          "aplicavel": true,
+          "motivo": "valor R$ 4.830,00 dito antes de calcular_proposta liberada: 'O iPhone 16 128GB sai por R$ 4.830,00 à vista, uma ótima oferta!'"
+        },
+        {
+          "nome": "valores_vindos_de_ferramenta",
+          "passou": false,
+          "aplicavel": true,
+          "motivo": "valor R$ 4.830,00 nao aparece em nenhum resultado de ferramenta anterior: 'O iPhone 16 128GB sai por R$ 4.830,00 à vista, uma ótima oferta!'"
+        },
+        {
+          "nome": "desconto_dentro_do_teto",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "etapa_final",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "handoff",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "uma_pergunta_por_mensagem",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "tamanho_maximo",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "frase_pre_avaliacao",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "sem proposta na conversa"
+        },
+        {
+          "nome": "sem_erro_de_ferramenta",
+          "passou": true,
+          "aplicavel": true,
+          "motivo": ""
+        },
+        {
+          "nome": "sem_frases_proibidas",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        },
+        {
+          "nome": "valores_esperados_ditos",
+          "passou": true,
+          "aplicavel": false,
+          "motivo": "nao se aplica ao cenario"
+        }
+      ],
+      "uso_agente": {
+        "modelo": "fake",
+        "entrada": 800,
+        "saida": 60,
+        "cache_leitura": 1500,
+        "cache_escrita": 0
+      },
+      "uso_cliente": {
+        "modelo": "",
+        "entrada": 0,
+        "saida": 0,
+        "cache_leitura": 0,
+        "cache_escrita": 0
+      },
+      "custo_agente_usd": null,
+      "custo_cliente_usd": null,
+      "custo_total_usd": null
+    }
+  ],
+  "custo": {
+    "moeda": "USD",
+    "por_conversa_agente": {
+      "media": null,
+      "p50": null,
+      "maximo": null
+    },
+    "por_conversa_cliente": {
+      "media": null,
+      "p50": null,
+      "maximo": null
+    },
+    "por_conversa_total": {
+      "media": null,
+      "p50": null,
+      "maximo": null
+    }
+  },
+  "tokens_medios": {
+    "entrada": 4457,
+    "saida": 334,
+    "cache_leitura": 8357,
+    "cache_escrita": 0
+  }
+}
