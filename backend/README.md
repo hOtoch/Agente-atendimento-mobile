@@ -122,3 +122,16 @@ ORDER BY (payload->>'seq')::int;
 ```
 Outros eventos do turno: `ferramenta`, `ferramenta_erro`, `etapa_mudou`, `handoff`, `limite_iteracoes`
 e `llm_uso` (tokens).
+
+## Eval de conversas
+
+Suíte de cenários (`evals/cenarios/`, 15 + controle negativo) com checagens determinísticas
+(`evals/checagens.py`). Relatórios em `evals/relatorios/<data>-<modo>-<modelo>.md` e `.json`.
+
+```
+uv run python -m evals.rodar --modo fake    # CI/sem custo: agente roteirizado, valida harness e checagens
+# PAGO: só com OK explícito. Imprime a estimativa; sem --confirmo-custo sai com código 3 sem chamar a API.
+uv run python -m evals.rodar --modo real --modelo claude-sonnet-5-5     [--modelo-cliente claude-haiku-5-5] [--cenarios exemplo_oficial,so_oi] --confirmo-custo
+```
+
+O modo fake roda no `pytest` (`tests/unit/evals/`). O modo real nunca é executado em testes.

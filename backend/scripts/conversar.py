@@ -16,22 +16,10 @@ import sys
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
-from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql  # noqa: E402
-from app.adapters.outbound.estoque.planilha import PlanilhaAdapter  # noqa: E402
-from app.application.agente.conversa_portas import (  # noqa: E402
-    ConversasEmMemoria,
-    EventosEmMemoria,
-)
-from app.application.agente.ferramentas import CatalogoFerramentas  # noqa: E402
-from app.application.agente.processar_conversa import ProcessarConversa  # noqa: E402
-from app.application.agente.repositorio import RepositorioAtendimentoEmMemoria  # noqa: E402
-from app.application.agente.transcricao import RepositorioTranscricaoEmMemoria  # noqa: E402
-from app.application.canal import Canal, MensagemSaida  # noqa: E402
-from app.application.config.memoria import criar_casos_em_memoria  # noqa: E402
+from app.application.canal import MensagemSaida  # noqa: E402
 from app.application.llm import (  # noqa: E402
     BlocoTexto,
     DefinicaoFerramenta,
@@ -40,10 +28,9 @@ from app.application.llm import (  # noqa: E402
     RespostaLLM,
     UsoTokens,
 )
-from app.infra.composicao import hoje_brasil  # noqa: E402
 from app.infra.llm import criar_llm  # noqa: E402
-from app.infra.seed import aplicar_dados  # noqa: E402
 from app.infra.settings import get_settings  # noqa: E402
+from evals.ambiente import montar_ambiente  # noqa: E402
 
 MENSAGEM_SEM_CHAVE = (
     "ANTHROPIC_API_KEY nao configurada. Defina a chave no .env (raiz do repo) ou no ambiente "
@@ -86,26 +73,7 @@ class _CanalTerminal:
 
 
 async def conversar(llm: LLMPort, hoje: date | None = None) -> None:
-    casos = criar_casos_em_memoria()
-    loja_id = await casos.criar_loja("Loja Demo (terminal)")
-    await aplicar_dados(casos, loja_id)
-    conversas = ConversasEmMemoria()
-    lead_id = uuid4()
-    conversa_id = conversas.criar_conversa(
-        loja_id=loja_id, lead_id=lead_id, canal=Canal.WEBCHAT, contato="terminal"
-    )
-    caso = ProcessarConversa(
-        conversas=conversas,
-        transcricao=RepositorioTranscricaoEmMemoria(),
-        atendimento=RepositorioAtendimentoEmMemoria(),
-        eventos=EventosEmMemoria(),
-        llm=llm,
-        catalogo=CatalogoFerramentas(),
-        canais={Canal.WEBCHAT: _CanalTerminal()},
-        config=casos,
-        estoque=PlanilhaAdapter(FonteEstoqueLocalSql(casos.estoque)),
-        hoje=(lambda: hoje) if hoje else hoje_brasil,
-    )
+    amb = await montar_ambiente(llm, _CanalTerminal(), hoje, "Loja Demo (terminal)")
     while True:
         try:
             linha = (await asyncio.to_thread(input, "voce> ")).strip()
@@ -113,9 +81,8 @@ async def conversar(llm: LLMPort, hoje: date | None = None) -> None:
             return
         if not linha:
             return
-        conversas.adicionar_entrada(conversa_id, linha)
-        await caso(conversa_id)
-        print(f"[etapa: {conversas.etapa(lead_id).nome_exibicao}]")
+        await amb.cliente_fala(linha)
+        print(f"[etapa: {amb.conversas.etapa(amb.lead_id).nome_exibicao}]")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
