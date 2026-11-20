@@ -218,7 +218,7 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 
 | # | Milestone | Branch | Meta de data | Status |
 |---|---|---|---|---|
-| M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ⏳ pendente |
+| M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ✅ concluído (PR em revisão) |
 | M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ⏳ pendente |
 | M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ⏳ pendente |
 | M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ⏳ pendente |
@@ -254,6 +254,12 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-19 | Estoque via porta + adaptadores (ERP ainda indefinido), ERP simulado com falhas | Troca de ERP sem tocar no agente |
 | 2026-11-19 | Roda local (docker-compose) na apresentação; vídeo de backup | Evolution conecta de dentro para fora, sem túnel |
 | 2026-11-19 | Postgres local + SSE em vez de Supabase | Tudo local, menos dependências |
+| 2026-11-20 | Worktrees dos subagentes criadas à mão em `.worktrees/` (sem isolação automática) | Repo aninhado em outro repo git; isolação automática apontava para o repo errado |
+| 2026-11-20 | Evolution API `evoapicloud/evolution-api:v2.3.7` (sobrescrevível por `EVOLUTION_IMAGE`) | Imagem `atendai/*` não está mais disponível |
+| 2026-11-20 | Frontend: Next 16, React 19, Tailwind 4 (config em CSS), shadcn (base-nova), Vitest 5; `.npmrc` com `legacy-peer-deps` | Versões estáveis atuais; conflito de peers do shadcn |
+| 2026-11-20 | Testes de integração criam um banco Postgres isolado por teste e são pulados se o banco de teste estiver fora | Isolamento total entre subagentes paralelos |
+| 2026-11-20 | Idempotência de mensagens por `(canal, id_externo)` com `ON CONFLICT DO NOTHING` | Webhooks duplicados não duplicam mensagens |
+| 2026-11-20 | `leads.etapa` como texto livre no banco; validação no domínio | Schema não acopla à lista de etapas |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -267,3 +273,17 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 _Atualizado ao final de cada milestone._
 
 - **2026-11-19** — Plano, CLAUDE.md, milestones e issues criados. Próximo: M0.
+- **2026-11-20 — M0 Fundações concluído** (#1–#5).
+  - Backend FastAPI com camadas verificadas pelo import-linter, `/health`, settings.
+  - Banco SQLAlchemy async + Alembic com schema multi-loja: lojas, vendedores, leads, conversas, mensagens, fichas, eventos.
+  - Frontend Next.js com tokens claro/escuro, layout com sidebar e teste anti-cor-hardcoded.
+  - docker-compose com Postgres dev/teste, Redis e Evolution, mais smoke test.
+  - CI com jobs de backend, frontend e infra.
+  - Testes: backend 7 (3 de integração), frontend 29.
+  - Pontos de atenção:
+    - Defaults de settings alinhados ao `.env.example`.
+    - `npm audit` com avisos não tratados.
+    - 1 warning do Starlette TestClient no pytest.
+    - Evolution leva ~60 s no primeiro boot.
+    - Webhook global da Evolution desligado até o M5.
+  - Próximo: M1 Motor de preço.
