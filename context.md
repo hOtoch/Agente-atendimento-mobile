@@ -218,8 +218,8 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 
 | # | Milestone | Branch | Meta de data | Status |
 |---|---|---|---|---|
-| M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ✅ concluído (PR em revisão) |
-| M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ⏳ pendente |
+| M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ✅ concluído (PR #45) |
+| M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ✅ concluído (PR em revisão) |
 | M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ⏳ pendente |
 | M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ⏳ pendente |
 | M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ⏳ pendente |
@@ -233,7 +233,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | Milestone | Onda 1 | Onda 2 | Onda 3 | Onda 4 |
 |---|---|---|---|---|
 | M0 | #1 backend, #2 frontend, #3 infra | #4 CI, #5 banco | | |
-| M1 | #6 value objects | #7 troca, #8 pagamento, #9 desconto, #10 ficha/trava, #11 kanban | | |
+| M1 | #6 value objects, #46 CI exige integração | #7 troca, #8 pagamento, #9 desconto, #10 ficha/trava, #11 kanban | | |
 | M2 | #12 config loja, #13 EstoquePort, #14 ERP simulado | #15 adaptador ERP, #16 resiliência, #17 importador xlsx, #18 seed demo | | |
 | M3 | #19 LLMPort, #20 canal web, #21 fila | #22 ferramentas, #23 prompt | #24 orquestrador | #25 eval |
 | M4 | #26 design system, #27 API painel + SSE | #28 kanban, #29 inbox, #30 onboarding, #31 simulador | | |
@@ -260,6 +260,12 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-20 | Testes de integração criam um banco Postgres isolado por teste e são pulados se o banco de teste estiver fora | Isolamento total entre subagentes paralelos |
 | 2026-11-20 | Idempotência de mensagens por `(canal, id_externo)` com `ON CONFLICT DO NOTHING` | Webhooks duplicados não duplicam mensagens |
 | 2026-11-20 | `leads.etapa` como texto livre no banco; validação no domínio | Schema não acopla à lista de etapas |
+| 2026-11-20 | Ficha guarda dados PARCIAIS (tipos próprios, campos Optional); troca e pagamento recebem dados COMPLETOS; a conversão ficha → `CondicaoUsado`/`FormaPagamento` fica na aplicação (M3) | Módulos de domínio independentes e paralelizáveis |
+| 2026-11-20 | Kanban recebe `FatosDoLead` (booleanos), não a ficha; nunca regride sozinho; "Venda fechada" só manual por vendedor | Etapa é consequência de fatos, nunca do LLM |
+| 2026-11-20 | Precedência da troca: peça trocada → outro defeito/câmera → modelo/marca fora da tabela → capacidade abaixo → SEM relatado → valor ≤ 0 | Defeitos mandam para a loja seja qual for o modelo |
+| 2026-11-20 | Desconto Pix incide sobre a base já com desconto, troca e entrada; só na forma Pix | Premissa — confirmar com a loja |
+| 2026-11-20 | Oportunidade única soma por fora do teto de desconto (configurável `conta_no_teto`) | Regra das planilhas não define; default mais simples de explicar |
+| 2026-11-20 | Parse de dinheiro pt-BR: `"2.310"` = 2310; ponto decimal só fora do padrão de milhar | Entrada típica de lojista |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -287,3 +293,10 @@ _Atualizado ao final de cada milestone._
     - Evolution leva ~60 s no primeiro boot.
     - Webhook global da Evolution desligado até o M5.
   - Próximo: M1 Motor de preço.
+- **2026-11-20 — M1 Motor de preço concluído** (#6–#11, #46).
+  - Domínio puro em `backend/app/domain/`: `valores` (Dinheiro, Capacidade, ModeloAparelho com 35 iPhones, Bandeira), `troca`, `pagamento`, `desconto`, `ficha` (pendências + `pode_passar_preco`, serialização JSONB) e `kanban`.
+  - Exemplos oficiais cobertos por teste: troca do iPhone 16 128GB = R$ 2.310; 12x de R$ 4.830 a 10,54% = R$ 444,92.
+  - CI exige os testes de integração (`EXIGIR_INTEGRACAO=1`); teste automatizado do contrato de camadas.
+  - Testes: backend 362, com propriedades hypothesis em dinheiro, desconto, ficha e kanban.
+  - Pontos de atenção: premissas do Pix e da oportunidade única (ver decisões); conversão ficha → entradas de cálculo pendente para o M3.
+  - Próximo: M2 Loja e estoque.
