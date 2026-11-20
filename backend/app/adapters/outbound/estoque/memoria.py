@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from app.domain.estoque import ItemEstoque
+from app.domain.estoque import ItemEstoque, MapeamentoSku
 
 
 class FonteEstoqueEmMemoria:
@@ -15,3 +15,13 @@ class FonteEstoqueEmMemoria:
 
     async def listar(self, loja_id: UUID) -> list[ItemEstoque]:
         return list(self._itens.get(loja_id, []))
+
+
+class FonteMapeamentoEmMemoria:
+    """Implementa `FonteMapeamentoSku` sobre um dict `loja_id -> {sku_externo: mapeamento}`."""
+
+    def __init__(self, mapeamentos_por_loja: dict[UUID, dict[str, MapeamentoSku]]) -> None:
+        self._mapeamentos = mapeamentos_por_loja
+
+    async def listar(self, loja_id: UUID) -> dict[str, MapeamentoSku]:
+        return dict(self._mapeamentos.get(loja_id, {}))

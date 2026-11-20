@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from app.domain.estoque import ItemEstoque
+from app.domain.estoque import ItemEstoque, MapeamentoSku
 from app.domain.valores import Capacidade, ModeloAparelho
 
 
@@ -45,3 +45,9 @@ class FonteEstoqueLocal(Protocol):
     """Lista o estoque local de uma loja (banco, planilha importada, memoria)."""
 
     async def listar(self, loja_id: UUID) -> list[ItemEstoque]: ...
+
+
+class FonteMapeamentoSku(Protocol):
+    """Mapeamentos `sku_externo -> MapeamentoSku` configurados por loja."""
+
+    async def listar(self, loja_id: UUID) -> dict[str, MapeamentoSku]: ...

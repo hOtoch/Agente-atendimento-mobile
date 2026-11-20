@@ -47,6 +47,17 @@ class ItemEstoque:
         return self.quantidade > 0
 
 
+@dataclass(frozen=True, slots=True)
+class MapeamentoSku:
+    """Traducao de um SKU do ERP (da loja) para o modelo do dominio."""
+
+    sku_externo: str
+    modelo: ModeloAparelho
+    capacidade: Capacidade
+    cor: str | None
+    condicao: Condicao
+
+
 def _norm_cor(texto: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     return " ".join(sem_acento.lower().split())
