@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import { AppShell } from "@/components/layout/app-shell"
+import { Toaster } from "@/components/ui/toast"
 
 import "./globals.css"
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
+        <Toaster />
       </body>
     </html>
   )
