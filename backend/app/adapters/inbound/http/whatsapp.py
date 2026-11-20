@@ -94,7 +94,9 @@ def _autorizar(
     token: Annotated[str | None, Query()] = None,
 ) -> None:
     recebido = x_webhook_token or token or ""
-    if not secrets.compare_digest(recebido.encode(), settings.evolution_webhook_token.encode()):
+    esperado = settings.evolution_webhook_token
+    # Token vazio no ambiente nunca autoriza: "" == "" abriria o webhook para qualquer um.
+    if not esperado or not secrets.compare_digest(recebido.encode(), esperado.encode()):
         raise HTTPException(status_code=401, detail="token do webhook invalido")
 
 

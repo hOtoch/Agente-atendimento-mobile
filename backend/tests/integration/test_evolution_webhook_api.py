@@ -168,6 +168,16 @@ async def test_sem_token_ou_com_token_errado_401(amb: Ambiente) -> None:
     assert await amb.contar(Mensagem) == 0
 
 
+async def test_token_configurado_vazio_recusa_tudo(amb: Ambiente) -> None:
+    loja = await amb.loja()
+    vazio = Settings(_env_file=None, evolution_webhook_token="", whatsapp_eco_graca_s=0)
+    app.dependency_overrides[get_settings] = lambda: vazio
+    payload = amb.payload("texto_conversation", loja)
+    assert (await amb.webhook(payload, token=None)).status_code == 401
+    assert (await amb.webhook(payload, token="")).status_code == 401
+    assert await amb.contar(Mensagem) == 0
+
+
 async def test_token_no_cabecalho_ou_na_query_vale(amb: Ambiente) -> None:
     loja = await amb.loja()
     r1 = await amb.webhook(amb.payload("texto_conversation", loja))
