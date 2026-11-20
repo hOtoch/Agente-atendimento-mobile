@@ -8,12 +8,18 @@ from typing import Any
 from uuid import UUID
 
 from app.adapters.outbound.llm.fake import FakeLLM, RespostaRoteirizada, Roteiro
-from app.application.agente.conversa_portas import ConversasEmMemoria, EventosEmMemoria
+from app.application.agente.conversa_portas import (
+    ConversasEmMemoria,
+    EntradaConversa,
+    EventosEmMemoria,
+)
+from app.application.agente.estado import EstadoAtendimento
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.processar_conversa import ProcessarConversa
 from app.application.agente.repositorio import RepositorioAtendimentoEmMemoria
 from app.application.agente.transcricao import RepositorioTranscricaoEmMemoria
-from app.application.canal import Canal, MensagemSaida
+from app.application.canal import Canal, MensagemSaida, TipoMensagem
+from app.application.handoff import CasosHandoff
 from app.application.llm import (
     BlocoTexto,
     ChamadaFerramenta,
@@ -21,7 +27,8 @@ from app.application.llm import (
     RespostaLLM,
     ResultadoFerramenta,
 )
-from app.application.painel.memoria import PublicadorEmMemoria
+from app.application.painel.memoria import PublicadorEmMemoria, RepositorioPainelEmMemoria
+from app.application.painel.portas import LeadRegistro, MensagemRegistro
 from app.domain.kanban import Etapa
 
 from .apoio_ferramentas import (
@@ -91,6 +98,34 @@ def resultados_json(msg: MensagemLLM) -> list[dict[str, Any]]:
     return [json.loads(b.conteudo) for b in msg.blocos if isinstance(b, ResultadoFerramenta)]
 
 
+class PainelSincronizado(RepositorioPainelEmMemoria):
+    """Painel em memoria cujo dono tambem vale para o `ConversasEmMemoria` do orquestrador."""
+
+    def __init__(self, conversas: ConversasEmMemoria) -> None:
+        super().__init__()
+        self._conversas = conversas
+
+    def adicionar_mensagem_como(self, lead_id: UUID, entrada: EntradaConversa, texto: str) -> None:
+        self._mensagens.setdefault(lead_id, []).append(
+            MensagemRegistro(
+                entrada.id,
+                self.leads[lead_id].conversa_id,  # type: ignore[arg-type]
+                "entrada",
+                "cliente",
+                TipoMensagem.TEXTO,
+                texto,
+                None,
+                entrada.criado_em,
+            )
+        )
+
+    async def definir_dono(  # type: ignore[override]
+        self, loja_id: UUID, lead_id: UUID, dono: str, *args: Any, **kwargs: Any
+    ) -> None:
+        await super().definir_dono(loja_id, lead_id, dono, *args, **kwargs)
+        self._conversas.definir_dono(lead_id, dono)
+
+
 @dataclass
 class Cenario:
     amb: Ambiente
@@ -103,6 +138,8 @@ class Cenario:
     caso: ProcessarConversa
     conversa_id: UUID
     painel: PublicadorEmMemoria
+    painel_repo: PainelSincronizado
+    handoff: CasosHandoff
 
     @property
     def lead_id(self) -> UUID:
@@ -118,6 +155,14 @@ class Cenario:
     async def turno(self, conteudo: str) -> None:
         self.cliente_diz(conteudo)
         await self.caso(self.conversa_id)
+
+    def vendedor_diz(self, conteudo: str) -> None:
+        self.painel_repo.adicionar_mensagem(self.lead_id, autor="vendedor", texto=conteudo)
+
+    def cliente_diz_ao_vendedor(self, conteudo: str) -> None:
+        """A mesma mensagem (id e horario) na entrada do orquestrador e no historico do painel."""
+        entrada = self.conversas.adicionar_entrada(self.conversa_id, conteudo)
+        self.painel_repo.adicionar_mensagem_como(self.lead_id, entrada, conteudo)
 
     def etapa(self) -> Etapa:
         return self.conversas.etapa(self.lead_id)
@@ -149,6 +194,29 @@ async def criar_cenario(
     atendimento = RepositorioAtendimentoEmMemoria()
     eventos = EventosEmMemoria()
     painel = PublicadorEmMemoria()
+    painel_repo = PainelSincronizado(conversas)
+    painel_repo.leads[amb.lead_id] = LeadRegistro(
+        id=amb.lead_id,
+        loja_id=amb.loja_id,
+        conversa_id=conversa_id,
+        nome=None,
+        telefone="sessao-1",
+        canal=Canal.WEBCHAT,
+        etapa=Etapa.NOVO_CONTATO,
+        etapa_desde=conversas._relogio,
+        dono=dono,
+        vendedor_id=None,
+        vendedor_nome=None,
+        criado_em=conversas._relogio,
+        estado=EstadoAtendimento(),
+    )
+    handoff = CasosHandoff(
+        repo=painel_repo,
+        publicador=painel,
+        transcricao=transcricao,
+        atendimento=atendimento,
+        llm=llm,
+    )
     caso = ProcessarConversa(
         conversas=conversas,
         transcricao=transcricao,
@@ -161,8 +229,10 @@ async def criar_cenario(
         estoque=amb.ctx.estoque,
         hoje=lambda: HOJE,
         painel=painel,
+        handoff=handoff,
         max_iteracoes=max_iteracoes,
     )
     return Cenario(
-        amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id, painel
-    )
+        amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id, painel,
+        painel_repo, handoff,
+    )  # fmt: skip

@@ -64,13 +64,15 @@ class RepositorioPainelEmMemoria:
         dono: str = DONO_IA,
         vendedor_id: UUID | None = None,
         estado: EstadoAtendimento | None = None,
+        lead_id: UUID | None = None,
+        conversa_id: UUID | None = None,
     ) -> UUID:
-        lead_id = uuid4()
+        lead_id = lead_id or uuid4()
         agora = self._tick()
         self.leads[lead_id] = LeadRegistro(
             id=lead_id,
             loja_id=loja_id,
-            conversa_id=uuid4(),
+            conversa_id=conversa_id or uuid4(),
             nome=nome,
             telefone=telefone,
             canal=canal,
@@ -147,13 +149,26 @@ class RepositorioPainelEmMemoria:
         dono: str,
         vendedor_id: UUID | None,
         payload_evento: dict[str, Any],
+        *,
+        limpar_vendedor: bool = False,
     ) -> None:
         lead = self.leads[lead_id]
-        novo = vendedor_id if vendedor_id is not None else lead.vendedor_id
+        novo = vendedor_id
+        if novo is None and not limpar_vendedor:
+            novo = lead.vendedor_id
         self.leads[lead_id] = replace(
             lead, dono=dono, vendedor_id=novo, vendedor_nome=self._nome_vendedor(novo)
         )
         self.adicionar_evento(lead_id, "dono_mudou", payload_evento)
+
+    async def registrar_evento(
+        self, loja_id: UUID, lead_id: UUID, tipo: str, payload: dict[str, Any]
+    ) -> None:
+        self.adicionar_evento(lead_id, tipo, payload)
+
+    async def ultimo_evento(self, loja_id: UUID, lead_id: UUID, tipo: str) -> EventoRegistro | None:
+        achados = [e for e in self._eventos.get(lead_id, []) if e.tipo == tipo]
+        return achados[-1] if achados else None
 
     async def registrar_mensagem_vendedor(
         self, loja_id: UUID, conversa_id: UUID, canal: Canal, texto: str

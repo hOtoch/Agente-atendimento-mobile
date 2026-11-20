@@ -496,3 +496,109 @@ async def test_mensagem_do_cliente_pelo_webchat_publica_mensagem_nova_no_painel(
     async with amb.factory() as s:
         m = (await s.execute(select(Mensagem))).scalar_one()
     assert m.autor == "cliente"
+
+
+# --- handoff: resumo e conversa aguardando vendedor -------------------------------------------
+
+
+async def test_detalhe_traz_o_resumo_do_handoff_quando_a_ia_chamou_o_vendedor(
+    amb: Ambiente,
+) -> None:
+    loja = await amb.loja()
+    lead, _ = await amb.lead(
+        loja,
+        dono="vendedor",
+        estado=EstadoAtendimento(handoff_solicitado=True, motivo_handoff="falha_llm"),
+    )
+    resumo = {
+        "motivo": "A IA ficou indisponível e passou a conversa para o vendedor",
+        "aparelho_desejado": "iPhone 16 128GB",
+        "troca": "iPhone 13 128GB",
+        "valor_troca": "1200.00",
+        "proposta": None,
+        "valor_proposta": None,
+        "forma_pagamento": None,
+        "data_prevista": "2026-11-25",
+        "pendencias": ["bandeira do cartão"],
+        "observacoes": "Cliente decidido.",
+        "gerado_em": "2026-11-20T15:00:00+00:00",
+    }
+    async with amb.factory() as s:
+        s.add(Evento(loja_id=UUID(loja), lead_id=lead, tipo="handoff_resumo", payload=resumo))
+        await s.commit()
+
+    d = (await amb.client.get(f"/lojas/{loja}/leads/{lead}")).json()
+
+    assert d["card"]["dono"] == "vendedor" and d["card"]["vendedor_id"] is None
+    r = d["resumo_handoff"]
+    assert r["aparelho_desejado"] == "iPhone 16 128GB"
+    assert r["valor_troca"] == "1200.00" and r["data_prevista"] == "2026-11-25"
+    assert r["observacoes"] == "Cliente decidido."
+    assert r["pendencias"] == ["bandeira do cartão"]
+
+
+async def test_detalhe_sem_handoff_da_ia_tem_resumo_nulo(amb: Ambiente) -> None:
+    loja = await amb.loja()
+    lead, _ = await amb.lead(loja)
+    d = (await amb.client.get(f"/lojas/{loja}/leads/{lead}")).json()
+    assert d["resumo_handoff"] is None
+
+
+async def test_qualquer_vendedor_assume_a_conversa_aguardando_vendedor(amb: Ambiente) -> None:
+    loja = await amb.loja()
+    vend = await amb.vendedor(loja)
+    lead, _ = await amb.lead(loja, dono="vendedor", vendedor_id=None)
+
+    r = await amb.client.post(
+        f"/lojas/{loja}/leads/{lead}/assumir", json={"vendedor_id": str(vend)}
+    )
+
+    assert r.status_code == 200
+    assert r.json()["dono"] == f"vendedor:{vend}"
+    async with amb.factory() as s:
+        row = await s.get(Lead, lead)
+        assert (row.dono, row.vendedor_id) == ("vendedor", vend)  # type: ignore[union-attr]
+
+
+async def test_devolver_grava_o_contexto_do_vendedor_na_transcricao_e_limpa_o_handoff(
+    amb: Ambiente,
+) -> None:
+    loja = await amb.loja()
+    vend = await amb.vendedor(loja)
+    lead, conversa = await amb.lead(
+        loja,
+        dono="vendedor",
+        vendedor_id=vend,
+        estado=EstadoAtendimento(handoff_solicitado=True, motivo_handoff="quer fechar"),
+    )
+    await amb.mensagem(loja, conversa, direcao="saida", texto="vou chamar alguém", ha_s=20)
+    async with amb.factory() as s:
+        s.add(
+            Mensagem(
+                loja_id=UUID(loja),
+                conversa_id=conversa,
+                canal="webchat",
+                direcao="saida",
+                autor="vendedor",
+                tipo="texto",
+                conteudo="Qual a bateria do seu aparelho?",
+            )
+        )
+        await s.commit()
+
+    r = await amb.client.post(f"/lojas/{loja}/leads/{lead}/devolver")
+
+    assert r.status_code == 200 and r.json()["dono"] == "ia"
+    async with amb.factory() as s:
+        textos = [
+            e.payload
+            for e in (
+                await s.execute(
+                    select(Evento).where(Evento.lead_id == lead, Evento.tipo == "llm_mensagem")
+                )
+            ).scalars()
+        ]
+        assert len(textos) == 1 and textos[0]["papel"] == "system"
+        assert "Vendedor: Qual a bateria do seu aparelho?" in textos[0]["blocos"][0]["texto"]
+    d = (await amb.client.get(f"/lojas/{loja}/leads/{lead}")).json()
+    assert d["handoff_solicitado"] is False and d["resumo_handoff"] is None

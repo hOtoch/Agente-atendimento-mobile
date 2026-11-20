@@ -152,3 +152,62 @@ async def test_falha_do_llm_com_banco_real_faz_handoff(db_url: str, session: Asy
     assert "especialista" in str(await anext(publicadas))
     etapa = (await session.execute(select(Lead.etapa).where(Lead.id == lead_id))).scalar_one()
     assert etapa == "com_o_vendedor"
+    # handoff: a conversa fica aguardando vendedor, com o resumo gravado
+    lead = (await session.execute(select(Lead).where(Lead.id == lead_id))).scalar_one()
+    await session.refresh(lead)
+    assert (lead.dono, lead.vendedor_id) == ("vendedor", None)
+    resumo = (
+        await session.execute(
+            select(Evento.payload).where(Evento.lead_id == lead_id, Evento.tipo == "handoff_resumo")
+        )
+    ).scalar_one()
+    assert resumo["motivo"] == "A IA ficou indisponível e passou a conversa para o vendedor"
+    assert resumo["observacoes"] is None
+    assert resumo["pendencias"]
+
+
+async def test_chamar_vendedor_com_banco_real_passa_o_dono_e_avisa_o_gancho(
+    db_url: str, session: AsyncSession
+) -> None:
+    await semear(db_url)
+    lead_id, conversa = await _conversa(session, LOJA_DEMO_ID)
+    await _entrada(session, LOJA_DEMO_ID, conversa, "quero falar com uma pessoa")
+    llm = FakeLLM(
+        [
+            RespostaRoteirizada(
+                chamadas=[ChamadaFerramenta("t1", "chamar_vendedor", {"motivo": "pediu humano"})]
+            ),
+            RespostaRoteirizada(texto="Já chamei um vendedor para você."),
+            RespostaRoteirizada(texto="Cliente pediu atendimento humano."),  # resumo
+        ]
+    )
+    avisos: list[tuple[UUID, UUID, object]] = []
+
+    class Aviso:
+        async def handoff_solicitado(self, loja_id: UUID, lead_id: UUID, resumo: object) -> None:
+            avisos.append((loja_id, lead_id, resumo))
+
+    caso = montar_processar_conversa(
+        session,
+        llm=llm,
+        canais={Canal.WEBCHAT: WebChatAdapter(BarramentoEmMemoria())},
+        aviso_handoff=Aviso(),
+        hoje=lambda: HOJE,
+    )
+    await caso(conversa)
+
+    lead = (await session.execute(select(Lead).where(Lead.id == lead_id))).scalar_one()
+    await session.refresh(lead)
+    assert (lead.dono, lead.vendedor_id) == ("vendedor", None)
+    assert len(avisos) == 1 and avisos[0][:2] == (LOJA_DEMO_ID, lead_id)
+    resumo = (
+        await session.execute(
+            select(Evento.payload).where(Evento.lead_id == lead_id, Evento.tipo == "handoff_resumo")
+        )
+    ).scalar_one()
+    assert resumo["motivo"] == "pediu humano"
+    assert resumo["observacoes"] == "Cliente pediu atendimento humano."
+    # a IA calou: nova mensagem do cliente nao gera chamada ao LLM
+    await _entrada(session, LOJA_DEMO_ID, conversa, "alguem?")
+    await caso(conversa)
+    assert len(llm.chamadas) == 3

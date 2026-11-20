@@ -19,6 +19,7 @@ import {
   card,
   detalhe,
   mensagem,
+  RESUMO_API,
 } from "./fixtures"
 import { Inbox } from "./inbox"
 
@@ -394,3 +395,40 @@ describe("painel da ficha", () => {
     expect(await screen.findByRole("region", { name: "Resumo do handoff" })).toBeInTheDocument()
   })
 })
+
+describe("handoff pedido pela IA", () => {
+  const aguardando = {
+    ...structuredClone(DETALHE_MARIA),
+    card: { ...CARD_MARIA, dono: "vendedor", vendedor_id: null, vendedor_nome: null },
+    handoff_solicitado: true,
+    resumo_handoff: RESUMO_API,
+  }
+
+  it("dono vendedor sem id mostra 'Aguardando vendedor' e deixa assumir", async () => {
+    const api = montarApi({ detalhes: { [LEAD_MARIA]: aguardando } })
+    await abrirConversa(api)
+    expect(screen.getByText("Aguardando vendedor")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Assumir conversa" })).toBeEnabled()
+    expect(campo()).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "Devolver para a IA" })).not.toBeInTheDocument()
+  })
+
+  it("assumir a conversa aguardando habilita o campo", async () => {
+    const user = userEvent.setup()
+    const api = montarApi({ detalhes: { [LEAD_MARIA]: aguardando } })
+    await abrirConversa(api)
+    await user.click(screen.getByRole("button", { name: "Assumir conversa" }))
+    await waitFor(() => expect(campo()).toBeEnabled())
+    expect(api.chamadas.find((c) => c.caminho.endsWith("/assumir"))?.corpo).toEqual({ vendedor_id: VENDEDOR_ANA })
+  })
+
+  it("mostra o resumo da API, inclusive as observações da IA", async () => {
+    const api = montarApi({ detalhes: { [LEAD_MARIA]: aguardando } })
+    await abrirConversa(api)
+    const resumo = screen.getByRole("region", { name: "Resumo do handoff" })
+    expect(within(resumo).getByText("Cliente quer fechar a compra")).toBeInTheDocument()
+    expect(within(resumo).getByText("Cliente decidido, quer parcelar e fechar ainda hoje.")).toBeInTheDocument()
+    expect(within(resumo).getByText("iPhone 16 128GB")).toBeInTheDocument()
+  })
+})
+

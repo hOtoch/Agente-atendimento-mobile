@@ -149,15 +149,36 @@ class RepositorioPainelSql:
         dono: str,
         vendedor_id: UUID | None,
         payload_evento: dict[str, Any],
+        *,
+        limpar_vendedor: bool = False,
     ) -> None:
         valores: dict[str, Any] = {"dono": dono}
         if vendedor_id is not None:
             valores["vendedor_id"] = vendedor_id
+        elif limpar_vendedor:
+            valores["vendedor_id"] = None
         await self._session.execute(
             update(Lead).where(Lead.id == lead_id, Lead.loja_id == loja_id).values(**valores)
         )
         self._evento(loja_id, lead_id, "dono_mudou", payload_evento)
         await self._session.commit()
+
+    async def registrar_evento(
+        self, loja_id: UUID, lead_id: UUID, tipo: str, payload: dict[str, Any]
+    ) -> None:
+        self._evento(loja_id, lead_id, tipo, payload)
+        await self._session.commit()
+
+    async def ultimo_evento(self, loja_id: UUID, lead_id: UUID, tipo: str) -> EventoRegistro | None:
+        e = (
+            await self._session.execute(
+                select(Evento)
+                .where(Evento.loja_id == loja_id, Evento.lead_id == lead_id, Evento.tipo == tipo)
+                .order_by(Evento.criado_em.desc(), Evento.id)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        return None if e is None else EventoRegistro(e.id, e.tipo, e.payload, e.criado_em)
 
     async def registrar_mensagem_vendedor(
         self, loja_id: UUID, conversa_id: UUID, canal: Canal, texto: str

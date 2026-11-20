@@ -71,7 +71,7 @@
             "type": "string"
           },
           "dono": {
-            "description": "`ia` ou `vendedor:<id do vendedor>`.",
+            "description": "`ia`, `vendedor:<id do vendedor>` ou `vendedor` (aguardando vendedor: a IA chamou um vendedor e ninguem assumiu ainda).",
             "title": "Dono",
             "type": "string"
           },
@@ -255,6 +255,17 @@
               }
             ],
             "title": "Proposta"
+          },
+          "resumo_handoff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResumoHandoffSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Resumo gerado quando a IA chamou o vendedor; null caso contrario."
           }
         },
         "required": [
@@ -265,7 +276,8 @@
           "eventos",
           "proposta",
           "handoff_solicitado",
-          "motivo_handoff"
+          "motivo_handoff",
+          "resumo_handoff"
         ],
         "title": "DetalheLeadSchema",
         "type": "object"
@@ -1503,6 +1515,132 @@
           "resumo"
         ],
         "title": "RelatorioSchema",
+        "type": "object"
+      },
+      "ResumoHandoffSchema": {
+        "description": "Resumo para o vendedor: campos estruturados (deterministicos) + observacoes do LLM.",
+        "properties": {
+          "aparelho_desejado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aparelho Desejado"
+          },
+          "data_prevista": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Prevista"
+          },
+          "forma_pagamento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forma Pagamento"
+          },
+          "gerado_em": {
+            "format": "date-time",
+            "title": "Gerado Em",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "observacoes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "2 a 3 frases do LLM; null se ele falhou.",
+            "title": "Observacoes"
+          },
+          "pendencias": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pendencias",
+            "type": "array"
+          },
+          "proposta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposta"
+          },
+          "troca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Troca"
+          },
+          "valor_proposta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Proposta"
+          },
+          "valor_troca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Troca"
+          }
+        },
+        "required": [
+          "motivo",
+          "aparelho_desejado",
+          "troca",
+          "valor_troca",
+          "proposta",
+          "valor_proposta",
+          "forma_pagamento",
+          "data_prevista",
+          "pendencias",
+          "observacoes",
+          "gerado_em"
+        ],
+        "title": "ResumoHandoffSchema",
         "type": "object"
       },
       "SessaoSchema": {

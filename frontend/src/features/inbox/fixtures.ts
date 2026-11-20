@@ -120,6 +120,7 @@ export function detalhe(parcial: Partial<DetalheLead> & { card: CardLead }): Det
     proposta: null,
     handoff_solicitado: false,
     motivo_handoff: null,
+    resumo_handoff: null,
     ...parcial,
   }
 }
@@ -131,3 +132,17 @@ export const DETALHE_MARIA = detalhe({
   mensagens: MENSAGENS_MARIA,
   proposta: PROPOSTA,
 })
+
+export const RESUMO_API: NonNullable<DetalheLead["resumo_handoff"]> = {
+  motivo: "Cliente quer fechar a compra",
+  aparelho_desejado: "iPhone 16 128GB",
+  troca: "iPhone 13 128GB",
+  valor_troca: "1200.00",
+  proposta: "Cartão de crédito em 12x Mastercard",
+  valor_proposta: "3900.00",
+  forma_pagamento: "crédito, 12x, bandeira mastercard",
+  data_prevista: "2026-11-25",
+  pendencias: ["bandeira do cartão"],
+  observacoes: "Cliente decidido, quer parcelar e fechar ainda hoje.",
+  gerado_em: "2026-11-20T15:00:00Z",
+}

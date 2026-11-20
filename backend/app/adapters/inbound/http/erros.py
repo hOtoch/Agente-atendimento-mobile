@@ -11,13 +11,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
+from app.application.handoff import ConflitoDono, LeadNaoEncontrado, VendedorNaoEncontrado
 from app.application.midia import MidiaGrandeDemais, MidiaNaoEncontrada, TipoMidiaNaoSuportado
-from app.application.painel.casos_de_uso import (
-    ConflitoDono,
-    LeadNaoEncontrado,
-    MovimentoEtapaInvalido,
-    VendedorNaoEncontrado,
-)
+from app.application.painel.casos_de_uso import MovimentoEtapaInvalido
 
 
 def _caminho(loc: Sequence[str | int]) -> str:

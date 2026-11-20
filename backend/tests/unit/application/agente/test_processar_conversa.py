@@ -293,3 +293,134 @@ async def test_falha_no_painel_nao_derruba_o_turno() -> None:
     await c.turno("oi, quero um iphone 16 128")
     assert len(c.canal.enviadas) == 1
     assert c.etapa() is Etapa.INTERESSE_IDENTIFICADO
+
+
+# --- handoff: a IA chama o vendedor e depois recebe a conversa de volta -------------------------
+
+
+async def test_chamar_vendedor_passa_a_conversa_para_aguardando_vendedor() -> None:
+    c = await criar_cenario(
+        [
+            RespostaRoteirizada(
+                chamadas=[chamada("t1", "chamar_vendedor", {"motivo": "quer fechar"})]
+            ),
+            texto("Vou chamar um vendedor para você 🙂"),
+            texto("Cliente quer fechar. Sem objeções. Passar ao vendedor."),  # resumo do handoff
+        ]
+    )
+    await c.turno("quero fechar a compra")
+
+    assert c.canal.textos == ["Vou chamar um vendedor para você 🙂"]
+    lead = c.painel_repo.leads[c.lead_id]
+    assert lead.dono == "vendedor" and lead.vendedor_id is None
+    donos = [e for _, e in c.painel.publicados if e.nome == "DonoMudou"]
+    assert len(donos) == 1 and donos[0].dono == "vendedor"  # type: ignore[union-attr]
+    resumo = await c.handoff.resumo_do_lead(c.loja_id, c.lead_id)
+    assert resumo is not None and resumo.motivo == "quer fechar"
+    assert resumo.observacoes == "Cliente quer fechar. Sem objeções. Passar ao vendedor."
+    # a IA fica em silencio dali em diante
+    chamadas_antes = len(c.llm.chamadas)
+    await c.turno("alguem ai?")
+    assert len(c.llm.chamadas) == chamadas_antes
+    assert len(c.canal.enviadas) == 1
+
+
+async def test_falha_do_llm_tambem_passa_para_aguardando_vendedor_com_resumo() -> None:
+    c = await criar_cenario([RespostaRoteirizada(erro=LLMIndisponivel("fora"))])
+    await c.turno("oi, quero um iphone")
+
+    assert c.canal.textos == [MENSAGEM_ESPERA]
+    assert c.painel_repo.leads[c.lead_id].dono == "vendedor"
+    resumo = await c.handoff.resumo_do_lead(c.loja_id, c.lead_id)
+    assert resumo is not None
+    assert resumo.motivo == "A IA ficou indisponível e passou a conversa para o vendedor"
+    assert resumo.observacoes is None  # o LLM tambem estava fora (roteiro esgotado)
+    assert resumo.pendencias  # estrutura sempre presente
+
+
+async def test_devolver_a_ia_nao_repete_pergunta_ja_respondida_ao_vendedor() -> None:
+    vistos: dict[str, Any] = {}
+
+    def segundo_turno(msgs: list[MensagemLLM]) -> RespostaRoteirizada:
+        vistos["contexto_1"] = list(msgs)
+        return RespostaRoteirizada(
+            chamadas=[
+                chamada("t2", "registrar_interesse", INTERESSE_16),
+            ]
+        )
+
+    def depois_de_registrar(msgs: list[MensagemLLM]) -> RespostaRoteirizada:
+        return texto("Combinado, seguimos daqui! Quer ver as opções no estoque?")
+
+    def terceiro_turno(msgs: list[MensagemLLM]) -> RespostaRoteirizada:
+        vistos["contexto_3"] = list(msgs)
+        return texto("Certo!")
+
+    c = await criar_cenario(
+        [
+            RespostaRoteirizada(
+                chamadas=[chamada("t1", "chamar_vendedor", {"motivo": "quer ajuda"})]
+            ),
+            texto("Vou chamar um vendedor 🙂"),
+            texto("Cliente pediu ajuda."),  # resumo do handoff
+            segundo_turno,
+            depois_de_registrar,
+            terceiro_turno,
+        ]
+    )
+    await c.turno("oi, preciso de ajuda")
+    assert c.painel_repo.leads[c.lead_id].dono == "vendedor"
+
+    # o vendedor assume, conversa e o cliente responde o que a ficha pede (qual iPhone)
+    await c.handoff.assumir(c.loja_id, c.lead_id, _vendedor(c))
+    c.vendedor_diz("Oi! Qual iPhone você procura?")
+    c.cliente_diz_ao_vendedor("Quero o iPhone 16 de 128GB")
+    await c.caso(c.conversa_id)  # IA em silencio: so marca como consumida
+    assert len(c.llm.chamadas) == 3  # tool, resposta e resumo
+
+    await c.handoff.devolver(c.loja_id, c.lead_id)
+    assert c.painel_repo.leads[c.lead_id].dono == "ia"
+    estado = await c.atendimento.obter(c.loja_id, c.lead_id)
+    assert estado.handoff_solicitado is False
+
+    await c.turno("e aí?")
+
+    contexto = vistos["contexto_1"]
+    sistemas = [
+        "".join(b.texto for b in m.blocos if isinstance(b, BlocoTexto))
+        for m in contexto
+        if m.papel == "system"
+    ]
+    devolucao = next(t for t in sistemas if "devolveu a conversa" in t)
+    assert "Vendedor: Oi! Qual iPhone você procura?" in devolucao
+    assert "Cliente: Quero o iPhone 16 de 128GB" in devolucao
+    assert "não repita" in devolucao.lower()
+    # a instrucao vem antes da mensagem do cliente e do estado do turno
+    papeis = [m.papel for m in contexto]
+    assert papeis.index("system") < len(papeis) - 2
+    ultimo_user = contexto[-2]
+    assert ultimo_user.papel == "user"
+    assert [b.texto for b in ultimo_user.blocos if isinstance(b, BlocoTexto)] == ["e aí?"]
+    # o estado do turno nao manda mais perguntar o que ja foi respondido nem diz "vendedor chamado"
+    estado_msg = sistemas[-1]
+    assert "Um vendedor já foi chamado" not in estado_msg
+
+    # no turno seguinte a ficha ja tem o iPhone que o cliente disse ao vendedor: a PROXIMA
+    # PERGUNTA nao e mais o modelo/capacidade
+    await c.turno("sim")
+    ultimo_estado = [
+        "".join(b.texto for b in m.blocos if isinstance(b, BlocoTexto))
+        for m in vistos["contexto_3"]
+        if m.papel == "system"
+    ][-1]
+    proxima = ultimo_estado.split("PRÓXIMA PERGUNTA:")[1].split("\n")[0]
+    assert "Pergunte qual modelo" not in proxima
+    assert "consultar_estoque" in proxima  # avancou para o passo seguinte da ficha
+
+
+def _vendedor(c: Any) -> Any:
+    from uuid import uuid4
+
+    vendedor = uuid4()
+    c.painel_repo.adicionar_vendedor(c.loja_id, vendedor, "Carla")
+    return vendedor

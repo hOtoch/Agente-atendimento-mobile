@@ -9,13 +9,15 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
-from app.application.agente.estado import EstadoAtendimento
+from app.application.agente.estado import EstadoAtendimento, aparelho_desejado
 from app.application.canal import Canal, CanalPort, MensagemSaida, TipoMensagem
-from app.application.painel.eventos import (
-    EventoDonoMudou,
-    EventoEtapaMudou,
-    EventoMensagemNova,
+from app.application.handoff import (
+    CasosHandoff,
+    ConflitoDono,
+    LeadNaoEncontrado,
+    ResumoHandoff,
 )
+from app.application.painel.eventos import EventoEtapaMudou, EventoMensagemNova
 from app.application.painel.portas import (
     DONO_IA,
     DONO_VENDEDOR,
@@ -29,28 +31,8 @@ from app.domain.ficha import pendencias
 from app.domain.kanban import Ator, Etapa, MovimentoInvalido, mover_manual_com_evento
 
 
-class LeadNaoEncontrado(Exception):
-    def __init__(self, lead_id: object) -> None:
-        super().__init__(f"lead nao encontrado: {lead_id}")
-        self.lead_id = lead_id
-
-
-class VendedorNaoEncontrado(Exception):
-    def __init__(self, vendedor_id: object) -> None:
-        super().__init__(f"vendedor nao encontrado: {vendedor_id}")
-        self.vendedor_id = vendedor_id
-
-
 class MovimentoEtapaInvalido(Exception):
     """O kanban recusou o movimento manual (regra do dominio)."""
-
-    def __init__(self, motivo: str) -> None:
-        super().__init__(motivo)
-        self.motivo = motivo
-
-
-class ConflitoDono(Exception):
-    """A operacao nao cabe no dono atual da conversa (ex.: devolver o que ja e da IA)."""
 
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
@@ -96,6 +78,8 @@ class DetalheLead:
     proposta: dict[str, Any] | None
     handoff_solicitado: bool
     motivo_handoff: str | None
+    resumo_handoff: ResumoHandoff | None
+    """Resumo gravado quando a IA chamou o vendedor; None se o handoff nao veio dela."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,13 +87,6 @@ class EnvioMensagem:
     mensagem: MensagemRegistro
     enviada: bool
     """False quando o canal do lead ainda nao tem adaptador (a mensagem so foi registrada)."""
-
-
-def aparelho_desejado(estado: EstadoAtendimento) -> str | None:
-    i = estado.ficha.interesse
-    if i.modelo is None:
-        return None
-    return f"{i.modelo.nome} {i.capacidade}" if i.capacidade is not None else i.modelo.nome
 
 
 def _decimal(valor: object) -> Decimal | None:
@@ -133,8 +110,9 @@ def valor_estimado(estado: EstadoAtendimento) -> Decimal | None:
 
 
 def dono_exibicao(lead: LeadRegistro) -> str:
-    if lead.dono == DONO_VENDEDOR and lead.vendedor_id is not None:
-        return f"{DONO_VENDEDOR}:{lead.vendedor_id}"
+    if lead.dono == DONO_VENDEDOR:
+        # sem vendedor_id: conversa aguardando vendedor (a IA ja calou)
+        return DONO_VENDEDOR if lead.vendedor_id is None else f"{DONO_VENDEDOR}:{lead.vendedor_id}"
     return DONO_IA
 
 
@@ -165,11 +143,13 @@ class CasosPainel:
         *,
         repo: RepositorioPainel,
         publicador: PublicadorPainel,
+        handoff: CasosHandoff,
         canais: Mapping[Canal, CanalPort],
         agora: Callable[[], datetime] = _agora,
     ) -> None:
         self._repo = repo
         self._publicador = publicador
+        self._handoff = handoff
         self._canais = canais
         self._agora = agora
 
@@ -204,6 +184,11 @@ class CasosPainel:
             proposta=estado.ultima_proposta,
             handoff_solicitado=estado.handoff_solicitado,
             motivo_handoff=estado.motivo_handoff,
+            resumo_handoff=(
+                await self._handoff.resumo_do_lead(loja_id, lead_id)
+                if estado.handoff_solicitado
+                else None
+            ),
         )
 
     async def mover_etapa(self, loja_id: UUID, lead_id: UUID, destino: Etapa) -> CardLead:
@@ -238,41 +223,11 @@ class CasosPainel:
         return await self._card(loja_id, lead_id)
 
     async def assumir(self, loja_id: UUID, lead_id: UUID, vendedor_id: UUID) -> CardLead:
-        """Troca o dono para o vendedor. So persiste o dono: o orquestrador do agente le `dono`."""
-        lead = await self._lead(loja_id, lead_id)
-        if not await self._repo.vendedor_existe(loja_id, vendedor_id):
-            raise VendedorNaoEncontrado(vendedor_id)
-        if lead.dono == DONO_VENDEDOR:
-            if lead.vendedor_id == vendedor_id:
-                return card_de(lead)
-            raise ConflitoDono("A conversa ja esta com outro vendedor.")
-        dono = f"{DONO_VENDEDOR}:{vendedor_id}"
-        await self._repo.definir_dono(
-            loja_id,
-            lead_id,
-            DONO_VENDEDOR,
-            vendedor_id,
-            {"dono": dono, "vendedor_id": str(vendedor_id)},
-        )
-        await self._publicar_dono(loja_id, lead_id, dono, vendedor_id)
-        return await self._card(loja_id, lead_id)
+        """Troca o dono para o vendedor (regra em `CasosHandoff`)."""
+        return card_de(await self._handoff.assumir(loja_id, lead_id, vendedor_id))
 
     async def devolver(self, loja_id: UUID, lead_id: UUID) -> CardLead:
-        lead = await self._lead(loja_id, lead_id)
-        if lead.dono != DONO_VENDEDOR:
-            raise ConflitoDono("A conversa ja esta com a IA.")
-        await self._repo.definir_dono(loja_id, lead_id, DONO_IA, None, {"dono": DONO_IA})
-        await self._publicar_dono(loja_id, lead_id, DONO_IA, None)
-        return await self._card(loja_id, lead_id)
-
-    async def _publicar_dono(
-        self, loja_id: UUID, lead_id: UUID, dono: str, vendedor_id: UUID | None
-    ) -> None:
-        await publicar_sem_falhar(
-            self._publicador,
-            loja_id,
-            EventoDonoMudou(lead_id=lead_id, dono=dono, vendedor_id=vendedor_id, em=self._agora()),
-        )
+        return card_de(await self._handoff.devolver(loja_id, lead_id))
 
     async def enviar_mensagem(self, loja_id: UUID, lead_id: UUID, texto: str) -> EnvioMensagem:
         """Mensagem do vendedor: entrega pelo canal (se houver adaptador), registra e publica."""

@@ -87,8 +87,24 @@ class RepositorioPainel(Protocol):
         dono: str,
         vendedor_id: UUID | None,
         payload_evento: dict[str, Any],
+        *,
+        limpar_vendedor: bool = False,
     ) -> None:
-        """Grava o dono e o evento `dono_mudou`. `vendedor_id` None preserva a atribuicao."""
+        """Grava o dono e o evento `dono_mudou`.
+
+        `vendedor_id` None preserva a atribuicao, a menos que `limpar_vendedor` (conversa
+        aguardando vendedor: nenhum vendedor atribuido ainda).
+        """
+        ...
+
+    async def registrar_evento(
+        self, loja_id: UUID, lead_id: UUID, tipo: str, payload: dict[str, Any]
+    ) -> None:
+        """Grava um evento de auditoria do lead (ex.: `handoff_resumo`)."""
+        ...
+
+    async def ultimo_evento(self, loja_id: UUID, lead_id: UUID, tipo: str) -> EventoRegistro | None:
+        """Evento mais recente do tipo, ou None."""
         ...
 
     async def registrar_mensagem_vendedor(
