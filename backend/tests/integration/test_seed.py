@@ -12,6 +12,7 @@ from app.adapters.outbound.db.config import (
     RepositorioEstoqueLocalSql,
     RepositorioLojasSql,
     RepositorioMapeamentoSkuSql,
+    RepositorioVendedoresSql,
 )
 from app.adapters.outbound.db.models import EstoqueLocalRow, Loja, TaxaRow, TrocaRow, Vendedor
 from app.application.config.casos_de_uso import CasosDeUsoConfig
@@ -33,7 +34,7 @@ def _casos(session: AsyncSession) -> CasosDeUsoConfig:
         config=RepositorioConfigLojaSql(session),
         estoque=RepositorioEstoqueLocalSql(session),
         mapeamento=RepositorioMapeamentoSkuSql(session),
-        vendedores=LeitorVendedoresSql(session),
+        vendedores=RepositorioVendedoresSql(session),
         integracao=SemIntegracaoEstoque(),
     )
 

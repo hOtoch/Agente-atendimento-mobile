@@ -146,6 +146,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/config/vendedores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter Vendedores */
+        get: operations["obter_vendedores_lojas__loja_id__config_vendedores_get"];
+        /** Atualizar Vendedores */
+        put: operations["atualizar_vendedores_lojas__loja_id__config_vendedores_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/eventos": {
         parameters: {
             query?: never;
@@ -1042,6 +1060,48 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VendedorIn */
+        VendedorIn: {
+            /**
+             * Ativo
+             * @default true
+             */
+            ativo: boolean;
+            /** Id */
+            id?: string | null;
+            /** Nome */
+            nome: string;
+            /** Peso Percentual */
+            peso_percentual: number | string;
+            /** Telefone */
+            telefone?: string | null;
+        };
+        /** VendedorSchema */
+        VendedorSchema: {
+            /** Ativo */
+            ativo: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome */
+            nome: string;
+            /** Peso Percentual */
+            peso_percentual: string;
+            /** Telefone */
+            telefone: string | null;
+        };
+        /** VendedoresIn */
+        VendedoresIn: {
+            /** Vendedores */
+            vendedores: components["schemas"]["VendedorIn"][];
+        };
+        /** VendedoresSchema */
+        VendedoresSchema: {
+            /** Vendedores */
+            vendedores: components["schemas"]["VendedorSchema"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -1489,6 +1549,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrocaSchema-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_vendedores_lojas__loja_id__config_vendedores_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendedoresSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    atualizar_vendedores_lojas__loja_id__config_vendedores_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendedoresIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendedoresSchema"];
                 };
             };
             /** @description Validation Error */

@@ -17,12 +17,14 @@ from app.application.config.entradas import (
     EntradaLinhaTroca,
     EntradaPreco,
     EntradaTaxa,
+    EntradaVendedor,
 )
 from app.application.config.modelos import (
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
     PerfilLoja,
+    VendedorLoja,
 )
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
 from app.domain.pagamento import (
@@ -165,6 +167,21 @@ def _mapeamento_out(linhas: list[LinhaMapeamentoSku]) -> s.MapeamentoSchema:
     )
 
 
+def _vendedores_out(vendedores: list[VendedorLoja]) -> s.VendedoresSchema:
+    return s.VendedoresSchema(
+        vendedores=[
+            s.VendedorSchema(
+                id=v.id,
+                nome=v.nome,
+                telefone=v.telefone,
+                peso_percentual=v.peso_percentual,
+                ativo=v.ativo,
+            )
+            for v in vendedores
+        ]
+    )
+
+
 # --- rotas ------------------------------------------------------------------------------------
 
 
@@ -267,6 +284,22 @@ async def atualizar_mapeamento(
     )
     await sessao.commit()
     return _mapeamento_out(linhas)
+
+
+@router.get("/lojas/{loja_id}/config/vendedores", response_model=s.VendedoresSchema)
+async def obter_vendedores(loja_id: UUID, casos: Casos) -> s.VendedoresSchema:
+    return _vendedores_out(await casos.obter_vendedores(loja_id))
+
+
+@router.put("/lojas/{loja_id}/config/vendedores", response_model=s.VendedoresSchema)
+async def atualizar_vendedores(
+    loja_id: UUID, corpo: s.VendedoresIn, casos: Casos, sessao: Sessao
+) -> s.VendedoresSchema:
+    vendedores = await casos.atualizar_vendedores(
+        loja_id, [EntradaVendedor(**v.model_dump()) for v in corpo.vendedores]
+    )
+    await sessao.commit()
+    return _vendedores_out(vendedores)
 
 
 @router.get("/lojas/{loja_id}/onboarding/checklist", response_model=s.ChecklistSchema)

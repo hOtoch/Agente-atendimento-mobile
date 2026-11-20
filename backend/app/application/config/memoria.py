@@ -7,11 +7,13 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from app.application.config.casos_de_uso import CasosDeUsoConfig
+from app.application.config.entradas import EntradaVendedor
 from app.application.config.modelos import (
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
     PerfilLoja,
+    VendedorLoja,
 )
 from app.domain.pagamento import TabelaTaxas
 from app.domain.troca import TabelaTroca
@@ -86,13 +88,37 @@ class MemoriaMapeamentoSku:
 
 class MemoriaVendedores:
     def __init__(self) -> None:
-        self._pesos: dict[UUID, list[Decimal]] = {}
+        self._por_loja: dict[UUID, list[VendedorLoja]] = {}
 
     def definir(self, loja_id: UUID, pesos: Sequence[Decimal]) -> None:
-        self._pesos[loja_id] = list(pesos)
+        """Atalho de teste: vendedores ativos anonimos com esses pesos."""
+        self._por_loja[loja_id] = [
+            VendedorLoja(uuid4(), f"Vendedor {i + 1}", None, p, True) for i, p in enumerate(pesos)
+        ]
 
     async def pesos_ativos(self, loja_id: UUID) -> list[Decimal]:
-        return list(self._pesos.get(loja_id, []))
+        return [v.peso_percentual for v in self._por_loja.get(loja_id, []) if v.ativo]
+
+    async def listar(self, loja_id: UUID) -> list[VendedorLoja]:
+        return list(self._por_loja.get(loja_id, []))
+
+    async def substituir(
+        self, loja_id: UUID, entradas: Sequence[EntradaVendedor]
+    ) -> list[VendedorLoja]:
+        atuais = {v.id: v for v in self._por_loja.get(loja_id, [])}
+        resultado: dict[UUID, VendedorLoja] = {}
+        for e in entradas:
+            vid = e.id if e.id is not None else uuid4()
+            resultado[vid] = VendedorLoja(
+                vid, e.nome.strip(), (e.telefone or "").strip() or None, e.peso_percentual, e.ativo
+            )
+        for vid, antigo in atuais.items():
+            if vid not in resultado:
+                resultado[vid] = VendedorLoja(
+                    vid, antigo.nome, antigo.telefone, antigo.peso_percentual, False
+                )
+        self._por_loja[loja_id] = list(resultado.values())
+        return list(resultado.values())
 
 
 class MemoriaIntegracaoEstoque:

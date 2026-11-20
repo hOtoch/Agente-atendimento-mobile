@@ -13,6 +13,7 @@ from app.application.config.entradas import (
     EntradaLinhaTroca,
     EntradaPreco,
     EntradaTaxa,
+    EntradaVendedor,
 )
 from app.application.config.modelos import (
     ConfigPreco,
@@ -23,14 +24,15 @@ from app.application.config.modelos import (
     LinhaMapeamentoSku,
     LojaNaoEncontrada,
     PerfilLoja,
+    VendedorLoja,
 )
 from app.application.config.portas import (
     IntegracaoEstoque,
-    LeitorVendedores,
     RepositorioConfigLoja,
     RepositorioEstoqueLocal,
     RepositorioLojas,
     RepositorioMapeamentoSku,
+    RepositorioVendedores,
 )
 from app.domain.bandeira import Bandeira
 from app.domain.pagamento import PARCELAS_MIN, TabelaTaxas
@@ -47,7 +49,7 @@ class CasosDeUsoConfig:
         config: RepositorioConfigLoja,
         estoque: RepositorioEstoqueLocal,
         mapeamento: RepositorioMapeamentoSku,
-        vendedores: LeitorVendedores,
+        vendedores: RepositorioVendedores,
         integracao: IntegracaoEstoque,
     ) -> None:
         self.lojas = lojas
@@ -143,6 +145,23 @@ class CasosDeUsoConfig:
         linhas = validacao.montar_mapeamento(entradas)
         await self.mapeamento.substituir(loja_id, linhas)
         return linhas
+
+    # --- vendedores ---------------------------------------------------------------------------
+
+    async def obter_vendedores(self, loja_id: UUID) -> list[VendedorLoja]:
+        await self._loja(loja_id)
+        return await self.vendedores.listar(loja_id)
+
+    async def atualizar_vendedores(
+        self, loja_id: UUID, entradas: Sequence[EntradaVendedor]
+    ) -> list[VendedorLoja]:
+        """Substitui a lista: mantem ids, cria novos e desativa (nunca apaga) os ausentes."""
+        await self._loja(loja_id)
+        existentes = {v.id for v in await self.vendedores.listar(loja_id)}
+        erros = validacao.validar_vendedores(entradas, existentes)
+        if erros:
+            raise ErrosDeValidacao(erros)
+        return await self.vendedores.substituir(loja_id, entradas)
 
     # --- checklist ----------------------------------------------------------------------------
 

@@ -116,3 +116,28 @@ class ItemChecklistSchema(BaseModel):
 
 class ChecklistSchema(BaseModel):
     itens: list[ItemChecklistSchema]
+
+
+class VendedorIn(BaseModel):
+    id: UUID | None = None
+    """Ausente = vendedor novo; com id = atualiza o existente da loja."""
+    nome: str
+    telefone: str | None = None
+    peso_percentual: Num
+    ativo: bool = True
+
+
+class VendedoresIn(BaseModel):
+    vendedores: list[VendedorIn]
+
+
+class VendedorSchema(BaseModel):
+    id: UUID
+    nome: str
+    telefone: str | None
+    peso_percentual: Num
+    ativo: bool
+
+
+class VendedoresSchema(BaseModel):
+    vendedores: list[VendedorSchema]
