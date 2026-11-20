@@ -17,6 +17,7 @@ from app.adapters.outbound.db.config import (
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
+from app.application.importacao.importar import ImportarPlanilha
 from app.infra.settings import get_settings
 
 
@@ -35,7 +36,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
             raise
 
 
-def get_casos_config(session: Annotated[AsyncSession, Depends(get_session)]) -> CasosDeUsoConfig:
+def montar_casos_config(session: AsyncSession) -> CasosDeUsoConfig:
     return CasosDeUsoConfig(
         lojas=RepositorioLojasSql(session),
         config=RepositorioConfigLojaSql(session),
@@ -43,4 +44,15 @@ def get_casos_config(session: Annotated[AsyncSession, Depends(get_session)]) -> 
         mapeamento=RepositorioMapeamentoSkuSql(session),
         vendedores=LeitorVendedoresSql(session),
         integracao=SemIntegracaoEstoque(),
+    )
+
+
+def get_casos_config(session: Annotated[AsyncSession, Depends(get_session)]) -> CasosDeUsoConfig:
+    return montar_casos_config(session)
+
+
+def get_importador(session: Annotated[AsyncSession, Depends(get_session)]) -> ImportarPlanilha:
+    """Importador na sessao da requisicao: uma transacao, commit so apos validar e gravar tudo."""
+    return ImportarPlanilha(
+        montar_casos_config(session), commit=session.commit, rollback=session.rollback
     )
