@@ -220,7 +220,7 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 |---|---|---|---|---|
 | M0 | Fundações | `milestone/m0-fundacoes` | 2026-11-20 | ✅ concluído (PR #45) |
 | M1 | Motor de preço (domínio) | `milestone/m1-motor-de-preco` | 2026-11-20 | ✅ concluído (PR em revisão) |
-| M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ⏳ pendente |
+| M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ✅ concluído (PR em revisão) |
 | M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ⏳ pendente |
 | M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ⏳ pendente |
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ⏳ pendente |
@@ -266,6 +266,11 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-20 | Desconto Pix incide sobre a base já com desconto, troca e entrada; só na forma Pix | Premissa — confirmar com a loja |
 | 2026-11-20 | Oportunidade única soma por fora do teto de desconto (configurável `conta_no_teto`) | Regra das planilhas não define; default mais simples de explicar |
 | 2026-11-20 | Parse de dinheiro pt-BR: `"2.310"` = 2310; ponto decimal só fora do padrão de milhar | Entrada típica de lojista |
+| 2026-11-20 | SEM no banco = `desconto_x NULL` + `desconto_x_sem true` (CHECK exclusivo); "igual" = linha de taxa com `taxa_pct NULL` | R$ 0, SEM e "igual" nunca se confundem |
+| 2026-11-20 | Validação de config na aplicação (comandos primitivos → domínio), erros como `ErroCampo(caminho, mensagem)`; 422 uniforme `{"erros": [...]}` | Domínio nunca estoura 500; painel mostra erro na célula |
+| 2026-11-20 | Importação xlsx: `validar` (padrão) nunca grava; `aplicar` valida tudo e grava numa transação; erros apontam a célula (`troca!D7`); planilha vazia é erro | Não apagar config por engano |
+| 2026-11-20 | Estoque: `PlanilhaAdapter(FonteEstoqueLocalSql)` lê o estoque do banco; `ErpSimuladoAdapter` usa mapeamento de SKU da loja e só cai no parser heurístico com confiança alta; tudo envolvido por `EstoqueResiliente` | Troca de fonte sem tocar no agente |
+| 2026-11-20 | Seed da loja demo com `LOJA_DEMO_ID` fixo, gravado pelos casos de uso; iPhone 16 128GB novo a R$ 4.830 (casa com o exemplo da parcela) | Demo coerente com os exemplos oficiais |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -300,3 +305,16 @@ _Atualizado ao final de cada milestone._
   - Testes: backend 362, com propriedades hypothesis em dinheiro, desconto, ficha e kanban.
   - Pontos de atenção: premissas do Pix e da oportunidade única (ver decisões); conversão ficha → entradas de cálculo pendente para o M3.
   - Próximo: M2 Loja e estoque.
+- **2026-11-20 — M2 Loja e estoque concluído** (#12–#18).
+  - Configuração da loja: migration 0002 (perfil, regras de preço, taxas, tabela de troca, estoque local, mapeamento de SKU), casos de uso com validação por campo, checklist de onboarding e API REST `/lojas/{id}/config/*`.
+  - Estoque: `EstoquePort` + suíte de contrato reutilizável, `PlanilhaAdapter` sobre o banco, `ErpSimuladoAdapter` com parser de nomes "sujos" (39 celulares do ERP, acessórios ignorados) e decorator `EstoqueResiliente`.
+  - ERP simulado em `services/erp-mock` (porta 8090), no compose, no smoke e no CI.
+  - Importador xlsx (`POST /lojas/{id}/importar/{tipo}`) e modelos vazios em `docs/modelos/`.
+  - Seed da loja demo: 3 vendedores (50/30/20), 95 taxas, 89 linhas de troca, 28 itens de estoque; checklist 100%.
+  - Testes: backend 621, erp-mock 35.
+  - Pontos de atenção:
+    - O cache do `EstoqueResiliente` não tem limite de tamanho.
+    - `skus_nao_mapeados` do adaptador do ERP fica em memória.
+    - Ainda não há CRUD de vendedores (só validação de pesos).
+    - `oportunidade_conta_no_teto` não tem pergunta na planilha (fixo em `False`).
+  - Próximo: M3 Agente conversacional.

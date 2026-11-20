@@ -108,6 +108,8 @@ Não altere código. Responda com o veredito e o resumo.
 | Smoke da infra | `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/smoke.sh"` |
 | Migrations | `cd backend && uv run alembic upgrade head` (`downgrade base`, `revision --autogenerate -m "..."`) |
 | Subir API | `cd backend && uv run uvicorn app.main:app --reload` |
+| Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo) |
+| Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
 | Backend — deps | `cd backend && uv sync` |
 | Backend — testes rápidos | `cd backend && uv run pytest -m "not integration"` |
@@ -120,7 +122,8 @@ Não altere código. Responda com o veredito e o resumo.
 
 Manter esta tabela atualizada quando os scripts mudarem.
 
-Portas locais: Postgres dev 5432 (`atendimento`/`atendimento`), Postgres de teste 5433 (`teste`/`teste`, tmpfs), Redis 6379, Evolution 8080. Os testes de integração leem `TEST_DATABASE_URL` e são pulados se o banco de teste estiver fora.
+Portas locais: Postgres dev 5432 (`atendimento`/`atendimento`), Postgres de teste 5433 (`teste`/`teste`, tmpfs), Redis 6379, Evolution 8080, ERP simulado 8090 (token `token-dev`).
+Conflitos esperados ao integrar issues paralelas: `pyproject.toml`/`uv.lock` quando duas issues adicionam dependências — juntar as linhas e rodar `uv lock`. Os testes de integração leem `TEST_DATABASE_URL` e são pulados se o banco de teste estiver fora.
 
 ---
 
