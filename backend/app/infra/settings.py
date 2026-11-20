@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     midia_dir: str = "./.midias"
     """Pasta das midias enviadas pelo cliente (relativa ao cwd; ignorada pelo git)."""
     midia_max_bytes: int = 10 * 1024 * 1024
+    api_publica_url: str = "http://localhost:8000"
+    """Base publica da API: vira o prefixo das `midia_url` de midias que chegam pelo WhatsApp."""
+    evolution_api_url: str = "http://localhost:8080"
+    evolution_api_key: str = "troque-esta-chave"
+    evolution_webhook_url: str = "http://host.docker.internal:8000/webhooks/evolution"
+    """URL do webhook vista de dentro do container da Evolution (aponta para a nossa API)."""
+    evolution_webhook_token: str = "troque-este-token"
+    """Segredo compartilhado: a Evolution o envia em `X-Webhook-Token` (ou `?token=`)."""
+    whatsapp_eco_graca_s: float = 0.5
+    """Espera antes de tratar um `fromMe` desconhecido como do vendedor (corrida com o envio)."""
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 

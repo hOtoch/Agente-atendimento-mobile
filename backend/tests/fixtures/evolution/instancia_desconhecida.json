@@ -1,0 +1,25 @@
+{
+  "event": "messages.upsert",
+  "instance": "outra-instancia",
+  "data": {
+    "key": {
+      "remoteJid": "5511987654321@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0A1B2C3D4E5F60014"
+    },
+    "pushName": "Maria Silva",
+    "status": "DELIVERY_ACK",
+    "message": {
+      "conversation": "oi"
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1763644500,
+    "instanceId": "00000000-aaaa-bbbb-cccc-000000000001",
+    "source": "android"
+  },
+  "destination": "http://host.docker.internal:8000/webhooks/evolution",
+  "date_time": "2026-11-20T10:15:00.000-03:00",
+  "sender": "5511900000000@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "ficticia-0000"
+}

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import MagicMock
 
+from app.application.canal import Canal
 from app.infra import composicao, dependencias, worker
 from app.infra.fila import AgendadorArq
+from app.infra.settings import Settings
 
 
 class _Redis:
@@ -43,3 +46,17 @@ def test_get_agendar_usa_o_agendador_arq_com_prefixo_e_janela_do_worker() -> Non
 
 def test_hoje_brasil_e_uma_data() -> None:
     assert composicao.hoje_brasil().year >= 2026
+
+
+def test_painel_envia_pelo_whatsapp_quando_ha_adaptador() -> None:
+    sem = composicao.montar_casos_painel(MagicMock(), MagicMock())
+    assert set(sem._canais) == {Canal.WEBCHAT}
+    zap = MagicMock()
+    com = composicao.montar_casos_painel(MagicMock(), MagicMock(), whatsapp=zap)
+    assert com._canais[Canal.WHATSAPP] is zap
+
+
+def test_canal_whatsapp_usa_a_url_publica_da_api_para_midia_local() -> None:
+    settings = Settings(_env_file=None, api_publica_url="http://api.exemplo/")
+    canal = composicao.criar_canal_whatsapp(MagicMock(), MagicMock(), settings)
+    assert canal._prefixo_midia == "http://api.exemplo/midias/"

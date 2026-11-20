@@ -10,6 +10,7 @@ from app.adapters.inbound.http.midias import router as midias_router
 from app.adapters.inbound.http.openapi import registrar_openapi
 from app.adapters.inbound.http.painel import router as painel_router
 from app.adapters.inbound.http.webchat import router as webchat_router
+from app.adapters.inbound.http.whatsapp import router as whatsapp_router
 from app.infra.settings import get_settings
 
 app = FastAPI(title="Agente de Atendimento Mobile", version=__version__)
@@ -27,3 +28,4 @@ app.include_router(importacao_router)
 app.include_router(webchat_router)
 app.include_router(painel_router)
 app.include_router(midias_router)
+app.include_router(whatsapp_router)

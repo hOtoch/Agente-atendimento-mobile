@@ -1,0 +1,14 @@
+{
+  "event": "connection.update",
+  "instance": "loja-00000000-0000-4000-8000-00000000de30",
+  "data": {
+    "instance": "loja-00000000-0000-4000-8000-00000000de30",
+    "state": "open",
+    "statusReason": 200
+  },
+  "destination": "http://host.docker.internal:8000/webhooks/evolution",
+  "date_time": "2026-11-20T10:15:00.000-03:00",
+  "sender": "5511900000000@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "ficticia-0000"
+}

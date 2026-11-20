@@ -99,9 +99,12 @@ services:
       CACHE_REDIS_PREFIX_KEY: evolution
       CACHE_REDIS_SAVE_INSTANCES: "false"
       CACHE_LOCAL_ENABLED: "false"
-      # Webhook global para o backend (habilite quando o backend existir)
+      # Webhook global desligado: cada instancia recebe o seu webhook ao ser criada pela API
       WEBHOOK_GLOBAL_ENABLED: "false"
       LOG_LEVEL: ERROR,WARN,INFO
+    # Alcanca a API no host (webhook por instancia: http://host.docker.internal:8000/...)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     volumes:

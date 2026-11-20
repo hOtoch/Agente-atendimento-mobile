@@ -323,6 +323,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/whatsapp/conectar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cria a instancia (se preciso) e devolve o QR para conectar o numero */
+        post: operations["conectar_whatsapp_lojas__loja_id__whatsapp_conectar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lojas/{loja_id}/whatsapp/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estado da conexao do WhatsApp da loja */
+        get: operations["status_whatsapp_lojas__loja_id__whatsapp_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/midias/{nome}": {
         parameters: {
             query?: never;
@@ -501,6 +535,12 @@ export interface components {
             /** Nome */
             nome: string;
         };
+        /** ConexaoWhatsAppSchema */
+        ConexaoWhatsAppSchema: {
+            /** Qr Base64 */
+            qr_base64: string | null;
+            status: components["schemas"]["EstadoConexao"];
+        };
         /** DetalheLeadSchema */
         DetalheLeadSchema: {
             card: components["schemas"]["CardLeadSchema"];
@@ -562,6 +602,11 @@ export interface components {
             /** Erros */
             erros: components["schemas"]["ErroCampoSchema"][];
         };
+        /**
+         * EstadoConexao
+         * @enum {string}
+         */
+        EstadoConexao: "conectado" | "conectando" | "desconectado" | "inexistente";
         /** EstoqueSchema */
         "EstoqueSchema-Input": {
             /** Estoque */
@@ -1088,6 +1133,10 @@ export interface components {
         SessaoSchema: {
             /** Sessao */
             sessao: string;
+        };
+        /** StatusWhatsAppSchema */
+        StatusWhatsAppSchema: {
+            status: components["schemas"]["EstadoConexao"];
         };
         /** TaxaSchema */
         "TaxaSchema-Input": {
@@ -2096,6 +2145,96 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    conectar_whatsapp_lojas__loja_id__whatsapp_conectar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConexaoWhatsAppSchema"];
+                };
+            };
+            /** @description Loja nao encontrada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Evolution fora. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    status_whatsapp_lojas__loja_id__whatsapp_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusWhatsAppSchema"];
+                };
+            };
+            /** @description Loja nao encontrada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Evolution fora. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

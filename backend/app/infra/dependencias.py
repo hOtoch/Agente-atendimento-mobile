@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
 from app.adapters.outbound.barramento.redis import BarramentoRedis
+from app.adapters.outbound.canal.enviadas import RegistroEnviadasRedis
+from app.adapters.outbound.canal.evolution import EvolutionAdapter
+from app.adapters.outbound.canal.evolution_api import EvolutionGateway
 from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
+from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
@@ -25,8 +29,21 @@ from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
 from app.application.midia import ArmazenamentoMidia, ReceberMidia
 from app.application.painel.casos_de_uso import CasosPainel
-from app.infra.composicao import criar_agendador, montar_casos_config, montar_casos_painel
-from app.infra.settings import get_settings
+from app.application.painel.pausar_ia import PausarIAProvisorio
+from app.application.whatsapp import (
+    PausarIA,
+    ProcessarMensagemWhatsApp,
+    RegistroEnviadas,
+    WhatsAppGateway,
+)
+from app.infra.composicao import (
+    criar_agendador,
+    criar_canal_whatsapp,
+    criar_gateway_whatsapp,
+    montar_casos_config,
+    montar_casos_painel,
+)
+from app.infra.settings import Settings, get_settings
 
 
 @lru_cache
@@ -92,19 +109,78 @@ def get_receber_mensagem(
     )
 
 
+def get_armazenamento_midia() -> ArmazenamentoMidia:
+    return ArmazenamentoMidiaDisco(get_settings().midia_dir)
+
+
+@lru_cache
+def _gateway_whatsapp() -> EvolutionGateway:
+    return criar_gateway_whatsapp(get_settings())
+
+
+def get_whatsapp_gateway() -> WhatsAppGateway:
+    """Cliente da Evolution (um por processo: reaproveita as conexoes HTTP)."""
+    return _gateway_whatsapp()
+
+
+def get_registro_enviadas() -> RegistroEnviadas:
+    return RegistroEnviadasRedis(_redis())
+
+
+def get_canal_whatsapp(
+    gateway: Annotated[WhatsAppGateway, Depends(get_whatsapp_gateway)],
+    registro: Annotated[RegistroEnviadas, Depends(get_registro_enviadas)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> EvolutionAdapter:
+    return criar_canal_whatsapp(gateway, registro, settings)
+
+
 def get_casos_painel(
     session: Annotated[AsyncSession, Depends(get_session)],
     barramento: Annotated[BarramentoMensagens, Depends(get_barramento)],
+    whatsapp: Annotated[EvolutionAdapter, Depends(get_canal_whatsapp)],
 ) -> CasosPainel:
-    return montar_casos_painel(session, barramento)
+    return montar_casos_painel(session, barramento, whatsapp=whatsapp)
+
+
+def get_pausar_ia(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    barramento: Annotated[BarramentoMensagens, Depends(get_barramento)],
+) -> PausarIA:
+    """Pausa provisoria (dono = vendedor + DonoMudou); sera religada ao handoff (#32)."""
+    return PausarIAProvisorio(RepositorioPainelSql(session), PublicadorPainelBarramento(barramento))
+
+
+def get_processar_whatsapp(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    agendar: Annotated[Callable[[UUID], Awaitable[None]], Depends(get_agendar)],
+    barramento: Annotated[BarramentoMensagens, Depends(get_barramento)],
+    gateway: Annotated[WhatsAppGateway, Depends(get_whatsapp_gateway)],
+    registro: Annotated[RegistroEnviadas, Depends(get_registro_enviadas)],
+    armazenamento: Annotated[ArmazenamentoMidia, Depends(get_armazenamento_midia)],
+    pausar: Annotated[PausarIA, Depends(get_pausar_ia)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ProcessarMensagemWhatsApp:
+    painel = PublicadorPainelBarramento(barramento)
+    conversas = RepositorioConversasSql(session)
+    base = settings.api_publica_url.rstrip("/")
+    return ProcessarMensagemWhatsApp(
+        receber=ReceberMensagem(conversas, agendar, painel=painel),
+        mensagens_do_celular=conversas,
+        nomes=conversas,
+        gateway=gateway,
+        receber_midia=ReceberMidia(armazenamento, settings.midia_max_bytes),
+        url_midia=lambda nome: f"{base}/midias/{nome}",
+        registro=registro,
+        pausar=pausar,
+        repo_conversas=conversas,
+        painel=painel,
+        graca_eco_s=settings.whatsapp_eco_graca_s,
+    )
 
 
 def get_gerador_modelo() -> GeradorModelo:
     return GeradorModeloXlsx()
-
-
-def get_armazenamento_midia() -> ArmazenamentoMidia:
-    return ArmazenamentoMidiaDisco(get_settings().midia_dir)
 
 
 def get_receber_midia() -> ReceberMidia:
