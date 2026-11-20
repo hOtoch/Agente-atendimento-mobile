@@ -158,3 +158,19 @@ async def test_sse_entrega_mensagem_publicada(amb: Ambiente) -> None:
     linhas = await asyncio.wait_for(tarefa, 5)
     dados = [json.loads(linha[5:]) for linha in linhas if linha.startswith("data:")]
     assert dados[0]["texto"] == "resposta"
+
+
+async def test_primeira_mensagem_cria_lead_em_novo_contato_no_kanban(amb: Ambiente) -> None:
+    loja = await _loja(amb.client)
+    sessao = await _sessao_web(amb.client, loja)
+    antes = (await amb.client.get(f"/lojas/{loja}/leads")).json()["etapas"]
+    assert all(e["leads"] == [] for e in antes)
+
+    r = await amb.client.post(f"/webchat/{loja}/sessoes/{sessao}/mensagens", json=_corpo())
+    assert r.status_code == 202
+
+    etapas = (await amb.client.get(f"/lojas/{loja}/leads")).json()["etapas"]
+    novo = next(e for e in etapas if e["etapa"] == "novo_contato")
+    assert len(novo["leads"]) == 1
+    assert novo["leads"][0]["canal"] == "webchat"
+    assert novo["leads"][0]["telefone"] == sessao

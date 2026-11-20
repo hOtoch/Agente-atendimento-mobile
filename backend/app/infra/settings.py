@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     llm_fallback_model: str = "claude-haiku-5-5"
     llm_effort: str = "low"
     anthropic_api_key: str | None = None
+    midia_dir: str = "./.midias"
+    """Pasta das midias enviadas pelo cliente (relativa ao cwd; ignorada pelo git)."""
+    midia_max_bytes: int = 10 * 1024 * 1024
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 

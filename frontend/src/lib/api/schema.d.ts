@@ -323,6 +323,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/midias/{nome}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixa uma midia enviada */
+        get: operations["obter_midia_midias__nome__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/modelos/{tipo}": {
         parameters: {
             query?: never;
@@ -334,6 +351,23 @@ export interface paths {
         get: operations["baixar_modelo_modelos__tipo__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webchat/{loja_id}/midias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Envia uma imagem ou audio do cliente */
+        post: operations["enviar_midia_webchat__loja_id__midias_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -402,6 +436,11 @@ export interface components {
              * Format: uuid
              */
             vendedor_id: string;
+        };
+        /** Body_enviar_midia_webchat__loja_id__midias_post */
+        Body_enviar_midia_webchat__loja_id__midias_post: {
+            /** Arquivo */
+            arquivo: string;
         };
         /** Body_importar_lojas__loja_id__importar__tipo__post */
         Body_importar_lojas__loja_id__importar__tipo__post: {
@@ -898,6 +937,11 @@ export interface components {
         MensagemVendedorIn: {
             /** Texto */
             texto: string;
+        };
+        /** MidiaSchema */
+        MidiaSchema: {
+            /** Midia Url */
+            midia_url: string;
         };
         /** MoverEtapaIn */
         MoverEtapaIn: {
@@ -2019,6 +2063,45 @@ export interface operations {
             };
         };
     };
+    obter_midia_midias__nome__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nome: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description Nao existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     baixar_modelo_modelos__tipo__get: {
         parameters: {
             query?: never;
@@ -2038,6 +2121,62 @@ export interface operations {
                 content: {
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enviar_midia_webchat__loja_id__midias_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviar_midia_webchat__loja_id__midias_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaSchema"];
+                };
+            };
+            /** @description Loja nao encontrada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Arquivo acima do limite. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tipo de arquivo nao suportado. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

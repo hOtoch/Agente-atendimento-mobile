@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
+from app.application.midia import MidiaGrandeDemais, MidiaNaoEncontrada, TipoMidiaNaoSuportado
 from app.application.painel.casos_de_uso import (
     ConflitoDono,
     LeadNaoEncontrado,
@@ -73,3 +74,18 @@ def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(ConflitoDono)
     async def _dono(_: Request, exc: ConflitoDono) -> JSONResponse:
         return JSONResponse(_corpo([ErroCampo("dono", exc.motivo)]), status_code=409)
+
+    @app.exception_handler(TipoMidiaNaoSuportado)
+    async def _tipo_midia(_: Request, exc: TipoMidiaNaoSuportado) -> JSONResponse:
+        erro = ErroCampo("arquivo", "Tipo de arquivo não suportado.")
+        return JSONResponse(_corpo([erro]), status_code=415)
+
+    @app.exception_handler(MidiaGrandeDemais)
+    async def _midia_grande(_: Request, exc: MidiaGrandeDemais) -> JSONResponse:
+        mb = exc.limite_bytes / (1024 * 1024)
+        erro = ErroCampo("arquivo", f"Arquivo acima do limite de {mb:g} MB.")
+        return JSONResponse(_corpo([erro]), status_code=413)
+
+    @app.exception_handler(MidiaNaoEncontrada)
+    async def _midia(_: Request, exc: MidiaNaoEncontrada) -> JSONResponse:
+        return JSONResponse(_corpo([ErroCampo("nome", "Mídia não encontrada.")]), status_code=404)

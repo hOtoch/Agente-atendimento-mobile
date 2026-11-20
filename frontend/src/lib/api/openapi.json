@@ -15,6 +15,20 @@
         "title": "AssumirIn",
         "type": "object"
       },
+      "Body_enviar_midia_webchat__loja_id__midias_post": {
+        "properties": {
+          "arquivo": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "Body_enviar_midia_webchat__loja_id__midias_post",
+        "type": "object"
+      },
       "Body_importar_lojas__loja_id__importar__tipo__post": {
         "properties": {
           "arquivo": {
@@ -1221,6 +1235,19 @@
           "texto"
         ],
         "title": "MensagemVendedorIn",
+        "type": "object"
+      },
+      "MidiaSchema": {
+        "properties": {
+          "midia_url": {
+            "title": "Midia Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "midia_url"
+        ],
+        "title": "MidiaSchema",
         "type": "object"
       },
       "MoverEtapaIn": {
@@ -3141,6 +3168,50 @@
         ]
       }
     },
+    "/midias/{nome}": {
+      "get": {
+        "operationId": "obter_midia_midias__nome__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "nome",
+            "required": true,
+            "schema": {
+              "title": "Nome",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/octet-stream": {}
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Nao existe."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Baixa uma midia enviada",
+        "tags": [
+          "webchat"
+        ]
+      }
+    },
     "/modelos/{tipo}": {
       "get": {
         "operationId": "baixar_modelo_modelos__tipo__get",
@@ -3181,6 +3252,68 @@
         "summary": "Baixar Modelo",
         "tags": [
           "importacao"
+        ]
+      }
+    },
+    "/webchat/{loja_id}/midias": {
+      "post": {
+        "operationId": "enviar_midia_webchat__loja_id__midias_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_enviar_midia_webchat__loja_id__midias_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MidiaSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Loja nao encontrada."
+          },
+          "413": {
+            "description": "Arquivo acima do limite."
+          },
+          "415": {
+            "description": "Tipo de arquivo nao suportado."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Envia uma imagem ou audio do cliente",
+        "tags": [
+          "webchat"
         ]
       }
     },
