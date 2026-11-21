@@ -690,9 +690,9 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                 "data_prevista": _txt(
                     "Quando pretende comprar, AAAA-MM-DD; null se não informada."
                 ),
+                # Enum anulavel vai em anyOf: a API recusa `enum` com `type` em lista.
                 "tipo_pagamento": {
-                    "type": ["string", "null"],
-                    "enum": [*_TIPOS_PAGAMENTO, None],
+                    "anyOf": [{"type": "string", "enum": _TIPOS_PAGAMENTO}, {"type": "null"}],
                     "description": "Forma de pagamento; null se não informada.",
                 },
                 "parcelas": {
