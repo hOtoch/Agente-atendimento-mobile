@@ -17,6 +17,7 @@ from app.adapters.outbound.canal.evolution import EvolutionAdapter
 from app.adapters.outbound.canal.evolution_api import EvolutionGateway
 from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
+from app.adapters.outbound.db.followup import RepositorioConfigFollowupSql
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
@@ -25,6 +26,7 @@ from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
 from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import RepositorioLojas
+from app.application.followup import ConfigurarFollowup
 from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
 from app.application.midia import ArmazenamentoMidia, ReceberMidia
@@ -63,6 +65,12 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 
 def get_casos_config(session: Annotated[AsyncSession, Depends(get_session)]) -> CasosDeUsoConfig:
     return montar_casos_config(session)
+
+
+def get_configurar_followup(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ConfigurarFollowup:
+    return ConfigurarFollowup(RepositorioLojasSql(session), RepositorioConfigFollowupSql(session))
 
 
 def get_importador(session: Annotated[AsyncSession, Depends(get_session)]) -> ImportarPlanilha:

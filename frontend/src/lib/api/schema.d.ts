@@ -56,6 +56,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/config/followup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter Followup */
+        get: operations["obter_followup_lojas__loja_id__config_followup_get"];
+        /** Atualizar Followup */
+        put: operations["atualizar_followup_lojas__loja_id__config_followup_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/config/mapeamento-sku": {
         parameters: {
             query?: never;
@@ -734,6 +752,50 @@ export interface components {
             tipo: "texto" | "audio" | "imagem";
         };
         EventoPainel: components["schemas"]["EventoEtapaMudouSchema"] | components["schemas"]["EventoMensagemNovaSchema"] | components["schemas"]["EventoDonoMudouSchema"];
+        /** FollowupSchema */
+        "FollowupSchema-Input": {
+            /**
+             * Hora Fim
+             * Format: time
+             */
+            hora_fim: string;
+            /**
+             * Hora Inicio
+             * Format: time
+             */
+            hora_inicio: string;
+            /** Horas Por Etapa */
+            horas_por_etapa?: {
+                [key: string]: number;
+            };
+            /** Intervalo Horas */
+            intervalo_horas: number;
+            /** Ligado */
+            ligado: boolean;
+            /** Max Dias Parado */
+            max_dias_parado: number;
+            /** Max Tentativas */
+            max_tentativas: number;
+        };
+        /** FollowupSchema */
+        "FollowupSchema-Output": {
+            /** Hora Fim */
+            hora_fim: string;
+            /** Hora Inicio */
+            hora_inicio: string;
+            /** Horas Por Etapa */
+            horas_por_etapa?: {
+                [key: string]: number;
+            };
+            /** Intervalo Horas */
+            intervalo_horas: number;
+            /** Ligado */
+            ligado: boolean;
+            /** Max Dias Parado */
+            max_dias_parado: number;
+            /** Max Tentativas */
+            max_tentativas: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1355,6 +1417,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EstoqueSchema-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_followup_lojas__loja_id__config_followup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowupSchema-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    atualizar_followup_lojas__loja_id__config_followup_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowupSchema-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowupSchema-Output"];
                 };
             };
             /** @description Validation Error */

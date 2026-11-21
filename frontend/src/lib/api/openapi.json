@@ -661,6 +661,98 @@
           }
         ]
       },
+      "FollowupSchema-Input": {
+        "properties": {
+          "hora_fim": {
+            "format": "time",
+            "title": "Hora Fim",
+            "type": "string"
+          },
+          "hora_inicio": {
+            "format": "time",
+            "title": "Hora Inicio",
+            "type": "string"
+          },
+          "horas_por_etapa": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Horas Por Etapa",
+            "type": "object"
+          },
+          "intervalo_horas": {
+            "title": "Intervalo Horas",
+            "type": "integer"
+          },
+          "ligado": {
+            "title": "Ligado",
+            "type": "boolean"
+          },
+          "max_dias_parado": {
+            "title": "Max Dias Parado",
+            "type": "integer"
+          },
+          "max_tentativas": {
+            "title": "Max Tentativas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ligado",
+          "max_tentativas",
+          "intervalo_horas",
+          "hora_inicio",
+          "hora_fim",
+          "max_dias_parado"
+        ],
+        "title": "FollowupSchema",
+        "type": "object"
+      },
+      "FollowupSchema-Output": {
+        "properties": {
+          "hora_fim": {
+            "title": "Hora Fim",
+            "type": "string"
+          },
+          "hora_inicio": {
+            "title": "Hora Inicio",
+            "type": "string"
+          },
+          "horas_por_etapa": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Horas Por Etapa",
+            "type": "object"
+          },
+          "intervalo_horas": {
+            "title": "Intervalo Horas",
+            "type": "integer"
+          },
+          "ligado": {
+            "title": "Ligado",
+            "type": "boolean"
+          },
+          "max_dias_parado": {
+            "title": "Max Dias Parado",
+            "type": "integer"
+          },
+          "max_tentativas": {
+            "title": "Max Tentativas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ligado",
+          "max_tentativas",
+          "intervalo_horas",
+          "hora_inicio",
+          "hora_fim",
+          "max_dias_parado"
+        ],
+        "title": "FollowupSchema",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2184,6 +2276,100 @@
           }
         },
         "summary": "Atualizar Estoque",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/followup": {
+      "get": {
+        "operationId": "obter_followup_lojas__loja_id__config_followup_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Followup",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_followup_lojas__loja_id__config_followup_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowupSchema-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupSchema-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Followup",
         "tags": [
           "config"
         ]

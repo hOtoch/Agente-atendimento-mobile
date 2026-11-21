@@ -254,3 +254,8 @@ def descrever_pagamento(ficha: Ficha) -> str:
     if p.entrada is not None:
         partes.append(f"entrada de {p.entrada}")
     return ", ".join(partes)
+
+
+def resumo_do_que_sabemos(ficha: Ficha) -> list[str]:
+    """Itens da ficha ja conhecidos, em texto (reaproveitado pelo follow-up)."""
+    return _conhecido(ficha)

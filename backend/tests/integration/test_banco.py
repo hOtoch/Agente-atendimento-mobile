@@ -24,6 +24,7 @@ TABELAS = {
     "tabela_troca",
     "estoque_local",
     "mapeamento_sku",
+    "config_followup",
 }
 
 

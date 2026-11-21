@@ -1,7 +1,7 @@
 """Modelos SQLAlchemy (multi-loja: `loja_id` em todas as tabelas de negocio)."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from decimal import Decimal
 from typing import Any
 
@@ -15,6 +15,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    Time,
     UniqueConstraint,
     Uuid,
     func,
@@ -160,7 +161,15 @@ class Ficha(Base):
 
 class Evento(Base):
     __tablename__ = "eventos"
-    __table_args__ = (Index("ix_eventos_loja_id_criado_em", "loja_id", "criado_em"),)
+    __table_args__ = (
+        Index("ix_eventos_loja_id_criado_em", "loja_id", "criado_em"),
+        Index(
+            "ix_eventos_followup_lead",
+            "lead_id",
+            "criado_em",
+            postgresql_where=text("tipo = 'followup'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _pk()
     loja_id: Mapped[uuid.UUID] = _loja_fk()
@@ -325,3 +334,28 @@ class MapeamentoSkuRow(Base):
     capacidade_gb: Mapped[int] = mapped_column(Integer, nullable=False)
     cor: Mapped[str] = mapped_column(String(100), nullable=False)
     condicao: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class ConfigFollowupRow(Base):
+    """Follow-up automatico por loja. `horas_por_etapa`: {"interesse_qualificado": 2, ...}."""
+
+    __tablename__ = "config_followup"
+    __table_args__ = (
+        CheckConstraint("max_tentativas >= 1 AND max_tentativas <= 5", name="max_tentativas_ok"),
+        CheckConstraint("intervalo_horas >= 1", name="intervalo_ok"),
+        CheckConstraint("hora_inicio < hora_fim", name="horario_ok"),
+        CheckConstraint("max_dias_parado >= 1", name="max_dias_ok"),
+    )
+
+    loja_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lojas.id", ondelete="CASCADE"), primary_key=True
+    )
+    ligado: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    horas_por_etapa: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    max_tentativas: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("2"))
+    intervalo_horas: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("24"))
+    hora_inicio: Mapped[time] = mapped_column(Time, nullable=False, server_default=text("'09:00'"))
+    hora_fim: Mapped[time] = mapped_column(Time, nullable=False, server_default=text("'18:00'"))
+    max_dias_parado: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("7"))
