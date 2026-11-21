@@ -26,6 +26,7 @@ from app.application.agente.conversa_portas import (
 )
 from app.application.agente.estado import EstadoAtendimento, fatos_do_lead
 from app.application.agente.ferramentas import CatalogoFerramentas
+from app.application.agente.imagem import anexar_imagens
 from app.application.agente.prompt import mensagem_estado, montar_sistema
 from app.application.agente.repositorio import RepositorioAtendimento
 from app.application.agente.transcricao import CursorEntrada, RepositorioTranscricao
@@ -42,6 +43,7 @@ from app.application.llm import (
     ResultadoFerramenta,
     UsoTokens,
 )
+from app.application.midia import ArmazenamentoMidia
 from app.application.painel.eventos import EventoEtapaMudou, EventoMensagemNova
 from app.application.painel.publicador import (
     PublicadorPainel,
@@ -100,6 +102,7 @@ class ProcessarConversa:
         painel: PublicadorPainel | None = None,
         handoff: CasosHandoff | None = None,
         max_iteracoes: int = 6,
+        midia: ArmazenamentoMidia | None = None,
     ) -> None:
         self._conversas = conversas
         self._transcricao = transcricao
@@ -114,6 +117,7 @@ class ProcessarConversa:
         self._painel = painel or PublicadorPainelNulo()
         self._handoff = handoff
         self._max_iteracoes = max_iteracoes
+        self._midia = midia
 
     async def __call__(self, conversa_id: UUID) -> None:
         conversa = await self._conversas.obter_conversa(conversa_id)
@@ -172,7 +176,8 @@ class _Turno:
         config_preco = await c._config.obter_preco(loja_id)
         sistema = montar_sistema(perfil, config_preco)
 
-        usuario = MensagemLLM("user", [BlocoTexto(_texto_da_entrada(e)) for e in entradas])
+        blocos_texto = [BlocoTexto(_texto_da_entrada(e)) for e in entradas]
+        usuario = MensagemLLM("user", await anexar_imagens(entradas, blocos_texto, c._midia))
         liberado = self._estado.desconto.liberado
         estado_msg = MensagemLLM(
             "system",

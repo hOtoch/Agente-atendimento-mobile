@@ -16,6 +16,7 @@ from typing import Any
 
 from app.application.agente.contexto import ContextoFerramentas, ErroFerramenta
 from app.application.agente.estado import EstadoAtendimento
+from app.application.agente.imagem import LeituraImagem, TipoImagem, decidir_leitura
 from app.application.agente.proposta import FRASE_OBRIGATORIA, montar_proposta
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.estoque import EstoqueIndisponivel
@@ -395,6 +396,74 @@ async def _registrar_usado(
     return _Saida({"status": "ok", **_situacao(ficha)}, replace(estado, ficha=ficha))
 
 
+async def _registrar_leitura_imagem(
+    entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
+) -> _Saida:
+    """O LLM so le a imagem; `decidir_leitura` (codigo) diz se grava ou manda confirmar."""
+    texto_tipo = _texto_obrigatorio(entrada, "tipo")
+    try:
+        tipo = TipoImagem(texto_tipo.lower())
+    except ValueError:
+        validos = ", ".join(t.value for t in TipoImagem)
+        raise ErroFerramenta(
+            f"Tipo de imagem inválido: {texto_tipo!r}. Use um de: {validos}."
+        ) from None
+    bateria = _int_opcional(entrada, "bateria_pct")
+    if bateria is not None and not 0 <= bateria <= 100:
+        raise ErroFerramenta(
+            "A saúde da bateria deve estar entre 0 e 100 (%). Se não estiver legível, "
+            "use null e peça outro print."
+        )
+    confianca = entrada.get("confianca")
+    if (
+        isinstance(confianca, bool)
+        or not isinstance(confianca, int | float)
+        or not 0 <= confianca <= 1
+    ):
+        raise ErroFerramenta("O campo 'confianca' deve ser um número entre 0 e 1.")
+    texto_modelo = _texto_opcional(entrada, "modelo_provavel")
+    leitura = LeituraImagem(
+        tipo=tipo,
+        bateria_pct=bateria,
+        tela_danificada=_bool_opcional(entrada, "tela_danificada"),
+        traseira_danificada=_bool_opcional(entrada, "traseira_danificada"),
+        carcaca_marcada=_bool_opcional(entrada, "carcaca_marcada"),
+        modelo=_modelo_usado(texto_modelo) if texto_modelo is not None else None,
+        confianca=float(confianca),
+    )
+    decisao = decidir_leitura(estado.ficha, leitura)
+    if decisao.gravado:
+        conteudo: dict[str, Any] = {
+            "status": "ok",
+            "registrado": list(decisao.campos),
+            **_situacao(decisao.ficha),
+        }
+        return _Saida(conteudo, replace(estado, ficha=decisao.ficha))
+    if decisao.pergunta is not None:
+        return _Saida(
+            {
+                "status": "confirmar",
+                "pergunta": decisao.pergunta,
+                "mensagem": (
+                    "Nada foi gravado na ficha. Faça essa pergunta ao cliente e, só se ele "
+                    "confirmar, registre com registrar_usado."
+                ),
+            },
+            estado,
+        )
+    return _Saida(
+        {
+            "status": "nada_registrado",
+            "mensagem": (
+                "Não deu para aproveitar a imagem. Peça com educação uma foto ou print mais "
+                "nítido (para a bateria: Ajustes > Bateria > Saúde da Bateria) ou pergunte "
+                "a informação por texto."
+            ),
+        },
+        estado,
+    )
+
+
 def _normalizar_pagamento(
     tipo: TipoPagamento | None,
     parcelas: int | None,
@@ -711,6 +780,45 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
         ),
     ),
     DefinicaoFerramenta(
+        nome="registrar_leitura_imagem",
+        descricao=(
+            "Use quando o cliente mandar uma imagem: registra o que VOCÊ enxergou nela. tipo: "
+            "print_bateria (tela de Ajustes > Bateria > Saúde da Bateria), foto_aparelho ou "
+            "outro. Preencha só o que está visível e legível; use null no resto (um vidro "
+            "traseiro que não aparece na foto é null, nunca false). modelo_provavel só se "
+            "der para identificar. confianca de 0 a 1 é o quanto você tem certeza da leitura "
+            "(imagem borrada, cortada ou número duvidoso = baixa). O sistema decide: com "
+            "confiança alta grava na ficha do aparelho usado; com baixa devolve "
+            "status=confirmar e a pergunta que você deve fazer ao cliente antes de gravar. "
+            "Nunca informe valores ao cliente a partir da imagem."
+        ),
+        esquema_json=_objeto(
+            {
+                "tipo": {
+                    "type": "string",
+                    "enum": [t.value for t in TipoImagem],
+                    "description": "O que a imagem mostra.",
+                },
+                "bateria_pct": {
+                    "type": ["integer", "null"],
+                    "description": "Saúde da bateria em %, lida do print; null se não visível.",
+                },
+                "tela_danificada": _bool("Tela trincada ou danificada? null se não visível."),
+                "traseira_danificada": _bool(
+                    "Vidro traseiro trincado ou danificado? null se não visível."
+                ),
+                "carcaca_marcada": _bool("Carcaça com marcas ou amassados? null se não visível."),
+                "modelo_provavel": _txt("Modelo provável do aparelho; null se incerto."),
+                "confianca": {
+                    "type": "number",
+                    "description": "Certeza da leitura, de 0 (nenhuma) a 1 (total).",
+                },
+            }
+        ),
+        # Campos anulaveis: sem strict para caber no limite de unioes da API (o handler valida).
+        estrita=False,
+    ),
+    DefinicaoFerramenta(
         nome="calcular_proposta",
         descricao=(
             "ÚNICA fonte de valores (preço, troca, parcelas). Chame quando o cliente pedir preço "
@@ -761,6 +869,7 @@ class CatalogoFerramentas:
             "consultar_estoque": _consultar_estoque,
             "confirmar_item": _confirmar_item,
             "registrar_usado": _registrar_usado,
+            "registrar_leitura_imagem": _registrar_leitura_imagem,
             "registrar_compra": _registrar_compra,
             "calcular_proposta": _calcular_proposta,
             "liberar_desconto": _liberar_desconto,

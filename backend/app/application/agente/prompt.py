@@ -62,7 +62,8 @@ _PERGUNTAS: Final[dict[Pendencia, str]] = {
     _P.USADO_TRASEIRA: "Pergunte se o vidro traseiro do aparelho usado está trincado ou quebrado.",
     _P.USADO_CARCACA: "Pergunte se a carcaça (laterais e bordas) tem marcas ou amassados.",
     _P.USADO_BATERIA: (
-        "Peça um print de Ajustes > Bateria > Saúde da Bateria, ou o percentual de lá."
+        "Peça um print de Ajustes > Bateria > Saúde da Bateria, ou o percentual de lá. "
+        "Se ele mandar o print, use registrar_leitura_imagem."
     ),
     _P.USADO_CAMERA: "Pergunte se as câmeras do aparelho usado funcionam normalmente.",
     _P.USADO_OUTROS_DEFEITOS: "Pergunte se o aparelho usado tem algum outro defeito.",

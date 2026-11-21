@@ -29,6 +29,7 @@ FERRAMENTAS = (
     "confirmar_item",
     "registrar_usado",
     "registrar_compra",
+    "registrar_leitura_imagem",
     "calcular_proposta",
     "liberar_desconto",
     "chamar_vendedor",
