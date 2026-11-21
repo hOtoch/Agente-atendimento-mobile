@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.adapters.outbound.audio.stt_fake import STTFake
 from app.adapters.outbound.barramento.memoria import BarramentoEmMemoria
 from app.adapters.outbound.canal.webchat import WebChatAdapter, topico_webchat
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.models import Evento, Lead, Mensagem
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
 from app.adapters.outbound.llm.fake import FakeLLM, RespostaRoteirizada
+from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
+from app.application.agente.processar_conversa import PREFIXO_AUDIO_TRANSCRITO
 from app.application.agente.transcricao import CursorEntrada
+from app.application.audio_entrada import TranscreverAudio
 from app.application.canal import Canal, MensagemEntrada, TipoMensagem
 from app.application.llm import (
     BlocoTexto,
@@ -211,3 +216,36 @@ async def test_chamar_vendedor_com_banco_real_passa_o_dono_e_avisa_o_gancho(
     await _entrada(session, LOJA_DEMO_ID, conversa, "alguem?")
     await caso(conversa)
     assert len(llm.chamadas) == 3
+
+
+async def test_audio_do_cliente_e_transcrito_e_salvo_na_mensagem(
+    db_url: str, session: AsyncSession, tmp_path: Path
+) -> None:
+    await semear(db_url)
+    _, conversa = await _conversa(session, LOJA_DEMO_ID)
+    nome = await ArmazenamentoMidiaDisco(tmp_path).salvar(b"audio", "audio/ogg")
+    await RepositorioConversasSql(session).registrar_entrada(
+        conversa,
+        MensagemEntrada(
+            LOJA_DEMO_ID, Canal.WEBCHAT, uuid4().hex, "s1", TipoMensagem.AUDIO, None,
+            f"http://api.local/midias/{nome}", datetime.now(UTC),
+        ),
+    )  # fmt: skip
+    llm = FakeLLM([RespostaRoteirizada(texto="Temos sim!")])
+    barramento = BarramentoEmMemoria()
+    caso = montar_processar_conversa(
+        session,
+        llm=llm,
+        canais={Canal.WEBCHAT: WebChatAdapter(barramento)},
+        hoje=lambda: HOJE,
+        transcrever_audio=TranscreverAudio(
+            STTFake("tem iphone 16?"), ArmazenamentoMidiaDisco(tmp_path)
+        ),
+    )
+    await caso(conversa)
+
+    textos = [b.texto for b in llm.chamadas[0].mensagens[0].blocos if isinstance(b, BlocoTexto)]
+    assert textos == [f"{PREFIXO_AUDIO_TRANSCRITO} tem iphone 16?"]
+    assert (
+        await session.execute(select(Mensagem.transcricao).where(Mensagem.tipo == "audio"))
+    ).scalar_one() == "tem iphone 16?"

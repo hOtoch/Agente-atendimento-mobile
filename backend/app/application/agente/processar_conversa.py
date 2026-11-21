@@ -30,6 +30,7 @@ from app.application.agente.imagem import anexar_imagens
 from app.application.agente.prompt import mensagem_estado, montar_sistema
 from app.application.agente.repositorio import RepositorioAtendimento
 from app.application.agente.transcricao import CursorEntrada, RepositorioTranscricao
+from app.application.audio_entrada import FalhaTranscricao, TranscreverAudio
 from app.application.canal import Canal, CanalPort, MensagemSaida, TipoMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.modelos import PerfilLoja
@@ -57,6 +58,13 @@ log = logging.getLogger(__name__)
 
 MENSAGEM_ESPERA = "Só um instante, vou chamar um especialista para te ajudar 🙂"
 MENSAGEM_LIMITE = "Desculpe, não consegui concluir isso agora. Pode me mandar de novo, por favor?"
+MENSAGEM_PEDIR_TEXTO = (
+    "Não consegui ouvir esse áudio direito 😕 Pode digitar sua mensagem, por favor?"
+)
+PREFIXO_AUDIO_TRANSCRITO = "[áudio do cliente, transcrito]"
+_AUDIO_SEM_TRANSCRICAO = (
+    "[cliente enviou um áudio, mas não foi possível transcrever; peça que ele digite a mensagem]"
+)
 _ERRO_FERRAMENTA = (
     "Erro interno ao executar a ferramenta. Não invente valores: avise o cliente que vai "
     "confirmar e, se persistir, chame o vendedor."
@@ -101,6 +109,7 @@ class ProcessarConversa:
         hoje: Callable[[], date],
         painel: PublicadorPainel | None = None,
         handoff: CasosHandoff | None = None,
+        transcrever_audio: TranscreverAudio | None = None,
         max_iteracoes: int = 6,
         midia: ArmazenamentoMidia | None = None,
     ) -> None:
@@ -116,6 +125,7 @@ class ProcessarConversa:
         self._hoje = hoje
         self._painel = painel or PublicadorPainelNulo()
         self._handoff = handoff
+        self._transcrever_audio = transcrever_audio
         self._max_iteracoes = max_iteracoes
         self._midia = midia
 
@@ -176,8 +186,12 @@ class _Turno:
         config_preco = await c._config.obter_preco(loja_id)
         sistema = montar_sistema(perfil, config_preco)
 
-        blocos_texto = [BlocoTexto(_texto_da_entrada(e)) for e in entradas]
+        textos, so_falhas_de_audio = await self._textos_das_entradas(entradas)
+        blocos_texto = [BlocoTexto(t) for t in textos]
         usuario = MensagemLLM("user", await anexar_imagens(entradas, blocos_texto, c._midia))
+        if so_falhas_de_audio:
+            await self._pedir_texto(usuario, ate)
+            return
         liberado = self._estado.desconto.liberado
         estado_msg = MensagemLLM(
             "system",
@@ -228,6 +242,60 @@ class _Turno:
         await self._evento("limite_iteracoes", {"max_iteracoes": c._max_iteracoes})
         await self._acrescentar([MensagemLLM("assistant", [BlocoTexto(MENSAGEM_LIMITE)])])
         await self._responder(MENSAGEM_LIMITE)
+
+    async def _textos_das_entradas(self, entradas: list[EntradaConversa]) -> tuple[list[str], bool]:
+        """Texto de cada entrada (audio transcrito aqui) e se TODAS foram audios sem transcricao."""
+        if self._c._transcrever_audio is None:
+            return [_texto_da_entrada(e) for e in entradas], False
+        textos: list[str] = []
+        so_falhas = True
+        for e in entradas:
+            if e.tipo is not TipoMensagem.AUDIO:
+                textos.append(_texto_da_entrada(e))
+                so_falhas = False
+                continue
+            transcrito = await self._transcrever(e)
+            if transcrito is None:
+                textos.append(
+                    f"{_AUDIO_SEM_TRANSCRICAO} {e.texto}" if e.texto else _AUDIO_SEM_TRANSCRICAO
+                )
+                so_falhas = so_falhas and not e.texto
+            else:
+                textos.append(f"{PREFIXO_AUDIO_TRANSCRITO} {transcrito}")
+                if e.texto:
+                    textos[-1] += f" {e.texto}"
+                so_falhas = False
+        return textos, so_falhas
+
+    async def _transcrever(self, entrada: EntradaConversa) -> str | None:
+        """Texto do audio (ja salvo ou transcrito agora e gravado na mensagem); None se falhar."""
+        c = self._c
+        if entrada.transcricao:
+            return entrada.transcricao
+        try:
+            if not entrada.midia_url or c._transcrever_audio is None:
+                raise FalhaTranscricao("audio sem midia")
+            texto = await c._transcrever_audio(entrada.midia_url)
+        except Exception as exc:  # STT/armazenamento nunca derrubam a conversa
+            if isinstance(exc, FalhaTranscricao):
+                log.warning("sem transcricao do audio %s: %s", entrada.id, exc)
+            else:
+                log.exception("erro inesperado transcrevendo o audio %s", entrada.id)
+            await self._evento(
+                "stt_falha", {"mensagem_id": str(entrada.id), "erro": type(exc).__name__}
+            )
+            return None
+        await c._conversas.salvar_transcricao(entrada.id, texto)
+        return texto
+
+    async def _pedir_texto(self, usuario: MensagemLLM, ate: CursorEntrada) -> None:
+        """So havia audio que nao deu para transcrever: o codigo pede que digite (sem LLM)."""
+        await self._c._transcricao.acrescentar(
+            self._conversa.conversa_id,
+            [usuario, MensagemLLM("assistant", [BlocoTexto(MENSAGEM_PEDIR_TEXTO)])],
+            consumido_ate=ate,
+        )
+        await self._responder(MENSAGEM_PEDIR_TEXTO)
 
     async def _acrescentar(self, mensagens: list[MensagemLLM]) -> None:
         await self._c._transcricao.acrescentar(self._conversa.conversa_id, mensagens)
@@ -343,4 +411,11 @@ class _Turno:
             )
 
 
-__all__ = ["MENSAGEM_ESPERA", "MENSAGEM_LIMITE", "CanalNaoConfigurado", "ProcessarConversa"]
+__all__ = [
+    "MENSAGEM_ESPERA",
+    "MENSAGEM_LIMITE",
+    "MENSAGEM_PEDIR_TEXTO",
+    "PREFIXO_AUDIO_TRANSCRITO",
+    "CanalNaoConfigurado",
+    "ProcessarConversa",
+]

@@ -75,3 +75,16 @@ def test_settings_da_evolution(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("EVOLUTION_WEBHOOK_TOKEN", "t")
     s = Settings(_env_file=None)
     assert (s.evolution_api_key, s.evolution_webhook_token) == ("k", "t")
+
+
+def test_settings_de_stt(monkeypatch: pytest.MonkeyPatch) -> None:
+    for nome in ("OPENAI_API_KEY", "STT_MODEL"):
+        monkeypatch.delenv(nome, raising=False)
+    padrao = Settings(_env_file=None)
+    assert padrao.openai_api_key is None
+    assert padrao.stt_model == "gpt-4o-mini-transcribe"
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-x")
+    monkeypatch.setenv("STT_MODEL", "whisper-1")
+    s = Settings(_env_file=None)
+    assert (s.openai_api_key, s.stt_model) == ("sk-x", "whisper-1")

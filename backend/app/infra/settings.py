@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     llm_fallback_model: str = "claude-haiku-5-5"
     llm_effort: str = "low"
     anthropic_api_key: str | None = None
+    openai_api_key: str | None = None
+    """Chave da OpenAI (STT e, depois, TTS). Vazia = audio indisponivel (o agente pede texto)."""
+    stt_model: str = "gpt-4o-mini-transcribe"
     midia_dir: str = "./.midias"
     """Pasta das midias enviadas pelo cliente (relativa ao cwd; ignorada pelo git)."""
     midia_max_bytes: int = 10 * 1024 * 1024

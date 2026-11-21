@@ -41,6 +41,25 @@ describe("MessageBubble", () => {
     expect(audio).toHaveAttribute("src", "http://api/midias/a.webm")
   })
 
+  it("mostra a transcrição abaixo do player de áudio", () => {
+    render(
+      <MessageBubble
+        lado="cliente"
+        tipo="audio"
+        midiaUrl="http://api/midias/a.ogg"
+        transcricao="tem iphone 16 de 128?"
+      />,
+    )
+    expect(screen.getByTestId("transcricao")).toHaveTextContent("Transcrição: tem iphone 16 de 128?")
+  })
+
+  it("não mostra transcrição em mensagem que não é áudio nem quando está vazia", () => {
+    const { rerender } = render(<MessageBubble lado="cliente" tipo="texto" texto="oi" transcricao="x" />)
+    expect(screen.queryByTestId("transcricao")).toBeNull()
+    rerender(<MessageBubble lado="cliente" tipo="audio" midiaUrl="http://api/midias/a.ogg" transcricao={null} />)
+    expect(screen.queryByTestId("transcricao")).toBeNull()
+  })
+
   it("identifica o autor quando informado e sinaliza erro de envio", () => {
     render(
       <MessageBubble lado="atendente" tipo="texto" texto="oi" autor="Atendente" erro="Não enviada" />,

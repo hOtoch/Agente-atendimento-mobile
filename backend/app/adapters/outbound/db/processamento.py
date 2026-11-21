@@ -50,7 +50,12 @@ class RepositorioProcessamentoSql:
         self, conversa_id: UUID, apos: CursorEntrada | None
     ) -> list[EntradaConversa]:
         consulta = select(
-            Mensagem.id, Mensagem.criado_em, Mensagem.tipo, Mensagem.conteudo, Mensagem.midia_url
+            Mensagem.id,
+            Mensagem.criado_em,
+            Mensagem.tipo,
+            Mensagem.conteudo,
+            Mensagem.midia_url,
+            Mensagem.transcricao,
         ).where(Mensagem.conversa_id == conversa_id, Mensagem.direcao == "entrada")
         if apos is not None:
             consulta = consulta.where(
@@ -61,11 +66,17 @@ class RepositorioProcessamentoSql:
         ).all()
         # termina a transacao de leitura: o proximo SELECT enxerga o que outros gravarem
         await self._session.commit()
-        return [EntradaConversa(i, ts, TipoMensagem(t), c, m) for i, ts, t, c, m in linhas]
+        return [EntradaConversa(i, ts, TipoMensagem(t), c, m, tr) for i, ts, t, c, m, tr in linhas]
 
     async def atualizar_etapa(self, lead_id: UUID, etapa: Etapa) -> None:
         await self._session.execute(
             update(Lead).where(Lead.id == lead_id).values(etapa=etapa.value)
+        )
+        await self._session.commit()
+
+    async def salvar_transcricao(self, mensagem_id: UUID, texto: str) -> None:
+        await self._session.execute(
+            update(Mensagem).where(Mensagem.id == mensagem_id).values(transcricao=texto)
         )
         await self._session.commit()
 

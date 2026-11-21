@@ -136,6 +136,8 @@ class Mensagem(Base):
     tipo: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'texto'"))
     conteudo: Mapped[str | None] = mapped_column(Text)
     midia_url: Mapped[str | None] = mapped_column(Text)
+    transcricao: Mapped[str | None] = mapped_column(Text)
+    """Texto do audio do cliente (STT); `conteudo` continua sendo o que o cliente digitou."""
     id_externo: Mapped[str | None] = mapped_column(String(255))
     criado_em: Mapped[datetime] = _agora()
 

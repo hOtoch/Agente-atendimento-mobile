@@ -51,6 +51,7 @@ export function mensagemDeEvento(evento: EventoMensagemNova, sequencia: number):
     tipo: evento.tipo,
     texto: evento.texto,
     midia_url: evento.midia_url,
+    transcricao: null,
     criada_em: evento.em,
   }
 }

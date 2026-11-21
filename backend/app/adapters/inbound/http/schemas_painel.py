@@ -106,6 +106,7 @@ class MensagemSchema(BaseModel):
     tipo: Literal["texto", "audio", "imagem"]
     texto: str | None
     midia_url: str | None
+    transcricao: str | None
     criada_em: datetime
 
     @classmethod
@@ -118,6 +119,7 @@ class MensagemSchema(BaseModel):
             tipo=m.tipo.value,
             texto=m.texto,
             midia_url=m.midia_url,
+            transcricao=m.transcricao,
             criada_em=m.criada_em,
         )
 

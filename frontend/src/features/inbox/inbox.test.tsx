@@ -163,6 +163,7 @@ describe("conversa aberta", () => {
     await abrirConversa()
     expect(screen.getByText("Olá! Qual capacidade você procura?")).toBeInTheDocument()
     expect(document.querySelector("audio")).toHaveAttribute("src", "http://api.local/midias/a.ogg")
+    expect(screen.getByTestId("transcricao")).toHaveTextContent("tem iphone 13 de 128 gigas?")
     const baloes = screen.getAllByTestId("balao")
     // cliente à esquerda, IA (lado atendente) à direita
     expect(baloes[0]).toHaveAttribute("data-alinhamento", "esquerda")

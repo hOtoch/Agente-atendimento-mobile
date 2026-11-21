@@ -35,6 +35,8 @@ class EntradaConversa:
     tipo: TipoMensagem
     texto: str | None
     midia_url: str | None
+    transcricao: str | None = None
+    """Texto do audio, se ja foi transcrito (evita pagar o STT duas vezes)."""
 
     @property
     def cursor(self) -> CursorEntrada:
@@ -51,6 +53,10 @@ class RepositorioProcessamento(Protocol):
         ...
 
     async def atualizar_etapa(self, lead_id: UUID, etapa: Etapa) -> None: ...
+
+    async def salvar_transcricao(self, mensagem_id: UUID, texto: str) -> None:
+        """Guarda na mensagem de audio o texto transcrito (o painel mostra)."""
+        ...
 
     async def registrar_saida(self, conversa_id: UUID, msg: MensagemSaida) -> None: ...
 
@@ -105,6 +111,7 @@ class ConversasEmMemoria:
         self._conversas: dict[UUID, _Conversa] = {}
         self._relogio = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
         self.saidas: list[tuple[UUID, MensagemSaida]] = []
+        self.transcricoes: dict[UUID, str] = {}
 
     def criar_conversa(
         self,
@@ -128,9 +135,12 @@ class ConversasEmMemoria:
         *,
         tipo: str = "texto",
         midia_url: str | None = None,
+        transcricao: str | None = None,
     ) -> EntradaConversa:
         self._relogio += timedelta(seconds=1)
-        entrada = EntradaConversa(uuid4(), self._relogio, TipoMensagem(tipo), texto, midia_url)
+        entrada = EntradaConversa(
+            uuid4(), self._relogio, TipoMensagem(tipo), texto, midia_url, transcricao
+        )
         self._conversas[conversa_id].entradas.append(entrada)
         return entrada
 
@@ -160,6 +170,9 @@ class ConversasEmMemoria:
 
     async def atualizar_etapa(self, lead_id: UUID, etapa: Etapa) -> None:
         self._leads[lead_id].etapa = etapa
+
+    async def salvar_transcricao(self, mensagem_id: UUID, texto: str) -> None:
+        self.transcricoes[mensagem_id] = texto
 
     async def registrar_saida(self, conversa_id: UUID, msg: MensagemSaida) -> None:
         self.saidas.append((conversa_id, msg))
