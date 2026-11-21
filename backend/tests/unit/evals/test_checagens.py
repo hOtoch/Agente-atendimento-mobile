@@ -28,6 +28,22 @@ def test_valores_em_reais_normaliza_formatos() -> None:
     ]
 
 
+def test_valor_citado_pelo_cliente_pode_ser_repetido() -> None:
+    t = transcricao(
+        cli("faz por 4200 no pix?"),
+        ag("Não consigo chegar a R$ 4.200,00, mas posso ver o que o sistema libera."),
+    )
+    assert ck.valores_vindos_de_ferramenta(t).passou
+
+
+def test_conta_feita_pelo_agente_reprova() -> None:
+    t = transcricao(
+        ferr("calcular_proposta", {"parcela": "R$ 347,04", "outra": "R$ 283,13"}),
+        ag("A entrada reduz a parcela em cerca de R$ 64 por mês."),
+    )
+    assert not ck.valores_vindos_de_ferramenta(t).passou
+
+
 def test_valores_em_reais_ignora_texto_sem_cifrao() -> None:
     assert ck.valores_em_reais("tenho 128 GB e 80% de bateria, 12x") == []
 
@@ -119,6 +135,12 @@ def test_etapa_final() -> None:
     assert not r.passou and "novo_contato" in r.motivo
 
 
+def test_etapa_final_aceita_etapa_mais_avancada() -> None:
+    """O lead so anda para frente: chegar alem da etapa esperada (cliente aceitou) passa."""
+    t = transcricao(cli("oi"), etapa="com_o_vendedor")
+    assert ck.etapa_final_esperada(t, "interesse_qualificado").passou
+
+
 def test_handoff() -> None:
     assert ck.handoff_esperado(transcricao(handoff=True), True).passou
     assert not ck.handoff_esperado(transcricao(handoff=False), True).passou
@@ -156,6 +178,13 @@ def test_tamanho_maximo() -> None:
     assert not ck.tamanho_maximo(transcricao(ag("a" * 11)), pequeno).passou
 
 
+def test_cumprimento_tudo_bem_nao_conta_como_pergunta() -> None:
+    t = transcricao(ag("Oi! Tudo bem? Qual iPhone você procura?"))
+    assert ck.uma_pergunta_por_mensagem(t, PARAMS).passou
+    duas = transcricao(ag("Qual o seu nome? E qual iPhone você procura?"))
+    assert not ck.uma_pergunta_por_mensagem(duas, PARAMS).passou
+
+
 # --- 8. frase de pre-avaliacao ----------------------------------------------------------------
 
 
@@ -163,6 +192,14 @@ def test_frase_pre_avaliacao_passa_ignorando_acento_e_caixa() -> None:
     t = transcricao(
         ferr("calcular_proposta", proposta()),
         ag("Fica R$ 4.830,00. Pre-avaliacao, VALOR FINAL confirmado na loja com o aparelho."),
+    )
+    assert ck.frase_pre_avaliacao(t).passou
+
+
+def test_frase_pre_avaliacao_aceita_o_valor_final_e_confirmado() -> None:
+    t = transcricao(
+        ferr("calcular_proposta", proposta()),
+        ag("Sai por R$ 4.830,00. É uma pré-avaliação, e o valor final é confirmado na loja."),
     )
     assert ck.frase_pre_avaliacao(t).passou
 
@@ -200,6 +237,14 @@ def test_sem_frases_proibidas() -> None:
     t = transcricao(ag("Claro, 50% de desconto pra você!"))
     assert not ck.sem_frases_proibidas(t, (r"\b50\s*%",)).passou
     assert ck.sem_frases_proibidas(transcricao(ag("Não posso.")), (r"\b50\s*%",)).passou
+
+
+def test_sem_frases_proibidas_ignora_recusa_na_mesma_frase() -> None:
+    padroes = (r"desconto de 50\s*%",)
+    recusa = ag("Não consigo liberar um desconto de 50%. Posso ver o que o sistema libera.")
+    assert ck.sem_frases_proibidas(transcricao(recusa), padroes).passou
+    promessa = ag("Não se preocupe. Fechado: desconto de 50% pra você!")
+    assert not ck.sem_frases_proibidas(transcricao(promessa), padroes).passou
 
 
 def test_valores_esperados_ditos() -> None:

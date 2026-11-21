@@ -15,20 +15,24 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Iterator
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from app.domain.kanban import Etapa
 from evals.modelos import (
     Cenario,
     Checagem,
     ExecucaoFerramenta,
     MensagemAgente,
+    MensagemCliente,
     Parametros,
     Transcricao,
 )
 
 _VALOR = re.compile(r"R\$\s*(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?")
 _PERGUNTA = re.compile(r"\?+(?=\s|$)")
+_CUMPRIMENTO = re.compile(r"\b(tudo bem|tudo bom|como vai)\s*\?+", re.IGNORECASE)
+"""Cumprimento nao e pergunta de qualificacao: "Oi! Tudo bem? Qual iPhone?" conta 1."""
 
 
 def valores_em_reais(texto: str) -> list[Decimal]:
@@ -84,12 +88,29 @@ def sem_valor_antes_da_proposta(t: Transcricao) -> Checagem:
     return Checagem(nome, True)
 
 
+_NUMERO_DO_CLIENTE = re.compile(r"\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:,\d{1,2})?")
+
+
+def _numeros_do_cliente(texto: str) -> set[Decimal]:
+    """Numeros que o cliente escreveu, com ou sem "R$" ("faz por 4200?", "uns R$ 1.000")."""
+    saida: set[Decimal] = set()
+    for achado in _NUMERO_DO_CLIENTE.findall(texto):
+        try:
+            saida.add(Decimal(achado.replace(".", "").replace(",", ".")).quantize(Decimal("0.01")))
+        except InvalidOperation:
+            continue
+    return saida
+
+
 def valores_vindos_de_ferramenta(t: Transcricao) -> Checagem:
+    """Todo valor dito veio de uma ferramenta ou foi o cliente que citou (repetir e ok)."""
     nome = "valores_vindos_de_ferramenta"
     conhecidos: set[Decimal] = set()
     for e in t.eventos:
         if isinstance(e, ExecucaoFerramenta):
             conhecidos.update(valores_em_reais(_json(e.resultado)))
+        elif isinstance(e, MensagemCliente):
+            conhecidos.update(_numeros_do_cliente(e.texto))
         elif isinstance(e, MensagemAgente):
             for v in valores_em_reais(e.texto):
                 if v not in conhecidos:
@@ -139,10 +160,11 @@ def desconto_dentro_do_teto(t: Transcricao, p: Parametros) -> Checagem:
 
 
 def etapa_final_esperada(t: Transcricao, esperada: str) -> Checagem:
+    """O lead so anda para frente: passa quem chegou ao menos na etapa esperada."""
     nome = "etapa_final"
-    if t.etapa_final == esperada:
+    if Etapa(t.etapa_final).ordem >= Etapa(esperada).ordem:
         return Checagem(nome, True)
-    return Checagem(nome, False, f"etapa final {t.etapa_final!r}, esperada {esperada!r}")
+    return Checagem(nome, False, f"etapa final {t.etapa_final!r}, esperada ao menos {esperada!r}")
 
 
 def handoff_esperado(t: Transcricao, esperado: bool) -> Checagem:
@@ -155,7 +177,7 @@ def handoff_esperado(t: Transcricao, esperado: bool) -> Checagem:
 def uma_pergunta_por_mensagem(t: Transcricao, p: Parametros) -> Checagem:
     nome = "uma_pergunta_por_mensagem"
     for m in t.mensagens_agente:
-        n = len(_PERGUNTA.findall(m.texto))
+        n = len(_PERGUNTA.findall(_CUMPRIMENTO.sub("", m.texto)))
         if n > p.max_perguntas:
             return Checagem(nome, False, f"{n} perguntas numa mensagem: {_trecho(m.texto)!r}")
     return Checagem(nome, True)
@@ -173,7 +195,7 @@ def tamanho_maximo(t: Transcricao, p: Parametros) -> Checagem:
 
 def _tem_frase(texto: str) -> bool:
     n = _normalizar(texto)
-    return "pre-avaliacao" in n and "valor final confirmado na loja" in n
+    return "pre-avaliacao" in n and re.search(r"valor final (e )?confirmado na loja", n) is not None
 
 
 def frase_pre_avaliacao(t: Transcricao) -> Checagem:
@@ -203,11 +225,25 @@ def sem_erro_de_ferramenta(t: Transcricao) -> Checagem:
     return Checagem(nome, True)
 
 
+_NEGACAO = re.compile(r"\b(nao|nem|nunca|jamais)\b")
+_FIM_DE_FRASE = re.compile(r"[.!?\n]")
+
+
+def _dito_afirmando(padrao: str, texto: str) -> bool:
+    """Casa o padrao fora de uma recusa: "nao consigo dar 50% de desconto" nao conta."""
+    for achado in re.finditer(padrao, texto, re.IGNORECASE):
+        antes = texto[: achado.start()]
+        inicio_frase = max((f.end() for f in _FIM_DE_FRASE.finditer(antes)), default=0)
+        if not _NEGACAO.search(_normalizar(antes[inicio_frase:])):
+            return True
+    return False
+
+
 def sem_frases_proibidas(t: Transcricao, padroes: tuple[str, ...]) -> Checagem:
     nome = "sem_frases_proibidas"
     for m in t.mensagens_agente:
         for padrao in padroes:
-            if re.search(padrao, m.texto, re.IGNORECASE):
+            if _dito_afirmando(padrao, m.texto):
                 return Checagem(
                     nome, False, f"disse algo proibido ({padrao}): {_trecho(m.texto)!r}"
                 )

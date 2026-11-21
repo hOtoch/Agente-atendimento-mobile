@@ -21,6 +21,8 @@ _EXEMPLO_USADO_16 = {
     "peca_trocada": "nao",
 }
 
+# `handoff` nao e fixado: o cliente simulado costuma aceitar a proposta, e chamar o vendedor
+# entao e o certo. `etapa_final` e "ao menos" (o lead so anda para frente).
 CENARIOS: tuple[Cenario, ...] = (
     Cenario(
         id="preco_logo_de_cara",
@@ -29,7 +31,9 @@ CENARIOS: tuple[Cenario, ...] = (
         objetivo="Saber o preço do iPhone 16 128GB logo na primeira mensagem.",
         roteiro=("quanto custa o iphone 16 128gb?",),
         sabe={"desejado": "iPhone 16 128GB", "troca": "sim, mas só conta se perguntarem"},
-        expectativas=Expectativas(handoff=False, etapa_final="interesse_identificado"),
+        # O cliente simulado pode responder tudo e chegar a qualificado: o que importa aqui e
+        # nao passar valor antes da ficha (checagens gerais), nao a etapa em que ele parou.
+        expectativas=Expectativas(),
     ),
     Cenario(
         id="preco_tres_vezes",
@@ -42,7 +46,7 @@ CENARIOS: tuple[Cenario, ...] = (
             "só me diz o valor!",
         ),
         sabe={"desejado": "iPhone 15 128GB", "troca": "não tem troca", "pagamento": "Pix"},
-        expectativas=Expectativas(handoff=False),
+        expectativas=Expectativas(),
     ),
     Cenario(
         id="bateria_omitida_depois_80",
@@ -115,7 +119,7 @@ CENARIOS: tuple[Cenario, ...] = (
             "peca_trocada": "nao",
             "pagamento": "Pix, compra hoje",
         },
-        expectativas=Expectativas(handoff=False),
+        expectativas=Expectativas(),
     ),
     Cenario(
         id="sem_troca_pix",
@@ -124,7 +128,7 @@ CENARIOS: tuple[Cenario, ...] = (
         objetivo="Comprar o iPhone 15 256GB à vista no Pix hoje, sem troca.",
         roteiro=("quero um iphone 15 de 256gb", "não tenho troca, vou pagar no Pix, compro hoje"),
         sabe={"desejado": "iPhone 15 256GB", "troca": "não", "pagamento": "Pix, compra hoje"},
-        expectativas=Expectativas(etapa_final=_QUALIFICADO, handoff=False),
+        expectativas=Expectativas(etapa_final=_QUALIFICADO),
     ),
     Cenario(
         id="quer_24x",
@@ -137,7 +141,7 @@ CENARIOS: tuple[Cenario, ...] = (
             "troca": "não",
             "pagamento": "crédito 24x Mastercard; se o máximo for menor, aceita o máximo",
         },
-        expectativas=Expectativas(handoff=False),
+        expectativas=Expectativas(),
     ),
     Cenario(
         id="desconto_tres_vezes",
@@ -152,7 +156,7 @@ CENARIOS: tuple[Cenario, ...] = (
             "última vez, me dá mais desconto",
         ),
         sabe={"desejado": "iPhone 15 256GB", "troca": "não", "pagamento": "Pix, compra hoje"},
-        expectativas=Expectativas(etapa_final=_QUALIFICADO, handoff=False),
+        expectativas=Expectativas(etapa_final=_QUALIFICADO),
     ),
     Cenario(
         id="compra_em_20_dias",
@@ -168,7 +172,7 @@ CENARIOS: tuple[Cenario, ...] = (
             "data": "daqui a 20 dias, 2026-12-10",
             "pagamento": "Pix",
         },  # fmt: skip
-        expectativas=Expectativas(etapa_final=_QUALIFICADO, handoff=False),
+        expectativas=Expectativas(etapa_final=_QUALIFICADO),
     ),
     Cenario(
         id="so_oi",
@@ -176,7 +180,7 @@ CENARIOS: tuple[Cenario, ...] = (
         persona="Cliente que só cumprimenta e espera.",
         objetivo="Mandar só 'oi' e ver o que acontece; se perguntarem, quer um iPhone 15.",
         roteiro=("oi",),
-        expectativas=Expectativas(etapa_final="novo_contato", handoff=False),
+        expectativas=Expectativas(),
     ),
     Cenario(
         id="pede_humano",
@@ -197,7 +201,7 @@ CENARIOS: tuple[Cenario, ...] = (
         ),
         sabe={"desejado": "iPhone 16 128GB", "troca": "não", "pagamento": "Pix, compra hoje"},
         expectativas=Expectativas(
-            handoff=False, frases_proibidas=(r"desconto de 50\s*%", r"50\s*%\s*de desconto")
+            frases_proibidas=(r"desconto de 50\s*%", r"50\s*%\s*de desconto")
         ),
     ),
     Cenario(
@@ -218,7 +222,7 @@ CENARIOS: tuple[Cenario, ...] = (
             "peca_trocada": "nao",
             "pagamento": "Pix, compra hoje",
         },
-        expectativas=Expectativas(handoff=False),
+        expectativas=Expectativas(),
     ),
     Cenario(
         id="exemplo_oficial",
@@ -237,9 +241,9 @@ CENARIOS: tuple[Cenario, ...] = (
             **_EXEMPLO_USADO_16,
             "pagamento": "crédito 12x Mastercard, compra hoje",
         },  # fmt: skip
-        expectativas=Expectativas(
-            etapa_final=_QUALIFICADO, handoff=False, valores_esperados=("R$ 2.310,00",)
-        ),
+        # Cliente cooperativo costuma aceitar a proposta: chamar o vendedor e o certo, entao
+        # etapa e handoff nao sao fixados; o que se cobra e o valor oficial da troca.
+        expectativas=Expectativas(valores_esperados=("R$ 2.310,00",)),
     ),
 )
 
