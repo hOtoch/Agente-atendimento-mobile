@@ -108,7 +108,7 @@ Não altere código. Responda com o veredito e o resumo.
 | Subir infra local | `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/dev.sh up"` (também: `down`, `logs [servico]`, `ps`, `reset`) |
 | Smoke da infra | `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/smoke.sh"` |
 | Migrations | `cd backend && uv run alembic upgrade head` (`downgrade base`, `revision --autogenerate -m "..."`) |
-| Subir API | `cd backend && uv run uvicorn app.main:app --reload` |
+| Subir API | `cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0` (0.0.0.0 para a Evolution, no Docker, alcançar o webhook) |
 | Subir worker (agente) | `cd backend && uv run arq app.infra.worker.WorkerSettings` |
 | Conversar pelo terminal | `cd backend && uv run python scripts/conversar.py --fake` (grátis); sem `--fake` usa a LLM real (pago, exige `ANTHROPIC_API_KEY`) |
 | Eval (fake, CI) | `cd backend && uv run python -m evals.rodar --modo fake` |
