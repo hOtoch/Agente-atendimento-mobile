@@ -198,6 +198,9 @@ class PerfilLojaRow(Base):
     whatsapp_contato: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default=text("''")
     )
+    responder_em_audio: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
 
 
 class RegrasPrecoRow(Base):

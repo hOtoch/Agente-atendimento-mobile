@@ -31,6 +31,7 @@ from app.application.agente.prompt import mensagem_estado, montar_sistema
 from app.application.agente.repositorio import RepositorioAtendimento
 from app.application.agente.transcricao import CursorEntrada, RepositorioTranscricao
 from app.application.audio_entrada import FalhaTranscricao, TranscreverAudio
+from app.application.audio_saida import ResponderEmAudio, deve_responder_em_audio
 from app.application.canal import Canal, CanalPort, MensagemSaida, TipoMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.modelos import PerfilLoja
@@ -112,6 +113,7 @@ class ProcessarConversa:
         transcrever_audio: TranscreverAudio | None = None,
         max_iteracoes: int = 6,
         midia: ArmazenamentoMidia | None = None,
+        audio_saida: ResponderEmAudio | None = None,
     ) -> None:
         self._conversas = conversas
         self._transcricao = transcricao
@@ -128,6 +130,7 @@ class ProcessarConversa:
         self._transcrever_audio = transcrever_audio
         self._max_iteracoes = max_iteracoes
         self._midia = midia
+        self._audio_saida = audio_saida
 
     async def __call__(self, conversa_id: UUID) -> None:
         conversa = await self._conversas.obter_conversa(conversa_id)
@@ -156,6 +159,8 @@ class _Turno:
         self._uso = UsoTokens.vazio()
         self._chamadas_llm = 0
         self._historico: list[MensagemLLM] = []
+        self._ultima_foi_audio = False
+        self._loja_quer_audio = True
 
     async def _evento(self, tipo: str, payload: dict[str, Any]) -> None:
         await self._c._eventos.registrar(
@@ -163,6 +168,7 @@ class _Turno:
         )
 
     async def rodar(self, entradas: list[EntradaConversa], ate: CursorEntrada) -> None:
+        self._ultima_foi_audio = entradas[-1].tipo is TipoMensagem.AUDIO
         await self._conversar(entradas, ate)
         await self._passar_ao_vendedor()
 
@@ -183,6 +189,7 @@ class _Turno:
         loja_id, lead_id = conversa.loja_id, conversa.lead_id
         self._estado = await c._atendimento.obter(loja_id, lead_id)
         perfil = await c._config.obter_perfil(loja_id) or _PERFIL_PADRAO
+        self._loja_quer_audio = perfil.responder_em_audio
         config_preco = await c._config.obter_preco(loja_id)
         sistema = montar_sistema(perfil, config_preco)
 
@@ -373,13 +380,51 @@ class _Turno:
         canal = c._canais.get(conversa.canal)
         if canal is None:
             raise CanalNaoConfigurado(conversa.canal.value)
+        await self._enviar(canal, TipoMensagem.TEXTO, texto, None)
+        await self._enviar_audio(canal, texto)
+        if self._chamadas_llm:
+            await self._evento(
+                "llm_uso",
+                {
+                    "modelo": self._uso.modelo,
+                    "entrada": self._uso.entrada,
+                    "saida": self._uso.saida,
+                    "cache_leitura": self._uso.cache_leitura,
+                    "cache_escrita": self._uso.cache_escrita,
+                    "chamadas": self._chamadas_llm,
+                },
+            )
+
+    async def _enviar_audio(self, canal: CanalPort, texto: str) -> None:
+        """Nota de voz adicional ao texto (que ja saiu). Qualquer falha deixa so o texto."""
+        gerar = self._c._audio_saida
+        if gerar is None or not deve_responder_em_audio(
+            ultima_entrada_foi_audio=self._ultima_foi_audio,
+            loja_ligada=self._loja_quer_audio,
+            tts_disponivel=True,  # `gerar` existe: o TTS esta configurado
+        ):
+            return
+        midia_url = await gerar(texto)
+        if midia_url is None:
+            return
+        try:
+            await self._enviar(canal, TipoMensagem.AUDIO, None, midia_url)
+        except Exception:
+            log.exception(
+                "falha ao enviar a resposta em audio da conversa %s", self._conversa.conversa_id
+            )
+
+    async def _enviar(
+        self, canal: CanalPort, tipo: TipoMensagem, texto: str | None, midia_url: str | None
+    ) -> None:
+        c, conversa = self._c, self._conversa
         saida = MensagemSaida(
             loja_id=conversa.loja_id,
             canal=conversa.canal,
             destinatario=conversa.contato,
-            tipo=TipoMensagem.TEXTO,
+            tipo=tipo,
             texto=texto,
-            midia_url=None,
+            midia_url=midia_url,
         )
         await canal.enviar(saida)
         await c._conversas.registrar_saida(conversa.conversa_id, saida)
@@ -397,18 +442,6 @@ class _Turno:
                 em=datetime.now(UTC),
             ),
         )
-        if self._chamadas_llm:
-            await self._evento(
-                "llm_uso",
-                {
-                    "modelo": self._uso.modelo,
-                    "entrada": self._uso.entrada,
-                    "saida": self._uso.saida,
-                    "cache_leitura": self._uso.cache_leitura,
-                    "cache_escrita": self._uso.cache_escrita,
-                    "chamadas": self._chamadas_llm,
-                },
-            )
 
 
 __all__ = [

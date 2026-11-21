@@ -91,7 +91,8 @@ async def test_perfil_ida_e_volta_e_upsert(session: AsyncSession) -> None:
     )
     await repo.salvar_perfil(loja, perfil)
     assert await repo.obter_perfil(loja) == perfil
-    novo = PerfilLoja("Loja 2", "", "", {}, "")
+    assert perfil.responder_em_audio is True
+    novo = PerfilLoja("Loja 2", "", "", {}, "", responder_em_audio=False)
     await repo.salvar_perfil(loja, novo)
     session.expire_all()
     assert await repo.obter_perfil(loja) == novo

@@ -31,6 +31,7 @@ class PerfilSchema(BaseModel):
     endereco: str = ""
     horarios: dict[str, str] = Field(default_factory=dict)
     whatsapp_contato: str = ""
+    responder_em_audio: bool = True
 
 
 class PrecoSchema(BaseModel):

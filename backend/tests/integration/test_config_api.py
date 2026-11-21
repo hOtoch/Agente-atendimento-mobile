@@ -93,10 +93,18 @@ async def test_perfil_put_e_get(client: httpx.AsyncClient) -> None:
         "endereco": "Rua A, 10",
         "horarios": {"seg-sex": "09:00-18:00"},
         "whatsapp_contato": "5511999990000",
+        "responder_em_audio": False,
     }
     r = await client.put(f"/lojas/{loja}/config/perfil", json=corpo)
     assert r.status_code == 200
     assert (await client.get(f"/lojas/{loja}/config/perfil")).json() == corpo
+
+
+async def test_perfil_sem_responder_em_audio_assume_ligado(client: httpx.AsyncClient) -> None:
+    loja = await criar_loja(client)
+    r = await client.put(f"/lojas/{loja}/config/perfil", json={"nome_exibicao": "Loja"})
+    assert r.status_code == 200
+    assert r.json()["responder_em_audio"] is True
 
 
 async def test_perfil_put_invalido_422(client: httpx.AsyncClient) -> None:

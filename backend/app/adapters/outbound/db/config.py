@@ -154,6 +154,7 @@ class RepositorioConfigLojaSql:
             endereco=r.endereco,
             horarios={str(k): str(v) for k, v in r.horarios.items()},
             whatsapp_contato=r.whatsapp_contato,
+            responder_em_audio=r.responder_em_audio,
         )
 
     async def salvar_perfil(self, loja_id: uuid.UUID, perfil: PerfilLoja) -> None:
@@ -166,6 +167,7 @@ class RepositorioConfigLojaSql:
         r.endereco = perfil.endereco
         r.horarios = dict(perfil.horarios)
         r.whatsapp_contato = perfil.whatsapp_contato
+        r.responder_em_audio = perfil.responder_em_audio
         await self._s.flush()
 
     async def obter_config_preco(self, loja_id: uuid.UUID) -> ConfigPreco | None:

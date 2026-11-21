@@ -1338,6 +1338,11 @@
             "title": "Nome Exibicao",
             "type": "string"
           },
+          "responder_em_audio": {
+            "default": true,
+            "title": "Responder Em Audio",
+            "type": "boolean"
+          },
           "tom_de_voz": {
             "default": "",
             "title": "Tom De Voz",
