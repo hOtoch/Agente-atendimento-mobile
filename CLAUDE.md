@@ -113,6 +113,8 @@ Não altere código. Responda com o veredito e o resumo.
 | Conversar pelo terminal | `cd backend && uv run python scripts/conversar.py --fake` (grátis); sem `--fake` usa a LLM real (pago, exige `ANTHROPIC_API_KEY`) |
 | Eval (fake, CI) | `cd backend && uv run python -m evals.rodar --modo fake` |
 | Eval (real, pago) | `cd backend && uv run python -m evals.rodar --modo real --modelo claude-sonnet-5-5` mostra a estimativa; só roda com `--confirmo-custo` **e OK do usuário** |
+| Custo por conversa | `cd backend && uv run python scripts/custos.py --relatorios evals/relatorios/2026-11-21-real-claude-*.json --saida ../docs/custos.md` (ou `--banco` para as conversas reais) |
+| Teste de carga (k6, sem custo) | `bash infra/k6/rodar_carga.sh` (pilha isolada; `WORKERS=2`, `RATE_POR_MIN`, `DURACAO_S`; ver `infra/k6/README.md`) |
 | Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo) |
 | Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
