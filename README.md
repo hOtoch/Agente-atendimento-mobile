@@ -15,7 +15,7 @@ Uma IA que atende leads de lojas de celular (foco em iPhone, com troca do usado)
 - **Áudio**: entende áudio recebido (STT) e responde em nota de voz (TTS), opcional por loja ([docs/audio.md](docs/audio.md)).
 - **Follow-up automático** para o lead que parou de responder (padrão desligado; configurável por loja).
 - **Onboarding** de loja no painel: 8 passos com importação das planilhas modelo.
-- **Qualidade**: 1.767 testes automatizados, eval do agente com LLM real, CI com lint, tipos e verificação de camadas.
+- **Qualidade**: 1.768 testes automatizados, eval do agente com LLM real, CI com lint, tipos e verificação de camadas.
 
 O que **não** foi validado: conversa ponta a ponta com um celular pareado de verdade (formato real dos webhooks, mídia, entrega) e Instagram na Graph API. Ver [Riscos e pendências](#riscos-conhecidos-e-pendências).
 
@@ -141,7 +141,7 @@ Com Haiku, o áudio pesa mais que o LLM; desligar o TTS (opcional por loja) é a
 
 ## Qualidade
 
-- **Testes** (rodados para este README): backend **1.453** (1.289 unitários + 164 de integração com Postgres), ERP simulado **35**, frontend **279**, eval fake **6/6**. Total **1.767** (sem contar o eval).
+- **Testes** (rodados para este README): backend **1.454** (1.290 unitários + 164 de integração com Postgres), ERP simulado **35**, frontend **279**, eval fake **6/6**. Total **1.768** (sem contar o eval).
 - **Eval do agente** (`backend/evals/`): 15 cenários de conversa (preço logo de cara, cliente que mente sobre a tela, prompt injection, troca com defeito, pedir desconto três vezes contra o teto, etc.) mais controle negativo (cenário que viola uma regra de propósito e **precisa** ser reprovado, para provar que a checagem funciona). 11 checagens automáticas: sem valor antes da proposta, valores só vindos de ferramenta, desconto dentro do teto, etapa final, handoff, uma pergunta por mensagem, tamanho máximo, frase de pré-avaliação, sem erro de ferramenta, sem frases proibidas, valores esperados ditos.
 - **Modo fake** (grátis; valida o harness e as checagens, coberto pelos testes do CI); **modo real** só com `--confirmo-custo` (imprime a estimativa antes).
 - **CI** (GitHub Actions): ruff, ruff format, mypy, import-linter, pytest com integração obrigatória, ESLint, typecheck, testes e build do frontend, testes do ERP simulado e validação do docker-compose.

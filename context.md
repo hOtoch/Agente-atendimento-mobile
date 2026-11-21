@@ -422,7 +422,7 @@ _Atualizado ao final de cada milestone._
   - Carga (#41): k6 contra o webhook da Evolution numa pilha isolada com LLM simulado; 10× (400 msg/min) sem perda/duplicação; 1 worker enfileira (espera até ~80 s), 2 workers aguentam; `docs/black-friday.md`.
   - Custos (#42): `backend/scripts/custos.py` (relatórios do eval ou eventos `llm_uso` do banco) e `docs/custos.md` com 1 mil/10 mil leads.
   - README (#43) seguido do zero numa worktree limpa; roteiro de demo e checklist com planos B/C (#44) em `docs/roteiro-demo.md`.
-  - Testes: backend 1453, frontend 279, erp-mock 35, eval fake 6/6.
+  - Testes: backend 1454, frontend 279, erp-mock 35, eval fake 6/6.
   - Pontos de atenção:
     - `.env.example` segue com `LLM_MODEL=claude-sonnet-5-5`; o eval recomenda Haiku 5.5 (decisão do dono antes da apresentação).
     - Sonnet só teve 3 cenários no eval real; o eval completo dele custa ~US$ 1,2.
@@ -440,7 +440,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1453 testes) e `cd ../frontend && npm ci && npm test -- --run` (279 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1454 testes) e `cd ../frontend && npm ci && npm test -- --run` (279 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
 8. Todos os milestones (M0–M7) estão concluídos. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
