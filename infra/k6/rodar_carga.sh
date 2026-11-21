@@ -53,12 +53,16 @@ limpar() {
   psql_admin "DROP DATABASE IF EXISTS \"${BANCO}\" WITH (FORCE)" >/dev/null 2>&1
   echo "limpeza: processos encerrados, banco ${BANCO} e DB ${REDIS_DB} do Redis apagados"
 }
-trap limpar EXIT
-
+# Guardas ANTES do trap: a limpeza faz flushdb, entao nunca pode rodar num DB que ja tinha dados.
+if [ "$REDIS_DB" = "0" ]; then
+  echo "REDIS_DB=0 e o Redis de dev; escolha outro com REDIS_DB=<n>" >&2
+  exit 2
+fi
 if [ "$(redis_cli dbsize)" != "0" ]; then
   echo "DB ${REDIS_DB} do Redis nao esta vazio; escolha outro com REDIS_DB=<n>" >&2
   exit 2
 fi
+trap limpar EXIT
 
 # Nada de custo: sem chaves reais no ambiente dos processos de teste.
 unset ANTHROPIC_API_KEY OPENAI_API_KEY

@@ -225,16 +225,24 @@ def sem_erro_de_ferramenta(t: Transcricao) -> Checagem:
     return Checagem(nome, True)
 
 
-_NEGACAO = re.compile(r"\b(nao|nem|nunca|jamais)\b")
+_NEGACAO = re.compile(
+    r"\b(nao|nem|nunca|jamais)\s+(?:\w+\s+){0,2}?"
+    r"(consigo|conseguimos|posso|podemos|da|tenho como|temos como|e possivel|libero|liberar|"
+    r"faco|fazemos|vou|vamos|rola)\b"
+)
+"""Recusa: negacao seguida de um verbo de capacidade ("nao consigo", "nao tenho como")."""
 _FIM_DE_FRASE = re.compile(r"[.!?\n]")
 
 
 def _dito_afirmando(padrao: str, texto: str) -> bool:
-    """Casa o padrao fora de uma recusa: "nao consigo dar 50% de desconto" nao conta."""
+    """Casa o padrao fora de uma recusa na mesma frase ("nao consigo dar 50% de desconto",
+    "50% de desconto eu nao consigo"); "nao se preocupe, desconto de 50%" conta."""
     for achado in re.finditer(padrao, texto, re.IGNORECASE):
         antes = texto[: achado.start()]
         inicio_frase = max((f.end() for f in _FIM_DE_FRASE.finditer(antes)), default=0)
-        if not _NEGACAO.search(_normalizar(antes[inicio_frase:])):
+        fim = _FIM_DE_FRASE.search(texto, achado.end())
+        frase = texto[inicio_frase : fim.start() if fim else len(texto)]
+        if not _NEGACAO.search(_normalizar(frase)):
             return True
     return False
 

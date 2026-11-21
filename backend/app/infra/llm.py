@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import anthropic
 
 from app.adapters.outbound.llm.anthropic_adapter import AnthropicAdapter
@@ -14,6 +16,8 @@ from app.application.llm import (
     RespostaLLM,
 )
 from app.infra.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 _TIMEOUT_S = 30.0
 
@@ -39,6 +43,11 @@ class _LLMSemChave:
 def criar_llm(settings: Settings) -> LLMPort:
     if settings.llm_fake_latencia_ms is not None:
         # Teste de carga: tem precedencia sobre a chave para nunca gerar custo.
+        logger.warning(
+            "LLM_FAKE_LATENCIA_MS=%s: LLM SIMULADO ligado (so para teste de carga), o agente "
+            "responde texto fixo",
+            settings.llm_fake_latencia_ms,
+        )
         return LLMSimulado(
             latencia_ms=settings.llm_fake_latencia_ms, jitter_ms=settings.llm_fake_jitter_ms
         )
