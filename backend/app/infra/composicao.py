@@ -14,6 +14,8 @@ from arq.connections import ArqRedis
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.adapters.outbound.audio.stt_openai import STTOpenAI
+from app.adapters.outbound.audio.stt_openai import criar_cliente_http as criar_cliente_openai
 from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
 from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.canal.enviadas import RegistroEnviadasRedis
@@ -37,6 +39,7 @@ from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.processar_conversa import ProcessarConversa
+from app.application.audio_entrada import STTPort, TranscreverAudio
 from app.application.canal import BarramentoMensagens, Canal, CanalPort
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
@@ -183,6 +186,17 @@ def criar_canal_whatsapp(
     )
 
 
+def criar_transcritor(
+    settings: Settings | None = None, stt: STTPort | None = None
+) -> TranscreverAudio:
+    """Transcricao do audio de entrada: STT da OpenAI (sem chave, toda tentativa vira falha)."""
+    settings = settings or get_settings()
+    stt = stt or STTOpenAI(
+        criar_cliente_openai(), api_key=settings.openai_api_key, modelo=settings.stt_model
+    )
+    return TranscreverAudio(stt, ArmazenamentoMidiaDisco(settings.midia_dir))
+
+
 def montar_casos_painel(
     session: AsyncSession,
     barramento: BarramentoMensagens,
@@ -210,6 +224,7 @@ def montar_processar_conversa(
     painel: PublicadorPainel | None = None,
     aviso_handoff: AoSolicitarHandoff | None = None,
     hoje: Callable[[], date] = hoje_brasil,
+    transcrever_audio: TranscreverAudio | None = None,
     max_iteracoes: int = 6,
     midia: ArmazenamentoMidia | None = None,
 ) -> ProcessarConversa:
@@ -236,6 +251,7 @@ def montar_processar_conversa(
             llm=llm,
             aviso=aviso_handoff,
         ),
+        transcrever_audio=transcrever_audio,
         max_iteracoes=max_iteracoes,
         midia=midia,
     )
@@ -249,6 +265,7 @@ def criar_processador(
     llm: LLMPort | None = None,
     barramento: BarramentoMensagens | None = None,
     aviso_handoff: AoSolicitarHandoff | None = None,
+    stt: STTPort | None = None,
 ) -> Callable[[UUID], Awaitable[None]]:
     """`processar(conversa_id)` do worker: uma sessao nova por job, LLM/canal compartilhados."""
     settings = settings or get_settings()
@@ -262,6 +279,7 @@ def criar_processador(
     }
     painel = PublicadorPainelBarramento(barramento)
     midia = ArmazenamentoMidiaDisco(settings.midia_dir)
+    transcrever = criar_transcritor(settings, stt)
 
     async def processar(conversa_id: UUID) -> None:
         async with factory() as session:
@@ -273,6 +291,7 @@ def criar_processador(
                     painel=painel,
                     aviso_handoff=aviso_handoff,
                     midia=midia,
+                    transcrever_audio=transcrever,
                 )(conversa_id)
             except BaseException:
                 await session.rollback()

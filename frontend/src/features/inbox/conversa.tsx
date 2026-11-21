@@ -162,6 +162,7 @@ export function Conversa({
               tipo={m.tipo}
               texto={m.texto}
               midiaUrl={m.midia_url}
+              transcricao={m.transcricao}
               horario={m.criada_em}
               autor={autorDoBalao(m)}
               erro={semCanal.has(m.id) ? "Salva no painel; o canal ainda não envia." : undefined}

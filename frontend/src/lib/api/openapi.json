@@ -1253,6 +1253,17 @@
             ],
             "title": "Tipo",
             "type": "string"
+          },
+          "transcricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcricao"
           }
         },
         "required": [
@@ -1263,6 +1274,7 @@
           "tipo",
           "texto",
           "midia_url",
+          "transcricao",
           "criada_em"
         ],
         "title": "MensagemSchema",

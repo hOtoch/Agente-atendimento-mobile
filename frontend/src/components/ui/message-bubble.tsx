@@ -9,6 +9,8 @@ type Props = {
   tipo: TipoMensagemBalao
   texto?: string | null
   midiaUrl?: string | null
+  /** Texto falado no áudio (STT), mostrado abaixo do player. */
+  transcricao?: string | null
   horario?: Date | string | null
   /** Nome exibido acima do conteúdo (ex.: "IA", "Carla"). */
   autor?: string
@@ -35,6 +37,7 @@ export function MessageBubble({
   tipo,
   texto,
   midiaUrl,
+  transcricao,
   horario,
   autor,
   erro,
@@ -71,6 +74,12 @@ export function MessageBubble({
         ) : null}
         {tipo === "audio" && midiaUrl ? (
           <audio controls src={midiaUrl} className="h-10 w-full max-w-64" />
+        ) : null}
+        {tipo === "audio" && transcricao ? (
+          <p data-testid="transcricao" className="text-xs break-words whitespace-pre-wrap opacity-90">
+            <span className="font-medium">Transcrição: </span>
+            {transcricao}
+          </p>
         ) : null}
         {texto ? <p className="break-words whitespace-pre-wrap">{texto}</p> : null}
         {hora ? <span className="self-end text-xs opacity-70">{hora}</span> : null}

@@ -18,6 +18,7 @@ from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.processar_conversa import ProcessarConversa
 from app.application.agente.repositorio import RepositorioAtendimentoEmMemoria
 from app.application.agente.transcricao import RepositorioTranscricaoEmMemoria
+from app.application.audio_entrada import TranscreverAudio
 from app.application.canal import Canal, MensagemSaida, TipoMensagem
 from app.application.handoff import CasosHandoff
 from app.application.llm import (
@@ -180,6 +181,7 @@ async def criar_cenario(
     max_iteracoes: int = 6,
     catalogo: CatalogoFerramentas | None = None,
     midia: ArmazenamentoMidia | None = None,
+    transcrever: TranscreverAudio | None = None,
 ) -> Cenario:
     amb = await criar_ambiente()
     conversas = ConversasEmMemoria()
@@ -232,6 +234,7 @@ async def criar_cenario(
         hoje=lambda: HOJE,
         painel=painel,
         handoff=handoff,
+        transcrever_audio=transcrever,
         max_iteracoes=max_iteracoes,
         midia=midia,
     )

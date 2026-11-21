@@ -91,3 +91,15 @@ async def test_worker_liga_o_aviso_de_handoff_no_processador(
         assert isinstance(recebido["aviso_handoff"], NotificarVendedorNoHandoff)
     finally:
         await worker.encerrar(ctx)
+
+
+async def test_criar_transcritor_usa_o_stt_dado_e_o_armazenamento_da_midia(tmp_path: Any) -> None:
+    from app.adapters.outbound.audio.stt_fake import STTFake
+    from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
+    from app.infra.composicao import criar_transcritor
+
+    nome = await ArmazenamentoMidiaDisco(tmp_path).salvar(b"audio", "audio/ogg")
+    stt = STTFake("ola")
+    transcrever = criar_transcritor(Settings(_env_file=None, midia_dir=str(tmp_path)), stt)
+    assert await transcrever(f"http://api/midias/{nome}") == "ola"
+    assert stt.chamadas == [(b"audio", "audio/ogg")]

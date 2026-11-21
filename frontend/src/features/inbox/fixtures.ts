@@ -56,6 +56,7 @@ export function mensagem(parcial: Partial<MensagemLead> & Pick<MensagemLead, "id
     tipo: "texto",
     texto: null,
     midia_url: null,
+    transcricao: null,
     criada_em: "2026-11-20T12:00:00Z",
     ...parcial,
   }
@@ -69,6 +70,7 @@ export const MENSAGENS_MARIA: MensagemLead[] = [
     autor: "cliente",
     tipo: "audio",
     midia_url: "http://api.local/midias/a.ogg",
+    transcricao: "tem iphone 13 de 128 gigas?",
     criada_em: "2026-11-20T12:01:00Z",
   }),
 ]

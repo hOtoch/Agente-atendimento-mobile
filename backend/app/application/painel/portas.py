@@ -47,6 +47,7 @@ class MensagemRegistro:
     texto: str | None
     midia_url: str | None
     criada_em: datetime
+    transcricao: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

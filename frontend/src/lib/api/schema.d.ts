@@ -979,6 +979,8 @@ export interface components {
              * @enum {string}
              */
             tipo: "texto" | "audio" | "imagem";
+            /** Transcricao */
+            transcricao: string | null;
         };
         /** MensagemVendedorIn */
         MensagemVendedorIn: {

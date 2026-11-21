@@ -215,4 +215,5 @@ def _mensagem(m: Mensagem) -> MensagemRegistro:
         texto=m.conteudo,
         midia_url=m.midia_url,
         criada_em=m.criado_em,
+        transcricao=m.transcricao,
     )

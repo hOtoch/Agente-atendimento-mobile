@@ -114,3 +114,38 @@ async def test_migration_0003_preenche_autor_das_mensagens_existentes(db_url: st
     finally:
         await engine.dispose()
     assert [tuple(x) for x in linhas] == [("entrada", "cliente"), ("saida", "ia")]
+
+
+async def test_transcricao_do_audio_e_salva_lida_pelo_agente_e_pelo_painel(
+    session: AsyncSession,
+) -> None:
+    from sqlalchemy import select as _select
+
+    from app.adapters.outbound.db.painel import RepositorioPainelSql
+
+    loja, conversa = await _conversa(session)
+    msg_id = uuid.uuid4()
+    await MensagemRepositorio(session).inserir_se_nova(
+        id=msg_id,
+        loja_id=loja,
+        conversa_id=conversa,
+        canal="webchat",
+        direcao="entrada",
+        tipo="audio",
+        conteudo=None,
+        midia_url="http://api.local/midias/a.ogg",
+        id_externo="a1",
+    )
+    await session.commit()
+    repo = RepositorioProcessamentoSql(session)
+    (antes,) = await repo.entradas_novas(conversa, None)
+    assert antes.transcricao is None
+
+    await repo.salvar_transcricao(msg_id, "tem iphone 16?")
+
+    (depois,) = await repo.entradas_novas(conversa, None)
+    assert depois.transcricao == "tem iphone 16?"
+    assert depois.texto is None  # `conteudo` continua sendo so o que o cliente digitou
+    lead_id = (await session.execute(_select(Lead.id))).scalar_one()
+    mensagens = await RepositorioPainelSql(session).listar_mensagens(loja, lead_id)
+    assert [m.transcricao for m in mensagens] == ["tem iphone 16?"]
