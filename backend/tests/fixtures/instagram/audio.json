@@ -1,0 +1,31 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "17841400000000001",
+      "time": 1767225600123,
+      "messaging": [
+        {
+          "sender": {
+            "id": "1234567890123456"
+          },
+          "recipient": {
+            "id": "17841400000000001"
+          },
+          "timestamp": 1767225600000,
+          "message": {
+            "mid": "mid.audio001",
+            "attachments": [
+              {
+                "type": "audio",
+                "payload": {
+                  "url": "https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=3&signature=abc"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
