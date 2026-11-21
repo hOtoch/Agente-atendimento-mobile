@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     llm_fallback_model: str = "claude-haiku-5-5"
     llm_effort: str = "low"
     anthropic_api_key: str | None = None
+    llm_fake_latencia_ms: int | None = None
+    """So para teste de carga: se definido, o LLM e simulado (texto fixo, sem custo) com essa
+    latencia. `None` (padrao) = LLM real. Nunca ligar em producao."""
+    llm_fake_jitter_ms: int = 0
+    """Variacao (+/-) da latencia simulada, em ms."""
     openai_api_key: str | None = None
     """Chave da OpenAI (STT e TTS). Vazia = sem audio: pede texto e responde so em texto."""
     stt_model: str = "gpt-4o-mini-transcribe"
