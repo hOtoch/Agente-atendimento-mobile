@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Campo } from "@/components/ui/campo"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { DataGrid, type DataGridRow } from "@/components/ui/data-grid"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -20,9 +21,16 @@ type Perfil = {
   tom_de_voz: string
   endereco: string
   whatsapp_contato: string
+  responder_em_audio: boolean
 }
 
-const VAZIO: Perfil = { nome_exibicao: "", tom_de_voz: "", endereco: "", whatsapp_contato: "" }
+const VAZIO: Perfil = {
+  nome_exibicao: "",
+  tom_de_voz: "",
+  endereco: "",
+  whatsapp_contato: "",
+  responder_em_audio: true,
+}
 
 const DIAS_PADRAO = ["Segunda a sexta", "Sábado", "Domingo e feriados"]
 
@@ -79,7 +87,7 @@ export function PassoPerfil({
     }
   }, [cliente, lojaId])
 
-  function alterar(campo: keyof Perfil, valor: string) {
+  function alterar<K extends keyof Perfil>(campo: K, valor: Perfil[K]) {
     setPerfil((atual) => (atual ? { ...atual, [campo]: valor } : atual))
     setErros((atual) => {
       const resto = { ...atual }
@@ -181,6 +189,14 @@ export function PassoPerfil({
                   />
                 )}
               </Campo>
+              <div className="sm:col-span-2">
+                <Checkbox
+                  rotulo="Responder em áudio quando o cliente mandar áudio"
+                  descricao="A resposta em texto sempre vai junto, com preços e valores."
+                  checked={perfil.responder_em_audio}
+                  onCheckedChange={(marcado) => alterar("responder_em_audio", marcado)}
+                />
+              </div>
             </div>
             <DataGrid
               aria-label="Horários de funcionamento"

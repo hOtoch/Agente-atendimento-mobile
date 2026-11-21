@@ -88,3 +88,14 @@ def test_settings_de_stt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("STT_MODEL", "whisper-1")
     s = Settings(_env_file=None)
     assert (s.openai_api_key, s.stt_model) == ("sk-x", "whisper-1")
+
+
+def test_settings_de_tts_sao_opcionais(monkeypatch: pytest.MonkeyPatch) -> None:
+    for nome in ("OPENAI_API_KEY", "TTS_MODEL", "TTS_VOZ"):
+        monkeypatch.delenv(nome, raising=False)
+
+    s = Settings(_env_file=None)
+
+    assert s.openai_api_key is None
+    assert s.tts_model == "gpt-4o-mini-tts"
+    assert s.tts_voz

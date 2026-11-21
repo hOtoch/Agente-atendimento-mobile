@@ -54,6 +54,7 @@ def _perfil_out(p: PerfilLoja) -> s.PerfilSchema:
         endereco=p.endereco,
         horarios=dict(p.horarios),
         whatsapp_contato=p.whatsapp_contato,
+        responder_em_audio=p.responder_em_audio,
     )
 
 

@@ -1010,6 +1010,11 @@ export interface components {
             /** Nome Exibicao */
             nome_exibicao: string;
             /**
+             * Responder Em Audio
+             * @default true
+             */
+            responder_em_audio: boolean;
+            /**
              * Tom De Voz
              * @default
              */

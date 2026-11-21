@@ -42,6 +42,8 @@ class PerfilLoja:
     endereco: str
     horarios: Mapping[str, str]
     whatsapp_contato: str
+    responder_em_audio: bool = True
+    """Responde tambem em audio quando o cliente mandou audio (o texto sai sempre)."""
 
 
 @dataclass(frozen=True, slots=True)
