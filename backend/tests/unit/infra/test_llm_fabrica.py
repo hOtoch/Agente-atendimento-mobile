@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+import pytest
+
 from app.adapters.outbound.llm.anthropic_adapter import AnthropicAdapter
 from app.adapters.outbound.llm.simulado import LLMSimulado
 from app.infra.llm import _LLMSemChave, criar_llm
@@ -31,3 +35,10 @@ def test_simulado_tem_precedencia_sobre_a_chave_real() -> None:
     """Garantia anti-custo: com a simulacao ligada nunca se fala com a Anthropic."""
     llm = criar_llm(_settings(llm_fake_latencia_ms=0, anthropic_api_key="sk-teste"))
     assert isinstance(llm, LLMSimulado)
+
+
+def test_simulado_ligado_avisa_no_log(caplog: pytest.LogCaptureFixture) -> None:
+    """Se `LLM_FAKE_LATENCIA_MS` vazar para producao, o log diz que o agente nao e real."""
+    with caplog.at_level(logging.WARNING, logger="app.infra.llm"):
+        criar_llm(_settings(llm_fake_latencia_ms=0))
+    assert "LLM_FAKE_LATENCIA_MS" in caplog.text

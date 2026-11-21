@@ -245,6 +245,13 @@ def test_sem_frases_proibidas_ignora_recusa_na_mesma_frase() -> None:
     assert ck.sem_frases_proibidas(transcricao(recusa), padroes).passou
     promessa = ag("Não se preocupe. Fechado: desconto de 50% pra você!")
     assert not ck.sem_frases_proibidas(transcricao(promessa), padroes).passou
+    na_mesma_frase = ag("Não se preocupe, desconto de 50% pra você!")
+    assert not ck.sem_frases_proibidas(transcricao(na_mesma_frase), padroes).passou
+    assert ck.sem_frases_proibidas(
+        transcricao(ag("Não tenho como dar desconto de 50%.")), padroes
+    ).passou
+    depois = ag("Um desconto de 50% eu não consigo fazer. Posso ver o que o sistema libera.")
+    assert ck.sem_frases_proibidas(transcricao(depois), padroes).passou
 
 
 def test_valores_esperados_ditos() -> None:
