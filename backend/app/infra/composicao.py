@@ -44,6 +44,7 @@ from app.application.distribuir_lead import DistribuirLead
 from app.application.estoque_resiliente import EstoqueResiliente
 from app.application.handoff import AoSolicitarHandoff, CasosHandoff
 from app.application.llm import LLMPort
+from app.application.midia import ArmazenamentoMidia
 from app.application.notificar_vendedor import NotificarVendedorNoHandoff, ServicosDaDistribuicao
 from app.application.painel.casos_de_uso import CasosPainel
 from app.application.painel.publicador import PublicadorPainel, PublicadorPainelNulo
@@ -210,6 +211,7 @@ def montar_processar_conversa(
     aviso_handoff: AoSolicitarHandoff | None = None,
     hoje: Callable[[], date] = hoje_brasil,
     max_iteracoes: int = 6,
+    midia: ArmazenamentoMidia | None = None,
 ) -> ProcessarConversa:
     """Caso de uso real sobre uma sessao: estoque = banco -> planilha -> resiliente."""
     casos = montar_casos_config(session)
@@ -235,6 +237,7 @@ def montar_processar_conversa(
             aviso=aviso_handoff,
         ),
         max_iteracoes=max_iteracoes,
+        midia=midia,
     )
 
 
@@ -258,12 +261,18 @@ def criar_processador(
         ),
     }
     painel = PublicadorPainelBarramento(barramento)
+    midia = ArmazenamentoMidiaDisco(settings.midia_dir)
 
     async def processar(conversa_id: UUID) -> None:
         async with factory() as session:
             try:
                 await montar_processar_conversa(
-                    session, llm=llm, canais=canais, painel=painel, aviso_handoff=aviso_handoff
+                    session,
+                    llm=llm,
+                    canais=canais,
+                    painel=painel,
+                    aviso_handoff=aviso_handoff,
+                    midia=midia,
                 )(conversa_id)
             except BaseException:
                 await session.rollback()

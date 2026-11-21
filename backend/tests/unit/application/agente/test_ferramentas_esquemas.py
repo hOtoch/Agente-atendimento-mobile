@@ -12,6 +12,7 @@ NOMES = {
     "confirmar_item",
     "registrar_usado",
     "registrar_compra",
+    "registrar_leitura_imagem",
     "calcular_proposta",
     "liberar_desconto",
     "chamar_vendedor",
@@ -106,6 +107,15 @@ def test_assinaturas_combinadas() -> None:
         "bandeira",
         "entrada",
     }
+    assert props["registrar_leitura_imagem"] == {
+        "tipo",
+        "bateria_pct",
+        "tela_danificada",
+        "traseira_danificada",
+        "carcaca_marcada",
+        "modelo_provavel",
+        "confianca",
+    }
     assert props["liberar_desconto"] == {"motivo"}
     assert props["chamar_vendedor"] == {"motivo"}
 
@@ -166,3 +176,5 @@ def test_strict_fica_onde_o_tipo_errado_quebra_a_ficha() -> None:
     assert estrita["registrar_usado"] and estrita["registrar_compra"]
     # So texto, ja validado no handler: sem strict para caber no limite de unioes.
     assert not estrita["registrar_interesse"] and not estrita["consultar_estoque"]
+    # Campos anulaveis lidos de imagem, validados no handler: tambem fora do strict.
+    assert not estrita["registrar_leitura_imagem"]

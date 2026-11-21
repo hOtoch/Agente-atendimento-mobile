@@ -27,6 +27,7 @@ from app.application.llm import (
     RespostaLLM,
     ResultadoFerramenta,
 )
+from app.application.midia import ArmazenamentoMidia
 from app.application.painel.memoria import PublicadorEmMemoria, RepositorioPainelEmMemoria
 from app.application.painel.portas import LeadRegistro, MensagemRegistro
 from app.domain.kanban import Etapa
@@ -178,6 +179,7 @@ async def criar_cenario(
     dono: str = "ia",
     max_iteracoes: int = 6,
     catalogo: CatalogoFerramentas | None = None,
+    midia: ArmazenamentoMidia | None = None,
 ) -> Cenario:
     amb = await criar_ambiente()
     conversas = ConversasEmMemoria()
@@ -231,6 +233,7 @@ async def criar_cenario(
         painel=painel,
         handoff=handoff,
         max_iteracoes=max_iteracoes,
+        midia=midia,
     )
     return Cenario(
         amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id, painel,
