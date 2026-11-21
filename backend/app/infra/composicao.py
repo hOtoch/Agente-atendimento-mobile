@@ -33,12 +33,18 @@ from app.adapters.outbound.db.config import (
     RepositorioVendedoresSql,
 )
 from app.adapters.outbound.db.distribuicao import AtribuicoesLeadSql
+from app.adapters.outbound.db.followup import (
+    RegistroTentativasSql,
+    RepositorioConfigFollowupSql,
+    RepositorioFollowupSql,
+)
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.processamento import RegistroEventosSql, RepositorioProcessamentoSql
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
 from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
+from app.application.agendamento import TravaConversa
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.processar_conversa import ProcessarConversa
 from app.application.audio_entrada import STTPort, TranscreverAudio
@@ -48,6 +54,7 @@ from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
 from app.application.distribuir_lead import DistribuirLead
 from app.application.estoque_resiliente import EstoqueResiliente
+from app.application.followup import EnviarFollowups, RedatorFollowupLLM
 from app.application.handoff import AoSolicitarHandoff, CasosHandoff
 from app.application.llm import LLMPort
 from app.application.midia import ArmazenamentoMidia
@@ -55,7 +62,7 @@ from app.application.notificar_vendedor import NotificarVendedorNoHandoff, Servi
 from app.application.painel.casos_de_uso import CasosPainel
 from app.application.painel.publicador import PublicadorPainel, PublicadorPainelNulo
 from app.application.whatsapp import RegistroEnviadas, WhatsAppGateway
-from app.infra.fila import AgendadorArq, RelogioParede
+from app.infra.fila import AgendadorArq, RelogioParede, TravaRedis
 from app.infra.llm import criar_llm
 from app.infra.settings import Settings, get_settings
 
@@ -292,12 +299,7 @@ def criar_processador(
     settings = settings or get_settings()
     llm = llm or criar_llm(settings)
     barramento = barramento or BarramentoRedis(redis)
-    canais: dict[Canal, CanalPort] = {
-        Canal.WEBCHAT: WebChatAdapter(barramento),
-        Canal.WHATSAPP: criar_canal_whatsapp(
-            criar_gateway_whatsapp(settings), RegistroEnviadasRedis(redis), settings
-        ),
-    }
+    canais = _criar_canais(redis, barramento, settings)
     painel = PublicadorPainelBarramento(barramento)
     midia = ArmazenamentoMidiaDisco(settings.midia_dir)
     transcrever = criar_transcritor(settings, stt)
@@ -321,3 +323,83 @@ def criar_processador(
                 raise
 
     return processar
+
+
+def agora_utc() -> datetime:
+    return datetime.now(UTC)
+
+
+def montar_enviar_followups(
+    session: AsyncSession,
+    *,
+    llm: LLMPort,
+    canais: Mapping[Canal, CanalPort],
+    painel: PublicadorPainel | None = None,
+    trava: TravaConversa | None = None,
+    agora: Callable[[], datetime] = agora_utc,
+) -> EnviarFollowups:
+    """Rodada de follow-up automatico sobre uma sessao (SQL + LLM so para redigir o texto)."""
+    followups = RepositorioFollowupSql(session)
+    return EnviarFollowups(
+        configs=RepositorioConfigFollowupSql(session),
+        leads=followups,
+        redator=RedatorFollowupLLM(
+            llm=llm,
+            config=montar_casos_config(session),
+            atendimento=RepositorioAtendimentoSql(session),
+            transcricao=RepositorioTranscricaoSql(session),
+            agora=agora,
+        ),
+        tentativas=RegistroTentativasSql(session),
+        saidas=RepositorioProcessamentoSql(session),
+        transcricao=RepositorioTranscricaoSql(session),
+        canais=canais,
+        agora=agora,
+        painel=painel,
+        trava=trava,
+    )
+
+
+def criar_followups(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    redis: ArqRedis,
+    settings: Settings | None = None,
+    llm: LLMPort | None = None,
+    barramento: BarramentoMensagens | None = None,
+    agora: Callable[[], datetime] = agora_utc,
+) -> Callable[[], Awaitable[int]]:
+    """`followups()` do cron do worker: uma sessao nova por rodada; devolve quantos enviou."""
+    settings = settings or get_settings()
+    llm = llm or criar_llm(settings)
+    barramento = barramento or BarramentoRedis(redis)
+    canais = _criar_canais(redis, barramento, settings)
+    painel = PublicadorPainelBarramento(barramento)
+
+    async def followups() -> int:
+        async with factory() as session:
+            try:
+                return await montar_enviar_followups(
+                    session,
+                    llm=llm,
+                    canais=canais,
+                    painel=painel,
+                    trava=TravaRedis(redis),
+                    agora=agora,
+                )()
+            except BaseException:
+                await session.rollback()
+                raise
+
+    return followups
+
+
+def _criar_canais(
+    redis: Redis, barramento: BarramentoMensagens, settings: Settings
+) -> dict[Canal, CanalPort]:
+    return {
+        Canal.WEBCHAT: WebChatAdapter(barramento),
+        Canal.WHATSAPP: criar_canal_whatsapp(
+            criar_gateway_whatsapp(settings), RegistroEnviadasRedis(redis), settings
+        ),
+    }

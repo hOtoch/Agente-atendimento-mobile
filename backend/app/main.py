@@ -5,6 +5,7 @@ from app import __version__
 from app.adapters.inbound.health import router as health_router
 from app.adapters.inbound.http.config import router as config_router
 from app.adapters.inbound.http.erros import registrar_handlers
+from app.adapters.inbound.http.followup import router as followup_router
 from app.adapters.inbound.http.importacao import router as importacao_router
 from app.adapters.inbound.http.midias import router as midias_router
 from app.adapters.inbound.http.openapi import registrar_openapi
@@ -24,6 +25,7 @@ registrar_handlers(app)
 registrar_openapi(app)
 app.include_router(health_router)
 app.include_router(config_router)
+app.include_router(followup_router)
 app.include_router(importacao_router)
 app.include_router(webchat_router)
 app.include_router(painel_router)

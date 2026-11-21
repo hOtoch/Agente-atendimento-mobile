@@ -1,5 +1,12 @@
-import { PlaceholderPage } from "@/features/shell/placeholder-page"
+import { PageHeader } from "@/components/ui/page-header"
+import { Configuracoes } from "@/features/configuracoes/configuracoes"
+import { LOJA_ID } from "@/lib/loja"
 
 export default function Page() {
-  return <PlaceholderPage title="Configurações" description="Preferências e regras da loja." />
+  return (
+    <section>
+      <PageHeader title="Configurações" description="Preferências e regras da loja." />
+      <Configuracoes lojaId={LOJA_ID} />
+    </section>
+  )
 }
