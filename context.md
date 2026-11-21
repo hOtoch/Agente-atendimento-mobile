@@ -195,8 +195,10 @@ Gargalo **não** é CPU (LLM e STT são APIs): é rate limit do LLM e risco de b
 
 Conta de pico (estimativa): 1.000 leads/dia numa loja → ~12 mil mensagens; pico de 20% numa hora ≈ 40 msg/min; ~6 s por chamada ao LLM → ~6 chamadas simultâneas.
 
-## 7. Custos (estimativa — validar com dados reais do eval)
-Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k tokens de entrada (maior parte em cache) e ~400 de saída por chamada.
+## 7. Custos
+**Medido no eval real de 2026-11-21 (ver `docs/custos.md`):** Haiku 5.5 ~US$ 0,004/conversa (14/15 cenários), Sonnet 5.5 ~US$ 0,079/conversa (amostra de 3); com áudio e infra, 1 mil leads/mês ≈ US$ 29–59 (Haiku) e 10 mil ≈ US$ 130–190 (Haiku). A tabela abaixo é a estimativa original, mantida como histórico.
+
+Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k tokens de entrada (maior parte em cache) e ~400 de saída por chamada.
 
 | Modelo | Preço (US$/MTok in/out) | Por conversa | 1 mil leads/mês | 10 mil leads/mês |
 |---|---|---|---|---|
@@ -210,7 +212,8 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 - LLM: retry com backoff → modelo reserva → "já te respondo" + vendedor.
 - k6 simulando 10× o volume; métricas de latência, fila e custo.
 - Estoque em cache curto + confirmação antes do preço; pesos de distribuição ajustáveis ao vivo.
-- Sentry + logs estruturados com custo por conversa.
+- Sentry + logs estruturados com custo por conversa (Sentry ainda não integrado).
+- Resultado do k6 e plano ampliado: `docs/black-friday.md` (10× sem perda/duplicação; 2 workers aguentam 10× no LLM simulado; produção estimada em 3–4 workers).
 
 ---
 
@@ -224,8 +227,8 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 | M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ✅ concluído (PR #50) |
 | M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ✅ concluído (PR #51) |
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR #52; correções PR #53, #54) |
-| M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR do M6) |
-| M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ⏳ pendente |
+| M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR #55) |
+| M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ✅ concluído (PR do M7) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -300,6 +303,9 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-21 | Áudio (STT `gpt-4o-mini-transcribe` e TTS `gpt-4o-mini-tts`, opus) pela API da OpenAI via `httpx`, chave opcional | Bom pt-BR, barato, sem SDK novo; sem chave o atendimento segue em texto |
 | 2026-11-21 | Leitura de imagem: o LLM devolve a leitura estruturada; o código grava na ficha só com confiança ≥ 0,8 e troca confirmada | "O código decide" também para a visão |
 | 2026-11-21 | Follow-up: decisão pura no domínio (etapa, horas, tentativas, intervalo, horário comercial UTC-3, dono IA); LLM só redige, sem valores | Previsível e testável com relógio fake |
+| 2026-11-21 | Cache incremental: breakpoint no último bloco da última mensagem do usuário | Eval real: entrada sem cache caiu de ~70 mil para ~3 mil tokens por conversa; Sonnet de US$ 0,177 para US$ 0,079 |
+| 2026-11-21 | Eval: `handoff` não é fixado e `etapa_final` é "ao menos"; recusas e valores citados pelo cliente não reprovam | O cliente simulado aceita a proposta e chamar o vendedor é o certo; as reprovações eram falsos negativos |
+| 2026-11-21 | `LLM_FAKE_LATENCIA_MS` liga um LLM simulado (desligado por padrão) só para teste de carga | k6 sem custo e com latência realista |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -411,6 +417,19 @@ _Atualizado ao final de cada milestone._
     - Follow-up usa horário comercial próprio (não lê o texto livre de `perfil.horarios`) e vale também no webchat.
     - Áudio e imagem pelo WhatsApp real ainda não ensaiados com celular pareado.
   - Próximo: M7 Entrega.
+- **2026-11-21 — M7 Entrega concluído** (#41–#44).
+  - Eval real (pago, ~US$ 0,9 no total, com OK do usuário para testes pequenos): Haiku 5.5 14/15 a ~US$ 0,004/conversa; Sonnet 5.5 em 3 cenários a ~US$ 0,079. Achados corrigidos: cache incremental da conversa (−55% no Sonnet), checagens do eval com falso negativo, e o prompt proíbe contas com os valores ("cerca de R$ 64").
+  - Carga (#41): k6 contra o webhook da Evolution numa pilha isolada com LLM simulado; 10× (400 msg/min) sem perda/duplicação; 1 worker enfileira (espera até ~80 s), 2 workers aguentam; `docs/black-friday.md`.
+  - Custos (#42): `backend/scripts/custos.py` (relatórios do eval ou eventos `llm_uso` do banco) e `docs/custos.md` com 1 mil/10 mil leads.
+  - README (#43) seguido do zero numa worktree limpa; roteiro de demo e checklist com planos B/C (#44) em `docs/roteiro-demo.md`.
+  - Testes: backend 1453, frontend 279, erp-mock 35, eval fake 6/6.
+  - Pontos de atenção:
+    - `.env.example` segue com `LLM_MODEL=claude-sonnet-5-5`; o eval recomenda Haiku 5.5 (decisão do dono antes da apresentação).
+    - Sonnet só teve 3 cenários no eval real; o eval completo dele custa ~US$ 1,2.
+    - Premissas de áudio e infra em `docs/custos.md` são estimativas; preços de STT/TTS a conferir.
+    - WhatsApp com celular pareado (áudio, imagem, nota de voz) ainda sem ensaio completo; link do vídeo no README a preencher.
+    - Sentry não integrado; `WORKER_MAX_JOBS` não configurável (escalar = mais processos).
+  - Próximo: ensaio da apresentação (docs/roteiro-demo.md) e gravação do vídeo.
 
 ---
 
@@ -421,7 +440,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1393 testes) e `cd ../frontend && npm ci && npm test -- --run` (279 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1453 testes) e `cd ../frontend && npm ci && npm test -- --run` (279 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M7 — Entrega** (issues #41–#44). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Todos os milestones (M0–M7) estão concluídos. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
