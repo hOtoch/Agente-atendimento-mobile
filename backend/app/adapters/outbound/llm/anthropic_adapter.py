@@ -3,7 +3,9 @@
 Formato usado (ver docs do SDK):
 - `output_config={"effort": ...}`; `thinking` omitido (adaptativo); sem `temperature`/`top_p`/
   `top_k`, sem `tool_choice` forcado, sem prefill.
-- `cache_control={"type": "ephemeral"}` na ultima ferramenta e no `sistema[0]` (prefixo estavel).
+- `cache_control={"type": "ephemeral"}` na ultima ferramenta e no `sistema[0]` (prefixo estavel),
+  e no ultimo bloco da ultima mensagem do usuario (cache incremental: o historico e so de
+  acrescimo, entao o turno seguinte le a conversa do cache).
 - Sonnet 5.5: `client.beta.messages.create(betas=["server-side-fallback-2026-07-01"],
   fallbacks="default")` para recusas. Haiku 5.5 nao tem fallback de recusa.
 - Mensagens `system` no meio da conversa vao como `{"role": "system", "content": "<texto>"}`.
@@ -93,6 +95,17 @@ def _mensagem_para_api(m: MensagemLLM) -> dict[str, Any]:
     return {"role": m.papel, "content": blocos}
 
 
+def _marcar_cache_incremental(mensagens: list[dict[str, Any]]) -> None:
+    """Breakpoint no ultimo bloco da ultima mensagem `user` (copia o bloco; nao muta o bruto)."""
+    for m in reversed(mensagens):
+        if m["role"] == "user" and isinstance(m["content"], list) and m["content"]:
+            m["content"] = [
+                *m["content"][:-1],
+                {**m["content"][-1], "cache_control": dict(_EPHEMERAL)},
+            ]
+            return
+
+
 def _ferramenta_para_api(f: DefinicaoFerramenta) -> dict[str, Any]:
     t: dict[str, Any] = {"name": f.nome, "description": f.descricao, "input_schema": f.esquema_json}
     if f.estrita:
@@ -128,9 +141,11 @@ class AnthropicAdapter:
         ferramentas: list[DefinicaoFerramenta],
         max_tokens: int = 1024,
     ) -> RespostaLLM:
+        mensagens_api = [_mensagem_para_api(m) for m in mensagens]
+        _marcar_cache_incremental(mensagens_api)
         base: dict[str, Any] = {
             "max_tokens": max_tokens,
-            "messages": [_mensagem_para_api(m) for m in mensagens],
+            "messages": mensagens_api,
             "output_config": {"effort": self._effort},
         }
         if sistema:
