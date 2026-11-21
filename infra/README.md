@@ -1,10 +1,10 @@
 # Infra local
 
-Tudo roda local (Windows + WSL). O Docker vive **dentro do WSL (Ubuntu)**; no Git Bash/PowerShell não existe `docker`.
+Tudo roda local com Docker Compose. Em Linux/macOS os comandos abaixo rodam direto; no Windows o Docker vive **dentro do WSL (Ubuntu)** (veja o fim deste arquivo).
 
 ## Serviços (projeto compose `atendimento`)
 
-| Serviço | Porta no Windows | Observação |
+| Serviço | Porta local | Observação |
 |---|---|---|
 | postgres (16) | 5432 | dev, volume nomeado `pgdata` |
 | postgres-test (16) | 5433 | banco `teste`, `tmpfs` (some ao parar) |
@@ -16,14 +16,9 @@ O ERP simulado (`erp-mock`, porta 8090, token em `ERP_MOCK_TOKEN`) sobe junto co
 ## Subir
 
 ```bash
-# daemon parado? (uma vez por boot)
-wsl -u root service docker start
-
 cp .env.example .env   # opcional: todos os valores têm default de dev
-wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && bash infra/dev.sh up"
+bash infra/dev.sh up
 ```
-
-Ajuste o caminho `/mnt/<letra>/...` conforme onde o repo está (D:\x\y vira /mnt/d/x/y).
 
 ## Comandos (`infra/dev.sh`)
 
@@ -32,8 +27,7 @@ Ajuste o caminho `/mnt/<letra>/...` conforme onde o repo está (D:\x\y vira /mnt
 ## Verificar
 
 ```bash
-wsl -e sh -c "cd '<repo>' && bash infra/smoke.sh"        # healthchecks + portas + GET / da Evolution
-python -c "import socket; socket.create_connection(('localhost',5433),2)"   # a partir do Windows
+bash infra/smoke.sh        # healthchecks + portas + GET / da Evolution
 ```
 
 `smoke.sh` sai com código diferente de 0 se algo falhar.
@@ -41,3 +35,7 @@ python -c "import socket; socket.create_connection(('localhost',5433),2)"   # a 
 ## Evolution API
 
 `GET http://localhost:8080/` responde 200. Header `apikey: <EVOLUTION_API_KEY>` nas demais rotas. Troque a chave no `.env`.
+
+## Windows (WSL)
+
+O Docker roda dentro do WSL; no Git Bash/PowerShell não existe `docker`. Ligue o daemon uma vez por boot com `wsl -u root service docker start` e rode os mesmos scripts por `wsl -e sh -c "cd '/mnt/<letra>/<caminho do repo>' && bash infra/dev.sh up"` (D:\x\y vira /mnt/d/x/y). As portas publicadas ficam acessíveis no Windows em `localhost`.

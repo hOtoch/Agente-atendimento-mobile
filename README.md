@@ -278,6 +278,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 
 | Documento | Conteúdo |
 |---|---|
+| [docs/roteiro-demo.md](docs/roteiro-demo.md) | Roteiro do vídeo (≤ 10 min) e da apresentação, tentativas de quebrar a IA, checklist e planos B/C |
 | [docs/custos.md](docs/custos.md) | Custo medido por conversa, efeito do cache, projeção 1 mil / 10 mil leads, premissas |
 | [docs/black-friday.md](docs/black-friday.md) | Resultado do k6, interpretação, gargalos e plano da Black Friday |
 | [infra/k6/README.md](infra/k6/README.md) | Como repetir o teste de carga |
