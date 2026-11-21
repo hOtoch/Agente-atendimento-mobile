@@ -135,7 +135,14 @@ async def test_corpo_basico_na_sonnet() -> None:
     assert corpo["model"] == SONNET
     assert corpo["max_tokens"] == 1024
     assert corpo["output_config"] == {"effort": "low"}
-    assert corpo["messages"] == [{"role": "user", "content": [{"type": "text", "text": "bom dia"}]}]
+    assert corpo["messages"] == [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "bom dia", "cache_control": {"type": "ephemeral"}}
+            ],
+        }
+    ]
 
 
 async def test_nao_envia_parametros_que_dao_400_nos_modelos_5_5() -> None:
@@ -161,6 +168,41 @@ async def test_cache_control_no_sistema_estavel_e_na_ultima_ferramenta() -> None
     ]
     assert "cache_control" not in corpo["tools"][0]
     assert corpo["tools"][1]["cache_control"] == {"type": "ephemeral"}
+
+
+async def test_cache_incremental_no_ultimo_bloco_da_ultima_mensagem_do_usuario() -> None:
+    """O historico e so de acrescimo: o breakpoint no fim da ultima mensagem do usuario faz o
+    turno seguinte ler a conversa inteira do cache em vez de pagar tudo como entrada nova."""
+    api = ApiFalsa(resposta_ok())
+    mensagens = [
+        usuario("oi"),
+        MensagemLLM("assistant", [BlocoTexto("ola")]),
+        MensagemLLM("user", [BlocoTexto("quero um iphone"), BlocoTexto("de 128")]),
+        MensagemLLM("system", [BlocoTexto("estado do atendimento")]),
+    ]
+    await montar(api).responder(["s"], mensagens, FERRAMENTAS)
+
+    msgs = api.corpo()["messages"]
+    assert msgs[2]["content"][-1]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in msgs[2]["content"][0]
+    assert "cache_control" not in msgs[0]["content"][-1]
+    assert msgs[3] == {"role": "system", "content": "estado do atendimento"}
+
+
+async def test_cache_incremental_nao_altera_as_mensagens_de_entrada() -> None:
+    api = ApiFalsa(resposta_ok(), resposta_ok())
+    mensagens = [usuario("oi")]
+    llm = montar(api)
+    await llm.responder(["s"], mensagens, FERRAMENTAS)
+    await llm.responder(
+        ["s"],
+        [*mensagens, MensagemLLM("assistant", [BlocoTexto("ola")]), usuario("tudo bem?")],
+        FERRAMENTAS,
+    )
+
+    segundo = api.corpo(1)["messages"]
+    assert "cache_control" not in segundo[0]["content"][-1]
+    assert segundo[2]["content"][-1]["cache_control"] == {"type": "ephemeral"}
 
 
 async def test_ferramentas_sao_estritas_e_usam_input_schema() -> None:
@@ -206,7 +248,12 @@ async def test_mensagem_de_sistema_no_meio_vai_como_role_system() -> None:
     await montar(api).responder(["s"], msgs, [])
 
     assert api.corpo()["messages"] == [
-        {"role": "user", "content": [{"type": "text", "text": "quero um iphone"}]},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "quero um iphone", "cache_control": {"type": "ephemeral"}}
+            ],
+        },
         {"role": "system", "content": "Ficha: modelo=16"},
     ]
 
@@ -246,7 +293,13 @@ async def test_imagem_e_resultado_de_ferramenta_sao_serializados() -> None:
     }
     assert m[2]["content"] == [
         {"type": "tool_result", "tool_use_id": "toolu_1", "content": "2 unidades"},
-        {"type": "tool_result", "tool_use_id": "toolu_2", "content": "falhou", "is_error": True},
+        {
+            "type": "tool_result",
+            "tool_use_id": "toolu_2",
+            "content": "falhou",
+            "is_error": True,
+            "cache_control": {"type": "ephemeral"},
+        },
     ]
 
 
