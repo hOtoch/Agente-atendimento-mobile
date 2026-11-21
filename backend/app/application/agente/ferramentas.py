@@ -576,6 +576,8 @@ async def _chamar_vendedor(
 
 
 # --- definicoes (esquemas strict: todas as propriedades em required, opcionais com null) ----
+# A API soma no maximo 16 campos com uniao (null/anyOf) entre as ferramentas strict: as que so
+# recebem texto (ja validado no handler) ficam sem strict para caber no limite.
 
 
 def _objeto(propriedades: dict[str, Any]) -> dict[str, Any]:
@@ -614,6 +616,7 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                 "cor": _txt("Cor desejada; null se não informada."),
             }
         ),
+        estrita=False,
     ),
     DefinicaoFerramenta(
         nome="consultar_estoque",
@@ -631,6 +634,7 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                 "cor": _txt("Cor para filtrar; null para todas."),
             }
         ),
+        estrita=False,
     ),
     DefinicaoFerramenta(
         nome="confirmar_item",

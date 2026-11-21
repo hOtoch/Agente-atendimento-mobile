@@ -56,9 +56,8 @@ def test_nomes_exatos() -> None:
     assert len(CatalogoFerramentas().definicoes()) == len(NOMES)
 
 
-def test_todos_os_objetos_sao_strict() -> None:
+def test_todos_os_objetos_no_formato_strict() -> None:
     for d in CatalogoFerramentas().definicoes():
-        assert d.estrita
         assert d.descricao.strip()
         objetos = _objetos(d.esquema_json)
         assert objetos, d.nome
@@ -130,3 +129,40 @@ def test_tipo_pagamento_aceita_os_tipos_e_null() -> None:
     (com_enum,) = _com_enum(tipo)
     assert set(com_enum["enum"]) == {t.value for t in TipoPagamento}
     assert _aceita_null(tipo)
+
+
+# Limites da API para esquemas strict, somados em todas as ferramentas strict da requisicao
+# (docs "Structured outputs" > "Schema complexity limits"). Acima deles toda chamada da 400.
+_MAX_FERRAMENTAS_STRICT = 20
+_MAX_OPCIONAIS = 24
+_MAX_COM_UNIAO = 16
+
+
+def _propriedades(esquema: Any) -> list[tuple[dict[str, Any], str, dict[str, Any]]]:
+    """(objeto, nome, propriedade) de todos os objetos aninhados do esquema."""
+    return [
+        (obj, nome, prop)
+        for obj in _objetos(esquema)
+        for nome, prop in obj.get("properties", {}).items()
+    ]
+
+
+def _tem_uniao(prop: dict[str, Any]) -> bool:
+    return "anyOf" in prop or isinstance(prop.get("type"), list)
+
+
+def test_ferramentas_strict_dentro_dos_limites_da_api() -> None:
+    estritas = [d for d in CatalogoFerramentas().definicoes() if d.estrita]
+    props = [p for d in estritas for p in _propriedades(d.esquema_json)]
+    opcionais = [nome for obj, nome, _ in props if nome not in obj.get("required", [])]
+    com_uniao = [nome for _, nome, prop in props if _tem_uniao(prop)]
+    assert len(estritas) <= _MAX_FERRAMENTAS_STRICT
+    assert len(opcionais) <= _MAX_OPCIONAIS, opcionais
+    assert len(com_uniao) <= _MAX_COM_UNIAO, com_uniao
+
+
+def test_strict_fica_onde_o_tipo_errado_quebra_a_ficha() -> None:
+    estrita = {d.nome: d.estrita for d in CatalogoFerramentas().definicoes()}
+    assert estrita["registrar_usado"] and estrita["registrar_compra"]
+    # So texto, ja validado no handler: sem strict para caber no limite de unioes.
+    assert not estrita["registrar_interesse"] and not estrita["consultar_estoque"]
