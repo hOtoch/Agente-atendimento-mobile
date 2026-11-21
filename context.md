@@ -223,8 +223,8 @@ Premissas: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa, ~7k token
 | M2 | Configuração da loja e estoque | `milestone/m2-loja-e-estoque` | 2026-11-20 | ✅ concluído (PR #48) |
 | M3 | Agente conversacional | `milestone/m3-agente` | 2026-11-21 | ✅ concluído (PR #50) |
 | M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ✅ concluído (PR #51) |
-| M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR em revisão) |
-| M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ⏳ pendente |
+| M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR #52; correções PR #53, #54) |
+| M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR do M6) |
 | M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ⏳ pendente |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
@@ -296,6 +296,10 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-20 | Documento recebido pelo WhatsApp vira texto (`[documento recebido: ...]`); figurinha, vídeo e reação ignorados | CHECK de `mensagens.tipo` sem migration |
 | 2026-11-20 | Python 3.12 fixado com `.python-version` (backend e erp-mock) | CI usava 3.14 e o OpenAPI gerado mudava |
 | 2026-11-20 | Ambiente Linux (fora do WSL): `uv` em `~/.local/bin`, Node 24 via nvm (`nvm use 24`; o Node 20 quebra o vitest), `docker compose` direto | Retomada em outra máquina |
+| 2026-11-21 | Ferramentas sem risco de quebrar a ficha com tipo errado (`registrar_interesse`, `consultar_estoque`, `registrar_leitura_imagem`) sem `strict`; teste trava os limites da API (≤20 strict, ≤24 opcionais, ≤16 uniões) | `count_tokens` não compila a gramática: o limite de uniões só aparece num `messages.create` real |
+| 2026-11-21 | Áudio (STT `gpt-4o-mini-transcribe` e TTS `gpt-4o-mini-tts`, opus) pela API da OpenAI via `httpx`, chave opcional | Bom pt-BR, barato, sem SDK novo; sem chave o atendimento segue em texto |
+| 2026-11-21 | Leitura de imagem: o LLM devolve a leitura estruturada; o código grava na ficha só com confiança ≥ 0,8 e troca confirmada | "O código decide" também para a visão |
+| 2026-11-21 | Follow-up: decisão pura no domínio (etapa, horas, tentativas, intervalo, horário comercial UTC-3, dono IA); LLM só redige, sem valores | Previsível e testável com relógio fake |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -393,6 +397,20 @@ _Atualizado ao final de cada milestone._
     - `fromMe` usa a pausa provisória (`PausarIAProvisorio`), já coerente com o "aguardando vendedor" da #32.
     - `httpx.AsyncClient` da Evolution não é fechado no shutdown; "digitando" existe no adaptador mas o agente ainda não chama; horário por vendedor não existe (todos disponíveis).
   - Próximo: M6 Diferenciais.
+- **2026-11-21 — M6 Diferenciais concluído** (#36–#40).
+  - Visão (#36): imagem do cliente vai ao LLM como `BlocoImagem`; ferramenta `registrar_leitura_imagem` (print de bateria, foto do aparelho, danos, modelo provável, confiança); `decidir_leitura` grava com confiança ≥ 0,8 ou devolve a pergunta de confirmação.
+  - Áudio de entrada (#37): `STTPort` + OpenAI `gpt-4o-mini-transcribe`; transcrição na coluna `mensagens.transcricao` (migration 0004) e no balão do painel; falha → o código pede para o cliente digitar, sem chamar o LLM.
+  - Resposta em áudio (#38): `TTSPort` + OpenAI `gpt-4o-mini-tts` (opus, nota de voz); regra pura (cliente mandou áudio + opção da loja + TTS disponível); texto sempre sai antes; opção `responder_em_audio` no perfil (migration 0005, checkbox no onboarding).
+  - Follow-up (#39): `domain/followup.py` decide; `EnviarFollowups` no cron do arq a cada 5 min com a trava da conversa; tabela `config_followup` (migration 0006); `GET/PUT /lojas/{id}/config/followup` e seção em `/configuracoes`. Padrão desligado.
+  - Instagram (#40): normalizador do webhook da Graph API, verificação de assinatura/desafio e `InstagramAdapter` (envio) testados com fixtures; `docs/instagram.md`. Rota e settings ainda não registradas (de propósito).
+  - Testes: backend 1393, frontend 279, eval fake 6/6.
+  - Pontos de atenção:
+    - Sem `OPENAI_API_KEY` no `.env`: STT pede texto e TTS fica desligado. Preços de STT/TTS em `docs/audio.md` são referência a conferir.
+    - A imagem fica em base64 na transcrição e é reenviada a cada turno (custo de tokens); redimensionar ou resumir depois de lida é melhoria futura.
+    - A transcrição do áudio aparece no painel ao recarregar a conversa (sem evento SSE próprio).
+    - Follow-up usa horário comercial próprio (não lê o texto livre de `perfil.horarios`) e vale também no webchat.
+    - Áudio e imagem pelo WhatsApp real ainda não ensaiados com celular pareado.
+  - Próximo: M7 Entrega.
 
 ---
 
@@ -403,7 +421,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1199 testes) e `cd ../frontend && npm ci && npm test -- --run` (251 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1393 testes) e `cd ../frontend && npm ci && npm test -- --run` (279 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M6 — Diferenciais** (issues #36–#40). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Continuar pelo fluxo do `CLAUDE.md` §2: próximo milestone é o **M7 — Entrega** (issues #41–#44). As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
