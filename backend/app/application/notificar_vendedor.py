@@ -25,7 +25,7 @@ from uuid import UUID
 
 from app.application.canal import Canal
 from app.application.distribuir_lead import DistribuirLead, ListaVendedores
-from app.application.handoff import ResumoHandoff
+from app.application.handoff import AcordoFechado, ResumoHandoff
 from app.application.painel.eventos import EventoDonoMudou
 from app.application.painel.portas import DONO_VENDEDOR, RepositorioPainel
 from app.application.painel.publicador import PublicadorPainel, publicar_sem_falhar
@@ -98,6 +98,7 @@ def _linhas_do_resumo(resumo: ResumoHandoff) -> list[str]:
         linhas.append(f"Pagamento: {resumo.forma_pagamento}")
     if resumo.data_prevista:
         linhas.append(f"Data prevista: {resumo.data_prevista:%d/%m/%Y}")
+    linhas.extend(_linhas_do_acordo(resumo.acordo))
     if resumo.pendencias:
         linhas.append("Pendências: " + ", ".join(resumo.pendencias))
     if resumo.ultimas_mensagens_cliente:
@@ -105,6 +106,26 @@ def _linhas_do_resumo(resumo: ResumoHandoff) -> list[str]:
         linhas.extend(f'- "{fala}"' for fala in resumo.ultimas_mensagens_cliente)
     if resumo.observacoes:
         linhas.append(f"Observações: {resumo.observacoes}")
+    return linhas
+
+
+def _linhas_do_acordo(acordo: AcordoFechado | None) -> list[str]:
+    """Bloco "Acordo fechado": o que a IA combinou e informou ao cliente."""
+    if acordo is None:
+        return []
+    linhas = ["Acordo fechado:"]
+    if acordo.forma or acordo.valor_total is not None:
+        total = f"total {_valor(acordo.valor_total)}" if acordo.valor_total is not None else None
+        linhas.append("- Forma: " + " - ".join(p for p in (acordo.forma, total) if p))
+    if acordo.data_prevista:
+        linhas.append(f"- Cliente vai à loja em {acordo.data_prevista:%d/%m/%Y}")
+    if acordo.endereco:
+        linhas.append(f"- Endereço informado: {acordo.endereco}")
+    if acordo.horarios:
+        linhas.append(f"- Horário informado: {acordo.horarios}")
+    if acordo.pix_chave:
+        favorecido = f" (favorecido: {acordo.pix_favorecido})" if acordo.pix_favorecido else ""
+        linhas.append(f"- Chave Pix informada: {acordo.pix_chave}{favorecido}")
     return linhas
 
 

@@ -148,6 +148,63 @@ def test_handoff() -> None:
     assert not ck.handoff_esperado(transcricao(handoff=True), False).passou
 
 
+# --- acordo antes do handoff (#74) ------------------------------------------------------------
+
+ACORDO = {"status": "ok", "acordo_fechado": True, "endereco": "Rua das Palmeiras, 123, Centro"}
+
+
+def test_acordo_antes_do_handoff_passa_com_acordo_endereco_e_so_depois_o_vendedor() -> None:
+    t = transcricao(
+        ferr("calcular_proposta", proposta()),
+        ag("Proposta enviada."),
+        cli("fechado"),
+        ferr("fechar_acordo", ACORDO),
+        ferr("chamar_vendedor", {"status": "ok"}),
+        ag("Te esperamos na Rua das Palmeiras, 123. Obrigado pela preferência!"),
+        handoff=True,
+    )
+    assert ck.acordo_antes_do_handoff(t).passou
+
+
+def test_acordo_antes_do_handoff_reprova_handoff_sem_fechar_acordo() -> None:
+    t = transcricao(
+        ferr("calcular_proposta", proposta()),
+        cli("quero fechar"),
+        ferr("chamar_vendedor", {"status": "ok"}),
+        ag("Vou chamar um vendedor."),
+        handoff=True,
+    )
+    r = ck.acordo_antes_do_handoff(t)
+    assert not r.passou and "fechar_acordo" in r.motivo
+
+
+def test_acordo_antes_do_handoff_reprova_vendedor_chamado_antes_do_acordo() -> None:
+    t = transcricao(
+        ferr("chamar_vendedor", {"status": "ok"}),
+        ferr("fechar_acordo", ACORDO),
+        ag("Rua das Palmeiras, 123"),
+    )
+    assert not ck.acordo_antes_do_handoff(t).passou
+
+
+def test_acordo_antes_do_handoff_reprova_acordo_recusado() -> None:
+    t = transcricao(
+        ferr("fechar_acordo", {"erro": "sem proposta"}, erro=True),
+        ferr("chamar_vendedor", {"status": "ok"}),
+    )
+    assert not ck.acordo_antes_do_handoff(t).passou
+
+
+def test_acordo_antes_do_handoff_exige_que_o_agente_diga_o_endereco() -> None:
+    t = transcricao(
+        ferr("fechar_acordo", ACORDO),
+        ferr("chamar_vendedor", {"status": "ok"}),
+        ag("Fechado! Um vendedor vai te atender."),
+    )
+    r = ck.acordo_antes_do_handoff(t)
+    assert not r.passou and "endereço" in r.motivo
+
+
 # --- 6. uma pergunta por mensagem -------------------------------------------------------------
 
 

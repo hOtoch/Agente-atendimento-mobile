@@ -124,6 +124,65 @@ describe("montarResumoHandoff", () => {
       expect(r.valores).toBeNull()
     })
 
+    it("acordo fechado pela IA: forma, quando, endereço, horário e chave Pix informados", () => {
+      const r = montarResumoHandoff({
+        ...comResumo,
+        resumo_handoff: {
+          ...RESUMO_API,
+          motivo: "Acordo fechado pela IA: cliente vai à loja em 25/11/2026 para concluir; confira os detalhes abaixo.",
+          acordo: {
+            fechado_em: "2026-11-20T14:30:00Z",
+            forma: "Pix ou dinheiro à vista",
+            valor_total: "3900.00",
+            data_prevista: "2026-11-25",
+            endereco: "Rua das Palmeiras, 123",
+            horarios: "seg: 09:00-18:00",
+            pix_chave: "pix@loja.exemplo",
+            pix_favorecido: "Loja Demo",
+          },
+        },
+      })
+      expect(r.motivo).toContain("Acordo fechado pela IA")
+      expect(r.acordo).toEqual([
+        { rotulo: "Forma", valor: expect.stringContaining("Pix ou dinheiro à vista") },
+        { rotulo: "Cliente vai à loja em", valor: "25/11/2026" },
+        { rotulo: "Endereço informado", valor: "Rua das Palmeiras, 123" },
+        { rotulo: "Horário informado", valor: "seg: 09:00-18:00" },
+        { rotulo: "Chave Pix informada", valor: "pix@loja.exemplo (favorecido: Loja Demo)" },
+      ])
+      expect(r.acordo?.[0].valor).toContain("R$")
+    })
+
+    it("acordo sem chave Pix nem data omite essas linhas; sem acordo vem null", () => {
+      const sem = montarResumoHandoff(comResumo)
+      expect(sem.acordo).toBeNull()
+      const r = montarResumoHandoff({
+        ...comResumo,
+        resumo_handoff: {
+          ...RESUMO_API,
+          acordo: {
+            fechado_em: "2026-11-20T14:30:00Z",
+            forma: "Débito Visa",
+            valor_total: null,
+            data_prevista: null,
+            endereco: "Rua A",
+            horarios: null,
+            pix_chave: null,
+            pix_favorecido: null,
+          },
+        },
+      })
+      expect(r.acordo?.map((l) => l.rotulo)).toEqual(["Forma", "Endereço informado"])
+    })
+
+    it("motivo acordo_fechado em código vira texto legível (sem resumo da API)", () => {
+      const r = montarResumoHandoff(
+        detalhe({ card: CARD_MARIA, handoff_solicitado: true, motivo_handoff: "acordo_fechado" }),
+      )
+      expect(r.motivo).toBe("Acordo fechado pela IA: cliente vai à loja para concluir")
+      expect(r.acordo).toBeNull()
+    })
+
     it("sem resumo da API mantém o resumo local, sem observações", () => {
       const r = montarResumoHandoff({ ...DETALHE_MARIA, resumo_handoff: null })
       expect(r.aparelho).toBe("iPhone 13 · 128 GB · Azul")

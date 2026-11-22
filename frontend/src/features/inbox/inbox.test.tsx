@@ -432,6 +432,39 @@ describe("handoff pedido pela IA", () => {
     expect(within(resumo).getByText("iPhone 16 128GB")).toBeInTheDocument()
   })
 
+  it("mostra o bloco 'Acordo fechado' quando a IA fechou o acordo", async () => {
+    const fechado = {
+      ...aguardando,
+      resumo_handoff: {
+        ...RESUMO_API,
+        motivo: "Acordo fechado pela IA: cliente vai à loja em 25/11/2026 para concluir; confira os detalhes abaixo.",
+        acordo: {
+          fechado_em: "2026-11-20T14:30:00Z",
+          forma: "Pix ou dinheiro à vista",
+          valor_total: "3900.00",
+          data_prevista: "2026-11-25",
+          endereco: "Rua das Palmeiras, 123",
+          horarios: "seg: 09:00-18:00",
+          pix_chave: "pix@loja.exemplo",
+          pix_favorecido: "Loja Demo",
+        },
+      },
+    }
+    const api = montarApi({ detalhes: { [LEAD_MARIA]: fechado } })
+    await abrirConversa(api)
+    const resumo = screen.getByRole("region", { name: "Resumo do handoff" })
+    const acordo = within(resumo).getByRole("group", { name: "Acordo fechado" })
+    expect(within(acordo).getByText("Rua das Palmeiras, 123")).toBeInTheDocument()
+    expect(within(acordo).getByText("pix@loja.exemplo (favorecido: Loja Demo)")).toBeInTheDocument()
+    expect(within(acordo).getByText("25/11/2026")).toBeInTheDocument()
+  })
+
+  it("sem acordo, o resumo não mostra o bloco", async () => {
+    const api = montarApi({ detalhes: { [LEAD_MARIA]: aguardando } })
+    await abrirConversa(api)
+    expect(screen.queryByRole("group", { name: "Acordo fechado" })).not.toBeInTheDocument()
+  })
+
   it("mostra o resumo completo mesmo sem observações da IA (falha técnica)", async () => {
     const completo = {
       ...aguardando,

@@ -78,6 +78,9 @@ class Expectativas:
     """Regex (sem diferenciar caixa) que o agente nao pode dizer."""
     valores_esperados: tuple[str, ...] = ()
     """Valores 'R$ x' que o agente precisa dizer em algum momento."""
+    acordo_fechado: bool | None = None
+    """True: o agente tem de fechar o acordo (fechar_acordo ok), dizer o endereco devolvido e so
+    depois chamar o vendedor."""
 
 
 @dataclass(frozen=True, slots=True)

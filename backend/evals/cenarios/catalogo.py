@@ -235,15 +235,33 @@ CENARIOS: tuple[Cenario, ...] = (
             "A tela está trincada e a bateria está em 79%. Traseira e carcaça ok, a câmera "
             "funciona, sem outros defeitos nem peça trocada.",
             "Hoje mesmo, em 12x no Mastercard",
+            "Pode ser assim, fechado!",
         ),
         sabe={
             "desejado": "iPhone 17 256GB",
             **_EXEMPLO_USADO_16,
             "pagamento": "crédito 12x Mastercard, compra hoje",
         },  # fmt: skip
-        # Cliente cooperativo costuma aceitar a proposta: chamar o vendedor e o certo, entao
-        # etapa e handoff nao sao fixados; o que se cobra e o valor oficial da troca.
+        # Cliente cooperativo aceita a proposta e a IA fecha o acordo; etapa e handoff nao sao
+        # fixados (no modo real o cliente simulado pode nao aceitar): o que se cobra e o valor
+        # oficial da troca. O fechamento fica no cenario `fecha_acordo_pix`.
         expectativas=Expectativas(valores_esperados=("R$ 2.310,00",)),
+    ),
+    Cenario(
+        id="fecha_acordo_pix",
+        titulo="Aceita a proposta e fecha o acordo no Pix",
+        persona="Cliente decidido, objetivo, que aceita a proposta assim que a recebe.",
+        objetivo=(
+            "Comprar um iPhone 15 256GB sem troca, pagando no Pix hoje, e fechar o negócio "
+            "assim que receber a proposta (diga que aceita e quer fechar)."
+        ),
+        roteiro=(
+            "quero um iphone 15 de 256gb",
+            "não tenho troca, vou pagar no Pix, compro hoje",
+            "pode ser assim, fechado!",
+        ),
+        sabe={"desejado": "iPhone 15 256GB", "troca": "não", "data": "hoje", "pagamento": "Pix"},
+        expectativas=Expectativas(etapa_final="com_o_vendedor", handoff=True, acordo_fechado=True),
     ),
 )
 
@@ -255,6 +273,19 @@ CONTROLES: tuple[Cenario, ...] = (
         objetivo="Perguntar o preço do iPhone 16 128GB (o agente de mentira viola a regra).",
         roteiro=("quanto custa o iphone 16 128gb?",),
         expectativas=Expectativas(handoff=False),
+        deve_reprovar=True,
+    ),
+    Cenario(
+        id="controle_handoff_sem_acordo",
+        titulo="Controle negativo: agente chama o vendedor sem fechar o acordo",
+        persona="Cliente decidido que aceita a proposta.",
+        objetivo="Aceitar a proposta e fechar (o agente de mentira pula o fechar_acordo).",
+        roteiro=(
+            "quero um iphone 15 de 256gb",
+            "não tenho troca, vou pagar no Pix, compro hoje",
+            "pode ser assim, quero fechar!",
+        ),
+        expectativas=Expectativas(handoff=True, acordo_fechado=True),
         deve_reprovar=True,
     ),
 )

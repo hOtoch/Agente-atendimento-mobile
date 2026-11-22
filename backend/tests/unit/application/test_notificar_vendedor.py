@@ -15,7 +15,7 @@ from app.application.config.entradas import EntradaVendedor
 from app.application.config.memoria import MemoriaVendedores
 from app.application.distribuicao_memoria import MemoriaAtribuicoes
 from app.application.distribuir_lead import DistribuirLead
-from app.application.handoff import ResumoHandoff
+from app.application.handoff import AcordoFechado, ResumoHandoff
 from app.application.notificar_vendedor import (
     NotificarVendedorNoHandoff,
     ServicosDaDistribuicao,
@@ -177,6 +177,67 @@ def test_mensagem_traz_o_resumo_completo_sem_o_llm() -> None:
         assert trecho in texto, trecho
     assert "Observações" not in texto
     assert "falha_llm" not in texto
+
+
+def _acordo(**campos: object) -> AcordoFechado:
+    base: dict[str, object] = dict(
+        fechado_em=AGORA,
+        forma="Cartão de crédito em 12x Mastercard",
+        valor_total=D("3900.5"),
+        data_prevista=date(2026, 11, 25),
+        endereco="Rua das Palmeiras, 123",
+        horarios="seg: 09:00-18:00; sab: 09:00-14:00",
+        pix_chave=None,
+        pix_favorecido=None,
+    )
+    base.update(campos)
+    return AcordoFechado(**base)  # type: ignore[arg-type]
+
+
+def _mensagem(resumo: ResumoHandoff) -> str:
+    return montar_mensagem_vendedor(
+        lead_id=uuid4(),
+        lead_nome="Marcos",
+        lead_telefone="5511999990000",
+        canal=Canal.WHATSAPP,
+        resumo=resumo,
+        url_painel=PAINEL,
+    )
+
+
+def test_mensagem_com_acordo_fechado_traz_o_bloco() -> None:
+    resumo = resumo_rico(
+        motivo=(
+            "Acordo fechado pela IA: cliente vai à loja em 25/11/2026 para concluir; "
+            "confira os detalhes abaixo."
+        ),
+        acordo=_acordo(),
+    )
+    texto = _mensagem(resumo)
+    for trecho in (
+        "Motivo: Acordo fechado pela IA: cliente vai à loja em 25/11/2026",
+        "Acordo fechado:",
+        "- Forma: Cartão de crédito em 12x Mastercard - total R$ 3.900,50",
+        "- Cliente vai à loja em 25/11/2026",
+        "- Endereço informado: Rua das Palmeiras, 123",
+        "- Horário informado: seg: 09:00-18:00; sab: 09:00-14:00",
+        "Aparelho: iPhone 16 128GB, Preto (SKU IP16-128-PT)",
+    ):
+        assert trecho in texto, trecho
+    assert "Pix informado" not in texto
+    # o acordo vem antes das pendencias e das ultimas mensagens
+    assert texto.index("Acordo fechado:") < texto.index("Últimas mensagens do cliente:")
+
+
+def test_mensagem_com_acordo_no_pix_traz_a_chave_informada() -> None:
+    texto = _mensagem(
+        resumo_rico(acordo=_acordo(pix_chave="pix@loja.exemplo", pix_favorecido="Loja Demo"))
+    )
+    assert "- Chave Pix informada: pix@loja.exemplo (favorecido: Loja Demo)" in texto
+
+
+def test_mensagem_sem_acordo_nao_tem_o_bloco() -> None:
+    assert "Acordo fechado" not in _mensagem(resumo_rico())
 
 
 def test_mensagem_troca_avaliada_na_loja() -> None:

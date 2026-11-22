@@ -1,6 +1,109 @@
 {
   "components": {
     "schemas": {
+      "AcordoFechadoSchema": {
+        "description": "Acordo que a IA fechou com o cliente antes de chamar o vendedor.",
+        "properties": {
+          "data_prevista": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quando o cliente vai à loja.",
+            "title": "Data Prevista"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Endereço que a IA informou ao cliente.",
+            "title": "Endereco"
+          },
+          "fechado_em": {
+            "format": "date-time",
+            "title": "Fechado Em",
+            "type": "string"
+          },
+          "forma": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forma escolhida na proposta (ex.: crédito em 12x).",
+            "title": "Forma"
+          },
+          "horarios": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Horários que a IA informou ao cliente.",
+            "title": "Horarios"
+          },
+          "pix_chave": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Chave Pix informada (só no Pix); null sem chave.",
+            "title": "Pix Chave"
+          },
+          "pix_favorecido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pix Favorecido"
+          },
+          "valor_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Total"
+          }
+        },
+        "required": [
+          "fechado_em",
+          "forma",
+          "data_prevista",
+          "endereco",
+          "horarios",
+          "pix_chave"
+        ],
+        "title": "AcordoFechadoSchema",
+        "type": "object"
+      },
       "AssumirIn": {
         "properties": {
           "vendedor_id": {
@@ -1911,6 +2014,17 @@
       "ResumoHandoffSchema": {
         "description": "Resumo para o vendedor: campos estruturados (deterministicos) + observacoes do LLM.",
         "properties": {
+          "acordo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcordoFechadoSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Acordo fechado pela IA antes do handoff; null se não houve."
+          },
           "aparelho_desejado": {
             "anyOf": [
               {

@@ -19,6 +19,8 @@ export type ResumoHandoff = {
   valores: string | null
   /** Data prevista da compra (dd/mm/aaaa), só no resumo da API. */
   dataPrevista: string | null
+  /** Acordo fechado pela IA (linhas rótulo/valor); null quando a IA não fechou, só no resumo da API. */
+  acordo: { rotulo: string; valor: string }[] | null
   /** 2–3 frases da IA (objeções, clima, próximo passo); null se ela falhou ou não houve. */
   observacoes: string | null
   pendencias: string[]
@@ -31,6 +33,7 @@ const LIMITE_MENSAGENS = 3
 /** Motivos gravados pelo sistema (não pela IA), que chegam como código. */
 const MOTIVOS_DO_SISTEMA: Record<string, string> = {
   falha_llm: "A IA teve uma falha técnica e passou o atendimento para você",
+  acordo_fechado: "Acordo fechado pela IA: cliente vai à loja para concluir",
 }
 
 function textoDaMensagem(m: MensagemLead): string {
@@ -94,6 +97,27 @@ function dataDoResumo(r: ResumoApi): string | null {
   return ano && mes && dia ? `${dia}/${mes}/${ano}` : null
 }
 
+function dataIso(iso: string | null | undefined): string | null {
+  const [ano, mes, dia] = (iso ?? "").split("-")
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : null
+}
+
+function acordoDoResumo(r: ResumoApi): ResumoHandoff["acordo"] {
+  const a = r.acordo
+  if (!a) return null
+  const total = formatarMoeda(a.valor_total)
+  const forma = a.forma ? (total ? `${a.forma} · total ${total}` : a.forma) : null
+  const favorecido = a.pix_favorecido ? ` (favorecido: ${a.pix_favorecido})` : ""
+  const linhas: [string, string | null][] = [
+    ["Forma", forma],
+    ["Cliente vai à loja em", dataIso(a.data_prevista)],
+    ["Endereço informado", a.endereco ?? null],
+    ["Horário informado", a.horarios ?? null],
+    ["Chave Pix informada", a.pix_chave ? `${a.pix_chave}${favorecido}` : null],
+  ]
+  return linhas.flatMap(([rotulo, valor]) => (valor ? [{ rotulo, valor }] : []))
+}
+
 function doResumoDaApi(
   r: ResumoApi,
   mensagens: MensagemLead[],
@@ -106,6 +130,7 @@ function doResumoDaApi(
     proposta: propostaDoResumo(r),
     valores: valoresDoResumo(r),
     dataPrevista: dataDoResumo(r),
+    acordo: acordoDoResumo(r),
     observacoes: r.observacoes ?? null,
     pendencias: r.pendencias,
     proximoPasso: r.pendencias[0] ?? "Fechar a venda com o cliente",
@@ -129,6 +154,7 @@ export function montarResumoHandoff(
     proposta: null,
     valores: null,
     dataPrevista: null,
+    acordo: null,
     observacoes: null,
     pendencias,
     proximoPasso: pendencias[0] ?? "Fechar a venda com o cliente",

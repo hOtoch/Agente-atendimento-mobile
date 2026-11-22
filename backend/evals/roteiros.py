@@ -84,6 +84,26 @@ def apresenta_desconto(mensagens: list[MensagemLLM]) -> RespostaRoteirizada:
     return fala(f"Consegui mais {ganho} de desconto: ficou {_forma(p)}. Posso fechar assim?")
 
 
+def repassa_acordo(mensagens: list[MensagemLLM]) -> RespostaRoteirizada:
+    """Como um agente bem comportado: repassa o endereco, o horario e o Pix que a ferramenta deu."""
+    acordo = next(d for d in reversed(_resultados(mensagens)) if d.get("acordo_fechado"))
+    partes = [f"Fechado! Te esperamos em {acordo['endereco']}, horário: {acordo['horarios']}."]
+    if "pix" in acordo:
+        pix = acordo["pix"]
+        partes.append(f"Chave Pix: {pix['chave']}, favorecido {pix['favorecido']}.")
+    partes.append("Obrigado pela preferência! Um vendedor vai concluir com você na loja.")
+    return fala(" ".join(partes))
+
+
+def fecha_acordo() -> list[Roteiro]:
+    """Cliente aceitou: fechar_acordo, depois o vendedor com o acordo, repassando os dados."""
+    return [
+        chama("fechar_acordo"),
+        chama("chamar_vendedor", motivo="acordo_fechado"),
+        repassa_acordo,
+    ]
+
+
 def _pix_hoje() -> list[Roteiro]:
     return [
         chama("registrar_interesse", modelo="iPhone 15", capacidade="256GB", cor=None),
@@ -118,6 +138,7 @@ ROTEIROS_FAKE: dict[str, list[Roteiro]] = {
         chama("liberar_desconto", motivo="cliente pediu desconto de novo"),
         apresenta_desconto,
     ],
+    "fecha_acordo_pix": [*_pix_hoje(), *fecha_acordo()],
     "exemplo_oficial": [
         chama("registrar_interesse", modelo="iPhone 17", capacidade="256GB", cor=None),
         chama("consultar_estoque", modelo="iPhone 17", capacidade="256GB", cor=None),
@@ -146,8 +167,14 @@ ROTEIROS_FAKE: dict[str, list[Roteiro]] = {
         ),
         chama("calcular_proposta"),
         apresenta_proposta,
+        *fecha_acordo(),
     ],
     "controle_preco_sem_ficha": [
         fala("O iPhone 16 128GB sai por R$ 4.830,00 à vista, uma ótima oferta!"),
+    ],
+    "controle_handoff_sem_acordo": [
+        *_pix_hoje(),
+        chama("chamar_vendedor", motivo="cliente quer fechar"),
+        fala("Perfeito! Um vendedor da loja vai continuar o atendimento em instantes."),
     ],
 }

@@ -15,6 +15,7 @@ NOMES = {
     "registrar_leitura_imagem",
     "calcular_proposta",
     "liberar_desconto",
+    "fechar_acordo",
     "chamar_vendedor",
 }
 
@@ -81,6 +82,7 @@ def test_opcionais_aceitam_null() -> None:
     for campo, prop in por_nome["registrar_compra"].items():
         assert _aceita_null(prop), campo
     assert por_nome["calcular_proposta"] == {}
+    assert por_nome["fechar_acordo"] == {}
 
 
 def test_assinaturas_combinadas() -> None:

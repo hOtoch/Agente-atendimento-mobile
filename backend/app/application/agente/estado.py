@@ -25,6 +25,8 @@ class EstadoAtendimento:
     motivo_handoff: str | None = None
     ultima_proposta: dict[str, Any] | None = None
     """Resumo JSON da ultima proposta (alimenta o resumo do handoff)."""
+    acordo: dict[str, Any] | None = None
+    """Snapshot do acordo fechado por `fechar_acordo` (None ate a IA fechar; cai se algo muda)."""
 
     def para_dict(self) -> dict[str, Any]:
         return {
@@ -35,6 +37,7 @@ class EstadoAtendimento:
             "handoff_solicitado": self.handoff_solicitado,
             "motivo_handoff": self.motivo_handoff,
             "ultima_proposta": self.ultima_proposta,
+            "acordo": self.acordo,
         }
 
     @classmethod
@@ -51,6 +54,7 @@ class EstadoAtendimento:
             handoff_solicitado=bool(dados.get("handoff_solicitado", False)),
             motivo_handoff=dados.get("motivo_handoff"),
             ultima_proposta=dados.get("ultima_proposta"),
+            acordo=dados.get("acordo"),
         )
 
 
@@ -71,3 +75,16 @@ def aparelho_desejado(estado: EstadoAtendimento) -> str | None:
     if i.modelo is None:
         return None
     return f"{i.modelo.nome} {i.capacidade}" if i.capacidade is not None else i.modelo.nome
+
+
+def descrever_troca(estado: EstadoAtendimento) -> str | None:
+    """`iPhone 13 128GB`, "Sem aparelho na troca" ou None se ainda nao se sabe."""
+    ficha = estado.ficha
+    if ficha.tem_troca is None:
+        return None
+    if ficha.tem_troca is False:
+        return "Sem aparelho na troca"
+    u = ficha.usado
+    if u.modelo is None:
+        return "Aparelho usado (modelo ainda não informado)"
+    return f"{u.modelo.nome} {u.capacidade}" if u.capacidade is not None else u.modelo.nome
