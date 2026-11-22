@@ -99,3 +99,23 @@ def test_settings_de_tts_sao_opcionais(monkeypatch: pytest.MonkeyPatch) -> None:
     assert s.openai_api_key is None
     assert s.tts_model == "gpt-4o-mini-tts"
     assert s.tts_voz
+
+
+def test_settings_mercadophone_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    for nome in ("MERCADOPHONE_MCP_URL", "MERCADOPHONE_API_KEY"):
+        monkeypatch.delenv(nome, raising=False)
+
+    s = Settings(_env_file=None)
+
+    assert s.mercadophone_mcp_url == "https://platform.mercadophone.tech/mcp/platform/"
+    assert s.mercadophone_api_key is None
+
+
+def test_settings_mercadophone_le_do_ambiente(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MERCADOPHONE_MCP_URL", "https://outro.test/mcp/")
+    monkeypatch.setenv("MERCADOPHONE_API_KEY", "chave-teste")
+
+    s = Settings(_env_file=None)
+
+    assert s.mercadophone_mcp_url == "https://outro.test/mcp/"
+    assert s.mercadophone_api_key == "chave-teste"

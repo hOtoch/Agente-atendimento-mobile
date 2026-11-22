@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     """Espera antes de tratar um `fromMe` desconhecido como do vendedor (corrida com o envio)."""
     painel_url: str = "http://localhost:3000"
     """Base do painel: vira o link `/conversas?lead=<id>` enviado ao vendedor no handoff."""
+    mercadophone_mcp_url: str = "https://platform.mercadophone.tech/mcp/platform/"
+    """Servidor MCP do Mercado Phone (ERP dos lojistas). Nao e segredo."""
+    mercadophone_api_key: str | None = None
+    """Chave da API do Mercado Phone (vai na query `key`; e segredo). Vazia = sem integracao."""
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 
