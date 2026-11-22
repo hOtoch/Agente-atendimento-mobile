@@ -43,9 +43,11 @@ from app.adapters.outbound.db.followup import (
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.processamento import RegistroEventosSql, RepositorioProcessamentoSql
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
+from app.adapters.outbound.db.vinculo_erp import VinculosErpLeadSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
 from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
 from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
+from app.adapters.outbound.mercadophone.pedido import PedidoMercadoPhone
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.application.agendamento import TravaConversa
 from app.application.agente.ferramentas import CatalogoFerramentas
@@ -58,14 +60,17 @@ from app.application.config.portas import SemIntegracaoEstoque
 from app.application.distribuir_lead import DistribuirLead
 from app.application.estoque_erp import FonteEstoqueErp, SincronizarEstoqueErp
 from app.application.estoque_resiliente import EstoqueResiliente
+from app.application.exportar_handoff_erp import ExportarHandoffParaErp, ServicosDaExportacao
 from app.application.followup import EnviarFollowups, RedatorFollowupLLM
-from app.application.handoff import AoSolicitarHandoff, CasosHandoff
+from app.application.handoff import AoSolicitarHandoff, CasosHandoff, GanchosHandoff
 from app.application.llm import LLMPort
 from app.application.midia import ArmazenamentoMidia
 from app.application.notificar_vendedor import NotificarVendedorNoHandoff, ServicosDaDistribuicao
 from app.application.painel.casos_de_uso import CasosPainel
 from app.application.painel.publicador import PublicadorPainel, PublicadorPainelNulo
+from app.application.pedido_erp import DadosHandoff, FalhaPedidoErp, PedidoPort, RegistroErp
 from app.application.whatsapp import RegistroEnviadas, WhatsAppGateway
+from app.domain.conexao_erp import ConexaoErp
 from app.infra.fila import AgendadorArq, RelogioParede, TravaRedis
 from app.infra.llm import criar_llm
 from app.infra.mercadophone import MercadoPhoneNaoConfigurado, get_cliente_mercadophone
@@ -161,6 +166,91 @@ def criar_aviso_handoff(
         registro=RegistroEnviadasRedis(redis),
         publicador=PublicadorPainelBarramento(barramento or BarramentoRedis(redis)),
         settings=settings,
+    )
+
+
+class _PedidoErpDesligado:
+    """`PedidoPort` de quando o servidor nao tem a chave do ERP: falha tipada, sem rede."""
+
+    async def registrar_handoff(self, conexao: ConexaoErp, dados: DadosHandoff) -> RegistroErp:
+        raise FalhaPedidoErp("MERCADOPHONE_API_KEY não configurada: nada foi enviado ao ERP")
+
+
+def criar_pedido_erp() -> PedidoPort:
+    """Pedido no Mercado Phone; sem `MERCADOPHONE_API_KEY` devolve um que falha com erro tipado."""
+    try:
+        return PedidoMercadoPhone(get_cliente_mercadophone())
+    except MercadoPhoneNaoConfigurado:
+        log.info("exportacao do handoff ao ERP sem efeito: MERCADOPHONE_API_KEY nao configurada")
+        return _PedidoErpDesligado()
+
+
+def montar_exportar_handoff_erp(
+    factory: async_sessionmaker[AsyncSession], *, pedido: PedidoPort | None = None
+) -> ExportarHandoffParaErp:
+    """Gancho que exporta o lead ao ERP (cliente + orcamento); so age com `exportar_handoff` ligado.
+
+    Sessoes proprias e curtas (ler; depois gravar ids e evento): a chamada ao ERP nao segura
+    transacao.
+    """
+
+    @asynccontextmanager
+    async def abrir() -> AsyncIterator[ServicosDaExportacao]:
+        async with factory() as session:
+            try:
+                yield ServicosDaExportacao(
+                    conexoes=RepositorioConexaoErpSql(session),
+                    repo=RepositorioPainelSql(session),
+                    vendedores=RepositorioVendedoresSql(session),
+                    estoque=RepositorioEstoqueLocalSql(session),
+                    vinculos=VinculosErpLeadSql(session),
+                )
+                await session.commit()
+            except BaseException:
+                await session.rollback()
+                raise
+
+    return ExportarHandoffParaErp(abrir=abrir, pedido=pedido or criar_pedido_erp())
+
+
+def montar_gancho_handoff(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    gateway: WhatsAppGateway,
+    registro: RegistroEnviadas,
+    publicador: PublicadorPainel,
+    pedido: PedidoPort | None = None,
+    settings: Settings | None = None,
+) -> GanchosHandoff:
+    """Gancho completo do handoff: avisa o vendedor e, DEPOIS da atribuicao, exporta ao ERP."""
+    return GanchosHandoff(
+        [
+            montar_aviso_handoff(
+                factory,
+                gateway=gateway,
+                registro=registro,
+                publicador=publicador,
+                settings=settings,
+            ),
+            montar_exportar_handoff_erp(factory, pedido=pedido),
+        ]
+    )
+
+
+def criar_gancho_handoff(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    redis: Redis,
+    barramento: BarramentoMensagens | None = None,
+    settings: Settings | None = None,
+) -> GanchosHandoff:
+    """`montar_gancho_handoff` com Evolution, painel em tempo real e Mercado Phone reais."""
+    settings = settings or get_settings()
+    return GanchosHandoff(
+        [
+            criar_aviso_handoff(factory, redis=redis, barramento=barramento, settings=settings),
+            montar_exportar_handoff_erp(factory),
+        ]
     )
 
 

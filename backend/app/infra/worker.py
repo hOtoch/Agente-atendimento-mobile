@@ -26,8 +26,8 @@ from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.application.agendamento import ProcessarQuandoQuieto
 from app.infra.composicao import (
     criar_agendador,
-    criar_aviso_handoff,
     criar_followups,
+    criar_gancho_handoff,
     criar_processador,
     criar_sincronizador_erp,
 )
@@ -52,7 +52,7 @@ async def iniciar(ctx: dict[str, Any]) -> None:
             redis=redis,
             settings=settings,
             barramento=barramento,
-            aviso_handoff=criar_aviso_handoff(
+            aviso_handoff=criar_gancho_handoff(
                 factory, redis=redis, barramento=barramento, settings=settings
             ),
         )
