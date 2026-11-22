@@ -45,6 +45,8 @@ export type DefinicaoGrade = {
   salvar: (cliente: Cliente, lojaId: string, linhas: DataGridRow[]) => Promise<ResultadoGrade>
   /** Regra checada no cliente antes de chamar a API; devolve a mensagem de erro. */
   validarLocal?: (linhas: DataGridRow[]) => string | null
+  /** Linhas por página da grade (com filtro); sem ele mostra tudo. Para grades grandes. */
+  porPagina?: number
 }
 
 /** Corpo de erro uniforme da API (`{ erros: [{ caminho, mensagem }] }`), quando existir. */
@@ -227,6 +229,8 @@ export const GRADE_ESTOQUE: DefinicaoGrade = {
   colunas: COLUNAS_ESTOQUE,
   rotuloAdicionar: "Adicionar item",
   importar: "estoque",
+  // Com o ERP a grade passa de mil itens.
+  porPagina: 50,
   linhaVazia: () => ({
     sku: "",
     marca: "Apple",

@@ -419,4 +419,32 @@ describe("Onboarding: importar planilha", () => {
     const link = await screen.findByRole("link", { name: /baixar modelo/i })
     expect(link.getAttribute("href")).toMatch(/\/modelos\/estoque$/)
   })
+
+  it("estoque grande (ex.: vindo do ERP) é paginado de 50 em 50 e filtrável", async () => {
+    const user = userEvent.setup()
+    params = new URLSearchParams("passo=estoque")
+    const estoque = Array.from({ length: 60 }, (_, i) => ({
+      sku: `SKU-${i + 1}`,
+      marca: "Apple",
+      modelo: i < 5 ? "iPhone 13" : "iPhone 15",
+      capacidade_gb: 128,
+      cor: "Preto",
+      condicao: "seminovo",
+      preco_pix: "3000.00",
+      quantidade: 1,
+      bateria_pct: null,
+    }))
+    const { cliente } = apiFalsa({
+      [`GET ${CHECKLIST}`]: { corpo: { itens: ITENS } },
+      [`GET /lojas/${LOJA}/config/estoque`]: { corpo: { estoque } },
+      [`GET /lojas/${LOJA}/config/mapeamento-sku`]: { corpo: { mapeamento_sku: [] } },
+    })
+    render(<Onboarding cliente={cliente} lojaId={LOJA} />)
+    const grade = await screen.findByRole("table", { name: "Estoque" })
+    expect(within(grade).getAllByRole("textbox", { name: /^SKU, linha/ })).toHaveLength(50)
+    expect(screen.getByText("Mostrando 1–50 de 60")).toBeInTheDocument()
+
+    await user.type(screen.getByRole("searchbox", { name: "Filtrar Estoque" }), "iphone 13")
+    expect(within(grade).getAllByRole("textbox", { name: /^SKU, linha/ })).toHaveLength(5)
+  })
 })
