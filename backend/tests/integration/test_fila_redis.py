@@ -9,7 +9,7 @@ from arq.connections import ArqRedis
 from arq.worker import Worker, func
 
 from app.application.agendamento import ProcessarQuandoQuieto
-from app.infra.fila import AgendadorArq, RelogioParede, TravaRedis
+from app.infra.fila import AgendadorArq, DescartesRedis, RelogioParede, TravaRedis
 
 pytestmark = pytest.mark.integration
 
@@ -127,3 +127,19 @@ async def test_ponta_a_ponta_tres_mensagens_um_processamento(
     )
     await worker.main()  # burst: roda ate a fila (inclusive os jobs adiados) esvaziar
     assert chamadas == [conversa]
+
+
+async def test_descartes_redis_conta_zera_e_e_compartilhado(
+    redis_pool: ArqRedis, prefixo_redis: str
+) -> None:
+    a = DescartesRedis(redis_pool, prefixo=prefixo_redis)
+    b = DescartesRedis(redis_pool, prefixo=prefixo_redis)  # outro worker/processo
+    conversa, outra = uuid4(), uuid4()
+    assert await a.atual(conversa) == 0
+    assert await a.registrar(conversa) == 1
+    assert await b.registrar(conversa) == 2
+    assert await a.atual(conversa) == 2
+    assert await a.registrar(outra) == 1
+    await b.zerar(conversa)
+    assert await a.atual(conversa) == 0
+    assert await a.atual(outra) == 1

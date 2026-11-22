@@ -52,6 +52,7 @@ from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
 from app.adapters.outbound.mercadophone.pedido import PedidoMercadoPhone
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.application.agendamento import TravaConversa
+from app.application.agente.descartes import ContadorDescartes
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.processar_conversa import ProcessarConversa
 from app.application.audio_entrada import STTPort, TranscreverAudio
@@ -75,7 +76,7 @@ from app.application.painel.publicador import PublicadorPainel, PublicadorPainel
 from app.application.pedido_erp import DadosHandoff, FalhaPedidoErp, PedidoPort, RegistroErp
 from app.application.whatsapp import RegistroEnviadas, WhatsAppGateway
 from app.domain.conexao_erp import ConexaoErp
-from app.infra.fila import AgendadorArq, RelogioParede, TravaRedis
+from app.infra.fila import AgendadorArq, DescartesRedis, RelogioParede, TravaRedis
 from app.infra.llm import criar_llm
 from app.infra.mercadophone import MercadoPhoneNaoConfigurado, get_cliente_mercadophone
 from app.infra.relogio import RelogioSistema
@@ -386,6 +387,8 @@ def montar_processar_conversa(
     midia: ArmazenamentoMidia | None = None,
     audio_saida: ResponderEmAudio | None = None,
     cliente_erp: Callable[[], ClienteMercadoPhone | None] = cliente_erp_ou_none,
+    descartes: ContadorDescartes | None = None,
+    max_descartes: int = 2,
 ) -> ProcessarConversa:
     """Caso de uso real sobre uma sessao: estoque = banco -> planilha -> resiliente -> ao vivo."""
     casos = montar_casos_config(session)
@@ -412,6 +415,8 @@ def montar_processar_conversa(
         max_iteracoes=max_iteracoes,
         midia=midia,
         audio_saida=audio_saida,
+        descartes=descartes,
+        max_descartes=max_descartes,
     )
 
 
@@ -434,6 +439,7 @@ def criar_processador(
     midia = ArmazenamentoMidiaDisco(settings.midia_dir)
     transcrever = criar_transcritor(settings, stt)
     audio_saida = criar_resposta_em_audio(settings)
+    descartes = DescartesRedis(redis, prefixo=PREFIXO_FILA)
 
     async def processar(conversa_id: UUID) -> None:
         async with factory() as session:
@@ -447,6 +453,8 @@ def criar_processador(
                     midia=midia,
                     transcrever_audio=transcrever,
                     audio_saida=audio_saida,
+                    descartes=descartes,
+                    max_descartes=settings.fila_max_descartes,
                 )(conversa_id)
             except BaseException:
                 await session.rollback()

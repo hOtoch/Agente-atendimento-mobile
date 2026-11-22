@@ -24,6 +24,7 @@ from app.application.agente.conversa_portas import (
     RegistroEventos,
     RepositorioProcessamento,
 )
+from app.application.agente.descartes import ContadorDescartes, DescartesEmMemoria
 from app.application.agente.estado import EstadoAtendimento, fatos_do_lead
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.imagem import anexar_imagens
@@ -114,6 +115,8 @@ class ProcessarConversa:
         max_iteracoes: int = 6,
         midia: ArmazenamentoMidia | None = None,
         audio_saida: ResponderEmAudio | None = None,
+        descartes: ContadorDescartes | None = None,
+        max_descartes: int = 2,
     ) -> None:
         self._conversas = conversas
         self._transcricao = transcricao
@@ -131,6 +134,8 @@ class ProcessarConversa:
         self._max_iteracoes = max_iteracoes
         self._midia = midia
         self._audio_saida = audio_saida
+        self._descartes = descartes or DescartesEmMemoria()
+        self._max_descartes = max_descartes
 
     async def __call__(self, conversa_id: UUID) -> None:
         conversa = await self._conversas.obter_conversa(conversa_id)
@@ -235,8 +240,12 @@ class _Turno:
             self._chamadas_llm += 1
             self._uso = self._uso + resposta.uso
             if not resposta.chamadas:
+                final = resposta.texto.strip() or MENSAGEM_LIMITE
+                if await self._descartar_se_chegou_mensagem(ate, final):
+                    await self._registrar_uso()
+                    return
                 await self._acrescentar([resposta.mensagem_assistente])
-                await self._responder(resposta.texto.strip() or MENSAGEM_LIMITE)
+                await self._responder(final)
                 return
             resultados: list[ResultadoFerramenta] = []
             for chamada in resposta.chamadas:
@@ -250,6 +259,51 @@ class _Turno:
         await self._evento("limite_iteracoes", {"max_iteracoes": c._max_iteracoes})
         await self._acrescentar([MensagemLLM("assistant", [BlocoTexto(MENSAGEM_LIMITE)])])
         await self._responder(MENSAGEM_LIMITE)
+
+    async def _descartar_se_chegou_mensagem(self, ate: CursorEntrada, texto: str) -> bool:
+        """O cliente escreveu depois do cursor desta rodada? Entao a resposta pronta fica velha.
+
+        Descarta ANTES de enviar ao canal e de gravar a resposta na transcricao, para a proxima
+        rodada (ja agendada pela mensagem nova) responder a tudo junto. O que a rodada ja gravou
+        permanece: as mensagens do cliente consumidas (a proxima rodada le so as que vieram depois,
+        nada se perde nem se duplica) e o estado alterado por ferramentas (a ficha, o kanban e
+        o estoque consultado sao idempotentes, entao reaplicar nao faz mal e repetir a ferramenta
+        e inofensivo); so o texto e jogado fora. Nao descarta se a IA pediu o vendedor (o cliente
+        precisa do aviso, pois a IA fica em silencio depois) nem alem do limite de descartes
+        seguidos por conversa.
+        """
+        c, conversa = self._c, self._conversa
+        if self._estado.handoff_solicitado:
+            return False
+        novas = await c._conversas.entradas_novas(conversa.conversa_id, ate)
+        if not novas:
+            return False
+        seguidos = await c._descartes.atual(conversa.conversa_id)
+        if seguidos >= c._max_descartes:
+            log.info(
+                "conversa %s: %s descartes seguidos, enviando a resposta mesmo assim",
+                conversa.conversa_id,
+                seguidos,
+            )
+            return False
+        seguidos = await c._descartes.registrar(conversa.conversa_id)
+        log.info(
+            "conversa %s: resposta descartada, chegaram %s mensagem(ns) do cliente (%s/%s)",
+            conversa.conversa_id,
+            len(novas),
+            seguidos,
+            c._max_descartes,
+        )
+        await self._evento(
+            "resposta_descartada",
+            {
+                "mensagens_novas": len(novas),
+                "descartes_seguidos": seguidos,
+                "max_descartes": c._max_descartes,
+                "texto": texto,
+            },
+        )
+        return True
 
     async def _textos_das_entradas(self, entradas: list[EntradaConversa]) -> tuple[list[str], bool]:
         """Texto de cada entrada (audio transcrito aqui) e se TODAS foram audios sem transcricao."""
@@ -382,19 +436,24 @@ class _Turno:
         if canal is None:
             raise CanalNaoConfigurado(conversa.canal.value)
         await self._enviar(canal, TipoMensagem.TEXTO, texto, None)
+        await c._descartes.zerar(conversa.conversa_id)
         await self._enviar_audio(canal, texto)
-        if self._chamadas_llm:
-            await self._evento(
-                "llm_uso",
-                {
-                    "modelo": self._uso.modelo,
-                    "entrada": self._uso.entrada,
-                    "saida": self._uso.saida,
-                    "cache_leitura": self._uso.cache_leitura,
-                    "cache_escrita": self._uso.cache_escrita,
-                    "chamadas": self._chamadas_llm,
-                },
-            )
+        await self._registrar_uso()
+
+    async def _registrar_uso(self) -> None:
+        if not self._chamadas_llm:
+            return
+        await self._evento(
+            "llm_uso",
+            {
+                "modelo": self._uso.modelo,
+                "entrada": self._uso.entrada,
+                "saida": self._uso.saida,
+                "cache_leitura": self._uso.cache_leitura,
+                "cache_escrita": self._uso.cache_escrita,
+                "chamadas": self._chamadas_llm,
+            },
+        )
 
     async def _enviar_audio(self, canal: CanalPort, texto: str) -> None:
         """Nota de voz adicional ao texto (que ja saiu). Qualquer falha deixa so o texto."""

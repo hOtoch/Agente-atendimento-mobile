@@ -23,9 +23,11 @@ import uuid
 from uuid import UUID
 
 from arq.connections import ArqRedis
+from redis.asyncio import Redis
 
 FUNCAO_PROCESSAR = "processar_conversa"
 _EXPIRA_ULTIMA_S = 24 * 3600
+_EXPIRA_DESCARTES_S = 3600
 
 _LUA_LIBERAR = """
 if redis.call('get', KEYS[1]) == ARGV[1] then
@@ -54,7 +56,7 @@ class AgendadorArq:
         self,
         redis: ArqRedis,
         *,
-        janela_s: float = 4.0,
+        janela_s: float = 10.0,
         prefixo: str = "",
         nome_fila: str | None = None,
     ) -> None:
@@ -122,3 +124,31 @@ class TravaRedis:
         if token is None:
             return
         await self._redis.eval(_LUA_LIBERAR, 1, self._chave(conversa_id), token)  # type: ignore[misc]
+
+
+class DescartesRedis:
+    """Contador de respostas descartadas em seguida por conversa, compartilhado entre workers.
+
+    Implementa `ContadorDescartes`. A chave expira sozinha: conversa parada nao carrega descartes
+    antigos para uma conversa nova.
+    """
+
+    def __init__(self, redis: Redis, *, prefixo: str = "") -> None:
+        self._redis = redis
+        self._prefixo = prefixo
+
+    def _chave(self, conversa_id: UUID) -> str:
+        return f"{self._prefixo}descartes:{conversa_id}"
+
+    async def registrar(self, conversa_id: UUID) -> int:
+        chave = self._chave(conversa_id)
+        total = int(await self._redis.incr(chave))
+        await self._redis.expire(chave, _EXPIRA_DESCARTES_S)
+        return total
+
+    async def atual(self, conversa_id: UUID) -> int:
+        bruto = await self._redis.get(self._chave(conversa_id))
+        return 0 if bruto is None else int(bruto)
+
+    async def zerar(self, conversa_id: UUID) -> None:
+        await self._redis.delete(self._chave(conversa_id))
