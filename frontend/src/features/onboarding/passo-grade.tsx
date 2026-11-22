@@ -151,6 +151,8 @@ export function PassoGrade({
               aria-label={definicao.rotuloGrade}
               columns={definicao.colunas}
               rows={linhas}
+              pageSize={definicao.porPagina}
+              filterable={definicao.porPagina !== undefined}
               errors={erros}
               onChange={({ rowIndex, columnKey, row }) => {
                 setLinhas((atual) => atual?.map((l, i) => (i === rowIndex ? row : l)) ?? atual)
