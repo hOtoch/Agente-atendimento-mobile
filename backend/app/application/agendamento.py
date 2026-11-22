@@ -53,7 +53,7 @@ class ProcessarQuandoQuieto:
         trava: TravaConversa,
         relogio: RelogioPort,
         processar: Callable[[UUID], Awaitable[None]],
-        janela_s: float = 4.0,
+        janela_s: float = 10.0,
         trava_ttl_s: float = 120.0,
         espera_trava_s: float = 1.0,
     ) -> None:
@@ -108,7 +108,7 @@ class AgendadorEmMemoria:
     Imita o arq: o job so some depois de executar e um `job_id` repetido e ignorado.
     """
 
-    def __init__(self, relogio: RelogioPort, *, janela_s: float = 4.0) -> None:
+    def __init__(self, relogio: RelogioPort, *, janela_s: float = 10.0) -> None:
         self._relogio = relogio
         self._janela_s = janela_s
         self._ultima: dict[UUID, float] = {}

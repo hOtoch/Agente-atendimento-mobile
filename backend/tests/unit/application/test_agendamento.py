@@ -199,3 +199,39 @@ async def test_mensagem_durante_o_processamento_nao_se_perde() -> None:
     await c.agendador.agendar(conversa)
     await c.rodar()
     assert len(chamadas) == 2
+
+
+async def test_tres_mensagens_com_6s_de_intervalo_geram_uma_resposta_so_com_a_janela_de_10s() -> (
+    None
+):
+    relogio = RelogioFalso(inicio=1000.0)
+    agendador = AgendadorEmMemoria(relogio, janela_s=10.0)
+    chamadas: list[tuple[UUID, float]] = []
+
+    async def processar(conversa_id: UUID) -> None:
+        chamadas.append((conversa_id, relogio.agora()))
+
+    caso = ProcessarQuandoQuieto(
+        agendador=agendador,
+        trava=TravaEmMemoria(relogio),
+        relogio=relogio,
+        processar=processar,
+        janela_s=10.0,
+    )
+    conversa = uuid4()
+    await agendador.agendar(conversa)  # t=1000
+    relogio.avancar(6.0)
+    await agendador.agendar(conversa)  # t=1006
+    relogio.avancar(6.0)
+    await agendador.agendar(conversa)  # t=1012
+    await agendador.rodar_ate_ocioso(caso)
+    assert chamadas == [(conversa, 1012.0 + 10.0)]
+
+
+def test_janela_padrao_do_debounce_e_10s() -> None:
+    from app.infra.settings import Settings
+
+    assert Settings(_env_file=None).fila_janela_s == 10.0
+    assert Settings(_env_file=None).fila_max_descartes == 2
+    assert ProcessarQuandoQuieto.__init__.__kwdefaults__["janela_s"] == 10.0  # type: ignore[index]
+    assert AgendadorEmMemoria.__init__.__kwdefaults__["janela_s"] == 10.0  # type: ignore[index]

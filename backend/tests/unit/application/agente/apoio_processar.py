@@ -184,6 +184,7 @@ async def criar_cenario(
     midia: ArmazenamentoMidia | None = None,
     transcrever: TranscreverAudio | None = None,
     audio_saida: ResponderEmAudio | None = None,
+    max_descartes: int = 2,
 ) -> Cenario:
     amb = await criar_ambiente()
     conversas = ConversasEmMemoria()
@@ -240,6 +241,7 @@ async def criar_cenario(
         max_iteracoes=max_iteracoes,
         midia=midia,
         audio_saida=audio_saida,
+        max_descartes=max_descartes,
     )
     return Cenario(
         amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id, painel,
