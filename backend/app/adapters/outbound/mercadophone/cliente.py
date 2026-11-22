@@ -178,10 +178,11 @@ class ClienteMercadoPhone:
         Uma resposta que e uma lista vira `{"items": lista, "total": len(lista)}`.
         """
         self._exigir_permitida(ferramenta)
-        await self._garantir_inicializado()
         repeticoes = 0
         while True:
             try:
+                # O handshake fica dentro do laco: um 429 nele tambem espera e repete.
+                await self._garantir_inicializado()
                 return await self._chamar_uma_vez(ferramenta, argumentos or {})
             except _RateLimited as limite:
                 if repeticoes >= self._max_repeticoes:
