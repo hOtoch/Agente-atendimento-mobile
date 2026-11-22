@@ -53,7 +53,7 @@ _OBSERVACOES_MAX = 600
 _ROTULO_MIDIA = {"audio": "[áudio]", "imagem": "[imagem]"}
 
 _SISTEMA_RESUMO = (
-    "Você escreve o resumo de um atendimento de uma loja de iPhones para o vendedor que vai "
+    "Você escreve o resumo de um atendimento de uma loja de celulares para o vendedor que vai "
     "assumir a conversa. Escreva de 2 a 3 frases curtas em português, em texto corrido (sem "
     "listas e sem títulos), cobrindo: as objeções ou dúvidas do cliente, o clima da conversa "
     "e o próximo passo recomendado. Use somente o que está na conversa. Não cite valores em "

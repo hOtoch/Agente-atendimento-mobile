@@ -22,7 +22,12 @@ from app.application.config.modelos import LojaNaoEncontrada
 from app.application.estoque import EstoqueIndisponivel
 from app.application.llm import DefinicaoFerramenta
 from app.domain.desconto import TetoAtingido, liberar_proximo
-from app.domain.estoque import ItemEstoque
+from app.domain.estoque import (
+    ItemEstoque,
+    ModeloAmbiguo,
+    ModeloResolvido,
+    resolver_modelo,
+)
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, UsadoInformado, pendencias
 from app.domain.valores import Bandeira, Capacidade, Dinheiro, ModeloAparelho
 
@@ -50,7 +55,7 @@ _MARCAS_OUTRAS = {
 
 _P = Pendencia
 _TEXTOS_PENDENCIA: dict[Pendencia, tuple[str, str]] = {
-    _P.APARELHO_MODELO: ("modelo do aparelho desejado", "Qual iPhone você está procurando?"),
+    _P.APARELHO_MODELO: ("modelo do aparelho desejado", "Qual aparelho você está procurando?"),
     _P.APARELHO_CAPACIDADE: (
         "capacidade do aparelho desejado",
         "Qual capacidade de armazenamento você prefere?",
@@ -168,35 +173,50 @@ def _capacidade_opcional(entrada: dict[str, Any], campo: str = "capacidade") -> 
         ) from None
 
 
-async def _modelos_em_estoque(ctx: ContextoFerramentas) -> list[str]:
+_MAX_MODELOS_LISTADOS = 40
+
+
+def _nome_exibicao(modelo: ModeloAparelho) -> str:
+    """'iPhone 15' para Apple; 'Samsung Galaxy S23' para as demais marcas."""
+    if modelo.marca == "Apple" or modelo.nome.lower().startswith(modelo.marca.lower()):
+        return modelo.nome
+    return f"{modelo.marca} {modelo.nome}"
+
+
+async def _modelos_em_estoque(ctx: ContextoFerramentas) -> list[ModeloAparelho]:
     try:
         linhas = await ctx.config.obter_estoque(ctx.loja_id)
     except LojaNaoEncontrada:
         return []
-    vistos: dict[str, None] = {}
-    for linha in linhas:
-        if linha.quantidade > 0:
-            vistos[linha.modelo.nome] = None
-    return list(vistos)
+    return list(dict.fromkeys(linha.modelo for linha in linhas if linha.quantidade > 0))
+
+
+def _lista(modelos: list[ModeloAparelho]) -> list[str]:
+    return [_nome_exibicao(m) for m in modelos[:_MAX_MODELOS_LISTADOS]]
 
 
 async def _modelo_da_loja(texto: str, ctx: ContextoFerramentas) -> ModeloAparelho:
-    """Modelo conhecido (iPhone); senao, erro que diz o que a loja vende."""
-    try:
-        modelo = ModeloAparelho.de(texto)
-    except ValueError:
-        modelo = None
-    if modelo is not None and modelo.conhecido:
-        return modelo
+    """iPhone conhecido ou modelo que a loja tem no estoque; senao, erro com as opcoes."""
     em_estoque = await _modelos_em_estoque(ctx)
+    resolucao = resolver_modelo(texto, em_estoque)
+    if isinstance(resolucao, ModeloResolvido):
+        return resolucao.modelo
+    if isinstance(resolucao, ModeloAmbiguo):
+        candidatos = _lista(list(resolucao.candidatos))
+        raise ErroFerramenta(
+            f"'{texto}' corresponde a mais de um modelo da loja: {', '.join(candidatos)}. "
+            "Pergunte ao cliente qual deles.",
+            modelos_no_estoque=candidatos,
+        )
+    nomes = _lista(em_estoque)
     extra = (
-        " Modelos no estoque agora: " + ", ".join(em_estoque) + "."
-        if em_estoque
+        " Modelos no estoque agora: " + ", ".join(nomes) + "."
+        if nomes
         else " Consulte o estoque com consultar_estoque para ver as opções."
     )
     raise ErroFerramenta(
-        f"Não reconheci '{texto}'. A loja trabalha com iPhone.{extra}",
-        modelos_no_estoque=em_estoque,
+        f"Não encontrei '{texto}' entre os aparelhos da loja.{extra}",
+        modelos_no_estoque=nomes,
     )
 
 
@@ -674,13 +694,15 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
         descricao=(
             "Registra na ficha o aparelho que o cliente quer comprar. Chame assim que o cliente "
             "disser o modelo (capacidade e cor quando souber; use null no que ainda não foi dito). "
-            "Só aceita iPhone; se o modelo não for conhecido devolve erro com os modelos "
-            "do estoque. "
+            "Aceita iPhones e os modelos de outras marcas que a loja tem no estoque; se não "
+            "reconhecer ou houver mais de um modelo possível, devolve erro com as opções. "
             "Depois chame consultar_estoque."
         ),
         esquema_json=_objeto(
             {
-                "modelo": _txt("Modelo do iPhone desejado, ex.: 'iPhone 16 Pro'.", nulo=False),
+                "modelo": _txt(
+                    "Marca e modelo desejados, ex.: 'iPhone 16 Pro' ou 'Galaxy S24'.", nulo=False
+                ),
                 "capacidade": _txt("Capacidade, ex.: '128GB'; null se não informada."),
                 "cor": _txt("Cor desejada; null se não informada."),
             }
@@ -698,7 +720,7 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
         ),
         esquema_json=_objeto(
             {
-                "modelo": _txt("Modelo do iPhone, ex.: 'iPhone 15'.", nulo=False),
+                "modelo": _txt("Marca e modelo, ex.: 'iPhone 15' ou 'Galaxy A07'.", nulo=False),
                 "capacidade": _txt("Capacidade para filtrar, ex.: '256GB'; null para todas."),
                 "cor": _txt("Cor para filtrar; null para todas."),
             }

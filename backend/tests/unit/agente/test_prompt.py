@@ -198,6 +198,22 @@ def test_bloco_da_loja_tem_dados_e_pagamentos_sem_taxas() -> None:
     assert "100" not in bloco  # nem teto de desconto nem valor da oportunidade
 
 
+def test_prefixo_nao_e_so_de_iphone() -> None:
+    prefixo = carregar_prefixo()
+    assert "loja de iPhones" not in prefixo
+    assert "celulares" in prefixo
+
+
+def test_bloco_da_loja_lista_as_marcas_do_estoque() -> None:
+    bloco = montar_sistema(perfil_demo(), config_demo(), marcas=["Apple", "Samsung", "Xiaomi"])[1]
+    linha = next(x for x in bloco.splitlines() if x.startswith("Marcas"))
+    assert "iPhone" in linha and "Samsung" in linha and "Xiaomi" in linha
+
+
+def test_bloco_da_loja_sem_estoque_nao_fala_de_marcas() -> None:
+    assert "Marcas" not in montar_sistema(perfil_demo(), config_demo())[1]
+
+
 def test_bloco_da_loja_sem_config_omite_pagamento() -> None:
     bloco = montar_sistema(perfil_outra(), None)[1]
     assert "Mobile Sul" in bloco
@@ -228,6 +244,7 @@ def test_proxima_pergunta_corresponde_a_primeira_pendencia() -> None:
 def test_ficha_vazia_pergunta_aparelho_desejado() -> None:
     msg = estado(Ficha.vazia(), estoque_consultado=False)
     assert "modelo" in _linha_proxima_pergunta(msg).lower()
+    assert "iphone" not in _linha_proxima_pergunta(msg).lower()
 
 
 def test_ficha_conhecida_aparece_em_linguagem_natural() -> None:

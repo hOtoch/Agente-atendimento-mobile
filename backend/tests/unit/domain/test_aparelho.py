@@ -77,11 +77,11 @@ def test_modelos_distintos_nao_colidem() -> None:
     assert ModeloAparelho.de("x") != ModeloAparelho.de("xr")
 
 
-def test_apple_desconhecido_mantem_nome_title_case() -> None:
+def test_apple_desconhecido_mantem_title_case_com_grafia_iphone() -> None:
     m = ModeloAparelho.de("iphone 99 ultra")
     assert not m.conhecido
     assert m.marca == "Apple"
-    assert m.nome == "Iphone 99 Ultra"
+    assert m.nome == "iPhone 99 Ultra"
 
 
 def test_outras_marcas() -> None:
@@ -101,3 +101,10 @@ def test_vazio_invalido_e_imutavel() -> None:
         m.nome = "x"  # type: ignore[misc]
     assert str(m) == "iPhone 16"
     assert {m, ModeloAparelho.de("iphone 16")} == {m}
+
+
+def test_iphone_fora_da_lista_mantem_a_grafia_iphone() -> None:
+    """Modelo novo (ainda nao canonico) nao vira 'Iphone 18 Pro Max' no texto ao cliente."""
+    m = ModeloAparelho.de("IPHONE 18 PRO MAX")
+    assert (m.marca, m.nome, m.conhecido) == ("Apple", "iPhone 18 Pro Max", False)
+    assert ModeloAparelho.de("iphone 18 pro max") == m

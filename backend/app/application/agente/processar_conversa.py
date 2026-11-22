@@ -27,7 +27,7 @@ from app.application.agente.conversa_portas import (
 from app.application.agente.estado import EstadoAtendimento, fatos_do_lead
 from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.imagem import anexar_imagens
-from app.application.agente.prompt import mensagem_estado, montar_sistema
+from app.application.agente.prompt import marcas_do_estoque, mensagem_estado, montar_sistema
 from app.application.agente.repositorio import RepositorioAtendimento
 from app.application.agente.transcricao import CursorEntrada, RepositorioTranscricao
 from app.application.audio_entrada import FalhaTranscricao, TranscreverAudio
@@ -191,7 +191,8 @@ class _Turno:
         perfil = await c._config.obter_perfil(loja_id) or _PERFIL_PADRAO
         self._loja_quer_audio = perfil.responder_em_audio
         config_preco = await c._config.obter_preco(loja_id)
-        sistema = montar_sistema(perfil, config_preco)
+        marcas = marcas_do_estoque(await c._config.obter_estoque(loja_id))
+        sistema = montar_sistema(perfil, config_preco, marcas)
 
         textos, so_falhas_de_audio = await self._textos_das_entradas(entradas)
         blocos_texto = [BlocoTexto(t) for t in textos]

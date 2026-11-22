@@ -136,6 +136,8 @@ class ModeloAparelho:
             canonico = _canonico_iphone(limpo)
             if canonico is not None:
                 return cls("Apple", canonico, True)
+            # Modelo ainda fora da lista (ex.: um lancamento): mantem a grafia "iPhone".
+            return cls("Apple", re.sub(r"^Iphone\b", "iPhone", limpo.title()), False)
         return cls(marca_norm, limpo.title(), False)
 
     def __str__(self) -> str:
