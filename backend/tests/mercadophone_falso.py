@@ -90,7 +90,7 @@ class McpFalso:
         return [
             a["page"]
             for nome, a in self.chamadas
-            if nome == "list_inventory" and a.get("store_id") == unidade
+            if nome == "list_inventory" and a.get("system_unit_id") == unidade
         ]
 
     def leituras_do_inventario(self) -> int:
@@ -125,17 +125,19 @@ class McpFalso:
 
     def _payload(self, nome: str, args: dict[str, Any]) -> Any:
         if nome == "list_my_stores":
-            return [{"id": u, "name": f"Unidade {u}"} for u in self.lojas_da_chave]
+            # Formato real: {"cross_unit", "stores": [{"system_unit_id", "name"}], "note"}.
+            lojas = [{"system_unit_id": u, "name": f"Unidade {u}"} for u in self.lojas_da_chave]
+            return {"cross_unit": len(lojas) > 1, "stores": lojas, "note": None}
         if nome == "list_brands":
-            if self.marcas_exigem_loja and "store_id" not in args:
+            if self.marcas_exigem_loja and "system_unit_id" not in args:
                 return {
-                    "error": "informe store_id",
+                    "error": "informe system_unit_id",
                     "status": 422,
                     "code": "store_selection_required",
                 }
             return self._pagina(self.marcas, args)
         if nome == "list_inventory":
-            return self._pagina(self.unidades.get(args.get("store_id"), []), args)
+            return self._pagina(self.unidades.get(args.get("system_unit_id"), []), args)
         raise AssertionError(f"ferramenta inesperada: {nome}")
 
     @staticmethod

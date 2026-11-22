@@ -23,6 +23,7 @@ from app.application.config.vendedores_erp import (
     ErpCredencialInvalida,
     ErpIndisponivel,
     ErpNaoConfigurado,
+    ErpRespostaVazia,
     ImportarVendedoresErp,
     LeitorVendedoresErpNaoConfigurado,
     LojaSemConexaoErp,
@@ -200,7 +201,7 @@ async def test_vendedor_que_voltou_ao_erp_e_reativado_com_o_peso_que_tinha() -> 
         c.loja_id,
         [EntradaVendedor(id=ana.id, nome="Ana", telefone=None, peso_percentual=D("100"))],
     )
-    c.leitor.itens = []
+    c.leitor.itens = [erp("9", "Zeca", ativo=False)]
     await c.caso.executar(c.loja_id)
     assert (await c.listar())[0].ativo is False
 
@@ -229,7 +230,7 @@ async def test_vendedor_manual_nao_e_desativado_nem_fundido_por_nome() -> None:
     assert manual.ativo is True and manual.peso_percentual == D("100")
     assert do_erp.peso_percentual == D(0)
 
-    c.leitor.itens = []
+    c.leitor.itens = [erp("9", "Zeca", ativo=False)]
     await c.caso.executar(c.loja_id)
     por_codigo = {v.codigo_erp: v for v in await c.listar()}
     assert por_codigo[None].ativo is True
@@ -301,3 +302,24 @@ async def test_put_de_vendedores_preserva_o_codigo_erp() -> None:
     assert por_nome["Ana"].ativo is False
     assert por_nome["Ana"].codigo_erp == "7"
     assert por_nome["Bia"].codigo_erp is None
+
+
+async def test_lista_vazia_do_erp_nao_desativa_ninguem() -> None:
+    """Resposta vazia com vendedores do ERP ja importados e suspeita: nada e alterado."""
+    c = await Ctx.nova()
+    c.leitor.itens = [erp("1", "Ana"), erp("2", "Bruno")]
+    await c.caso.executar(c.loja_id)
+    antes = await c.listar()
+
+    c.leitor.itens = []
+    with pytest.raises(ErpRespostaVazia) as info:
+        await c.caso.executar(c.loja_id)
+
+    assert "nenhum vendedor" in info.value.mensagem
+    assert await c.listar() == antes
+
+
+async def test_lista_vazia_sem_nada_importado_e_um_resumo_zerado() -> None:
+    c = await Ctx.nova()
+    resumo = await c.caso.executar(c.loja_id)
+    assert (resumo.criados, resumo.atualizados, resumo.desativados) == (0, 0, 0)

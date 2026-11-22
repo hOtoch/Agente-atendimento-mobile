@@ -2,9 +2,9 @@
 
 Uma leitura = marcas (uma vez) + todas as paginas do inventario da unidade. Se qualquer pagina
 falhar, a excecao sobe e nada parcial e devolvido (o caso de uso mantem o estoque anterior).
-O argumento que escolhe a unidade nas ferramentas do MCP e `store_id` (a "loja" do MCP e a
-`system_unit_id` da conexao); `list_brands` e pedido sem ele e, se o servidor exigir a loja
-(`store_selection_required`), repetido com ele.
+O argumento que escolhe a unidade nas ferramentas do MCP e `system_unit_id` (o mesmo nome da
+conexao; conferido no `tools/list` do servidor real); `list_brands` e pedido sem ele e, se o
+servidor exigir a loja (`store_selection_required`), repetido com ele.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from app.adapters.outbound.mercadophone.mapear import mapa_de_marcas, mapear_inv
 from app.application.estoque_erp import LeituraErp, LeituraUnidade
 from app.domain.conexao_erp import ConexaoErp
 
-ARG_UNIDADE: Final = "store_id"
+ARG_UNIDADE: Final = "system_unit_id"
 _CHAVES_ID_DA_UNIDADE: Final = ("system_unit_id", "systemUnitId", "unit_id", "store_id", "id")
 _LOJA_OBRIGATORIA: Final = "store_selection_required"
 
@@ -61,7 +61,8 @@ class FonteEstoqueMercadoPhone:
 
     async def unidade_existe(self, system_unit_id: int) -> bool:
         resposta = await self._cliente.chamar("list_my_stores", {})
-        itens = resposta.get("items")
+        # O servidor real devolve `stores`; `items` fica por tolerancia a resposta em lista.
+        itens = resposta.get("stores", resposta.get("items"))
         if not isinstance(itens, list):
             return False
         return any(_id_da_unidade(i) == system_unit_id for i in itens)

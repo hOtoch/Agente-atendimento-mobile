@@ -64,7 +64,7 @@ async def test_pede_o_inventario_da_unidade_da_conexao() -> None:
     mcp = McpFalso({4: inventario(2), 7: inventario(5, base=100)})
     leitura = await montar(mcp).ler(conexao(7))
     assert leitura.lidos == 5
-    assert {a["store_id"] for n, a in mcp.chamadas if n == "list_inventory"} == {7}
+    assert {a["system_unit_id"] for n, a in mcp.chamadas if n == "list_inventory"} == {7}
 
 
 async def test_filtro_de_loja_separa_as_lojas_que_dividem_a_unidade() -> None:
@@ -120,13 +120,13 @@ async def test_o_erro_da_fonte_e_estoque_indisponivel() -> None:
         await montar(mcp).ler_unidade(4)
 
 
-async def test_marcas_que_exigem_a_loja_sao_pedidas_com_store_id() -> None:
+async def test_marcas_que_exigem_a_loja_sao_pedidas_com_system_unit_id() -> None:
     mcp = McpFalso({4: inventario(2)}, marcas_exigem_loja=True)
     leitura = await montar(mcp).ler(conexao())
     assert len(leitura.linhas) == 2
     chamadas_marcas = [a for n, a in mcp.chamadas if n == "list_brands"]
-    assert "store_id" not in chamadas_marcas[0]
-    assert chamadas_marcas[-1]["store_id"] == 4
+    assert "system_unit_id" not in chamadas_marcas[0]
+    assert chamadas_marcas[-1]["system_unit_id"] == 4
 
 
 async def test_outro_erro_de_uso_nas_marcas_nao_e_engolido() -> None:
