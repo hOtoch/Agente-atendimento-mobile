@@ -3,11 +3,18 @@
 Atende `initialize`, `notifications/initialized` e `tools/call` de `list_my_stores`, `list_brands`
 e `list_inventory` (paginado como o real: `page`, `limit` <= 300, `total`). Registra cada chamada
 de ferramenta em `chamadas` e permite injetar falha numa pagina do inventario.
+
+Tambem atende o lado do handoff: `list_customers` (busca parcial por telefone), `create_customer`,
+`create_estimate` e `list_payment_methods`. As ESCRITAS ficam em `clientes` e `orcamentos`; o
+formato da resposta de escrita (que nao foi conferido no servidor real) e escolhido por
+`formato_escrita` ("topo", "data" ou "item") ou quebrado de proposito ("sem_id").
+`falha_ferramentas` injeta uma resposta HTTP de erro para uma ferramenta.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -56,6 +63,20 @@ def item(
     }
 
 
+FORMAS_PADRAO: list[dict[str, Any]] = [
+    {"id": 31, "name": "PIX", "snAtivo": 1, "taxas": []},
+    {"id": 30, "name": "PIX", "snAtivo": 1, "taxas": []},
+    {"id": 35, "name": "Cartão de Crédito", "snAtivo": 1, "taxas": []},
+    {"id": 36, "name": "CARTAO DEBITO", "snAtivo": 1, "taxas": []},
+    {"id": 40, "name": "APARELHO", "snAtivo": 1, "taxas": []},
+]
+
+
+def cliente_erp(erp_id: int, telefone: str, nome: str = "CLIENTE TESTE") -> dict[str, Any]:
+    """Cliente sintetico no formato cru de `list_customers` (telefone ja formatado, como no ERP)."""
+    return {"id": erp_id, "nome": nome, "telefone": telefone}
+
+
 def resposta_sse(corpo: dict[str, Any]) -> httpx.Response:
     return httpx.Response(
         200,
@@ -75,6 +96,10 @@ class McpFalso:
         falha_na_pagina: Mapping[int, httpx.Response] | None = None,
         lojas_da_chave: Sequence[int] | None = None,
         marcas_exigem_loja: bool = False,
+        clientes: Sequence[dict[str, Any]] = (),
+        formas_pagamento: Sequence[dict[str, Any]] = FORMAS_PADRAO,
+        formato_escrita: str = "topo",
+        falha_ferramentas: Mapping[str, httpx.Response] | None = None,
     ) -> None:
         self.unidades = {k: list(v) for k, v in unidades.items()}
         self.marcas = list(marcas)
@@ -82,6 +107,14 @@ class McpFalso:
         self.lojas_da_chave = list(lojas_da_chave) if lojas_da_chave is not None else list(unidades)
         self.marcas_exigem_loja = marcas_exigem_loja
         self.chamadas: list[tuple[str, dict[str, Any]]] = []
+        self.clientes = [dict(c) for c in clientes]
+        self.orcamentos: list[dict[str, Any]] = []
+        self.formas_pagamento = list(formas_pagamento)
+        self.formato_escrita = formato_escrita
+        self.falha_ferramentas = dict(falha_ferramentas or {})
+
+    def chamadas_de(self, ferramenta: str) -> list[dict[str, Any]]:
+        return [a for n, a in self.chamadas if n == ferramenta]
 
     def cliente_http(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(transport=httpx.MockTransport(self))
@@ -113,6 +146,8 @@ class McpFalso:
         nome = corpo["params"]["name"]
         args = corpo["params"]["arguments"]
         self.chamadas.append((nome, args))
+        if nome in self.falha_ferramentas:
+            return self.falha_ferramentas[nome]
         if nome == "list_inventory":
             falha = self.falha_na_pagina.get(args.get("page", 1))
             if falha is not None:
@@ -138,7 +173,42 @@ class McpFalso:
             return self._pagina(self.marcas, args)
         if nome == "list_inventory":
             return self._pagina(self.unidades.get(args.get("system_unit_id"), []), args)
+        if nome == "list_customers":
+            return self._listar_clientes(args)
+        if nome == "create_customer":
+            return self._gravar(self.clientes, args)
+        if nome == "create_estimate":
+            return self._gravar(self.orcamentos, args)
+        if nome == "list_payment_methods":
+            return {"items": self.formas_pagamento}
         raise AssertionError(f"ferramenta inesperada: {nome}")
+
+    def _listar_clientes(self, args: dict[str, Any]) -> dict[str, Any]:
+        busca = re.sub(r"\D", "", str(args.get("telefone", "")))
+        achados = [
+            c for c in self.clientes if busca in re.sub(r"\D", "", str(c.get("telefone") or ""))
+        ]
+        return {"total": len(achados), "items": achados, "page": 1, "limit": args.get("limit", 20)}
+
+    def _gravar(self, tabela: list[dict[str, Any]], args: dict[str, Any]) -> Any:
+        """Cria (id novo) ou edita (id dado) e responde no formato escolhido."""
+        dados = {k: v for k, v in args.items() if k != "system_unit_id"}
+        existente = next((r for r in tabela if r["id"] == dados.get("id")), None)
+        if existente is not None:
+            existente.update(dados)
+            registro = existente
+        else:
+            registro = {**dados, "id": dados.get("id") or 9000 + len(tabela) + 1}
+            tabela.append(registro)
+        match self.formato_escrita:
+            case "data":
+                return {"success": True, "data": {"id": registro["id"]}}
+            case "item":
+                return {"item": {"id": registro["id"]}}
+            case "sem_id":
+                return {"success": True}
+            case _:
+                return {"id": registro["id"], "success": True}
 
     @staticmethod
     def _pagina(todos: list[dict[str, Any]], args: dict[str, Any]) -> dict[str, Any]:

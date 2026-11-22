@@ -88,7 +88,10 @@ async def test_worker_liga_o_aviso_de_handoff_no_processador(
     ctx: dict[str, Any] = {"redis": _Redis()}
     await worker.iniciar(ctx)
     try:
-        assert isinstance(recebido["aviso_handoff"], NotificarVendedorNoHandoff)
+        from app.application.handoff import GanchosHandoff
+
+        assert isinstance(recebido["aviso_handoff"], GanchosHandoff)
+        assert isinstance(recebido["aviso_handoff"].ganchos[0], NotificarVendedorNoHandoff)
     finally:
         await worker.encerrar(ctx)
 
@@ -103,3 +106,31 @@ async def test_criar_transcritor_usa_o_stt_dado_e_o_armazenamento_da_midia(tmp_p
     transcrever = criar_transcritor(Settings(_env_file=None, midia_dir=str(tmp_path)), stt)
     assert await transcrever(f"http://api/midias/{nome}") == "ola"
     assert stt.chamadas == [(b"audio", "audio/ogg")]
+
+
+def test_gancho_de_handoff_compoe_o_aviso_e_depois_a_exportacao_ao_erp() -> None:
+    from app.application.exportar_handoff_erp import ExportarHandoffParaErp
+    from app.application.handoff import GanchosHandoff
+
+    settings = Settings(_env_file=None, painel_url="https://painel.exemplo")
+    gancho = composicao.criar_gancho_handoff(MagicMock(), redis=MagicMock(), settings=settings)
+    assert isinstance(gancho, GanchosHandoff)
+    aviso, exportar = gancho.ganchos
+    assert isinstance(aviso, NotificarVendedorNoHandoff)  # o comportamento atual, intacto
+    assert isinstance(exportar, ExportarHandoffParaErp)  # depois da atribuicao do vendedor
+
+
+async def test_sem_chave_do_erp_a_exportacao_falha_com_erro_tipado_e_sem_rede(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.application.pedido_erp import DadosHandoff, FalhaPedidoErp
+    from app.infra.mercadophone import MercadoPhoneNaoConfigurado
+
+    def sem_chave() -> Any:
+        raise MercadoPhoneNaoConfigurado("x")
+
+    monkeypatch.setattr(composicao, "get_cliente_mercadophone", sem_chave)
+    pedido = composicao.criar_pedido_erp()
+    dados = DadosHandoff("N", None, None, None, None)
+    with pytest.raises(FalhaPedidoErp, match="MERCADOPHONE_API_KEY"):
+        await pedido.registrar_handoff(MagicMock(), dados)

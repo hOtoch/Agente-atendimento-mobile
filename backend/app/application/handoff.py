@@ -16,7 +16,7 @@ falhar. Nenhum valor monetario e decidido pelo LLM.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
@@ -144,6 +144,26 @@ class AoSolicitarHandoff(Protocol):
     async def handoff_solicitado(
         self, loja_id: UUID, lead_id: UUID, resumo: ResumoHandoff
     ) -> None: ...
+
+
+class GanchosHandoff:
+    """Varios ganchos em sequencia (ex.: avisar o vendedor e DEPOIS exportar para o ERP).
+
+    A ordem importa: um gancho posterior ve o que o anterior fez (a atribuicao do vendedor).
+    A falha de um nunca impede os seguintes nem desfaz o handoff.
+    """
+
+    def __init__(self, ganchos: Sequence[AoSolicitarHandoff]) -> None:
+        self.ganchos: tuple[AoSolicitarHandoff, ...] = tuple(ganchos)
+
+    async def handoff_solicitado(self, loja_id: UUID, lead_id: UUID, resumo: ResumoHandoff) -> None:
+        for gancho in self.ganchos:
+            try:
+                await gancho.handoff_solicitado(loja_id, lead_id, resumo)
+            except Exception:
+                log.exception(
+                    "gancho %s do handoff do lead %s falhou", type(gancho).__name__, lead_id
+                )
 
 
 class AoSolicitarHandoffNulo:
