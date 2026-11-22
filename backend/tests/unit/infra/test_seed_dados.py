@@ -163,3 +163,17 @@ async def test_estoque_vale_mais_que_a_troca_do_mesmo_modelo() -> None:
             assert e.preco_pix > linha.valor_sem_detalhes, e.sku
             checados += 1
     assert checados >= 20
+
+
+async def test_pagamento_da_demo_liga_todas_as_formas_e_tem_chave_pix_ficticia() -> None:
+    from app.domain.ficha import TipoPagamento
+
+    casos = criar_casos_em_memoria()
+    loja_id = await casos.criar_loja("Demo")
+    await aplicar_dados(casos, loja_id)
+    pagamento = await casos.obter_pagamento(loja_id)
+    assert set(pagamento.formas.tipos()) == set(TipoPagamento)
+    assert pagamento.chave_pix is not None
+    assert pagamento.chave_pix.chave == "pix@lojademo.exemplo"  # fictícia (domínio .exemplo)
+    checklist = await casos.checklist(loja_id)
+    assert next(i for i in checklist if i.chave == "pagamento").completo

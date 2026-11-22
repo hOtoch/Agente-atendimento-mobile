@@ -31,6 +31,7 @@ from app.application.config.modelos import ErroCampo, ErrosDeValidacao
 from app.application.config.portas import SemIntegracaoEstoque
 from app.application.config.validacao import validar_pesos_vendedores
 from app.infra.seed_data.estoque import ESTOQUE
+from app.infra.seed_data.pagamento import PAGAMENTO
 from app.infra.seed_data.perfil import NOME_LOJA, PERFIL
 from app.infra.seed_data.preco import PRECO
 from app.infra.seed_data.taxas import TAXAS
@@ -52,9 +53,10 @@ class ResumoSeed:
 
 
 async def aplicar_dados(casos: CasosDeUsoConfig, loja_id: uuid.UUID) -> None:
-    """Grava perfil, preco, taxas, troca e estoque pelos casos de uso (valida como o painel)."""
+    """Grava perfil, preco, pagamento, taxas, troca e estoque pelos casos de uso (valida igual)."""
     await casos.atualizar_perfil(loja_id, PERFIL)
     await casos.atualizar_preco(loja_id, PRECO)
+    await casos.atualizar_pagamento(loja_id, PAGAMENTO)
     await casos.atualizar_taxas(loja_id, TAXAS)
     await casos.atualizar_troca(loja_id, TROCA)
     await casos.atualizar_estoque(loja_id, ESTOQUE)

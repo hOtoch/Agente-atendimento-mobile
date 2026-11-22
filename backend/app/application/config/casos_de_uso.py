@@ -11,11 +11,13 @@ from app.application.config.entradas import (
     EntradaLinhaEstoque,
     EntradaLinhaMapeamento,
     EntradaLinhaTroca,
+    EntradaPagamento,
     EntradaPreco,
     EntradaTaxa,
     EntradaVendedor,
 )
 from app.application.config.modelos import (
+    ConfigPagamento,
     ConfigPreco,
     ErroCampo,
     ErrosDeValidacao,
@@ -23,6 +25,7 @@ from app.application.config.modelos import (
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
     LojaNaoEncontrada,
+    PagamentoLoja,
     PerfilLoja,
     VendedorLoja,
 )
@@ -35,6 +38,7 @@ from app.application.config.portas import (
     RepositorioVendedores,
 )
 from app.domain.bandeira import Bandeira
+from app.domain.formas_pagamento import FormasAceitas
 from app.domain.pagamento import PARCELAS_MIN, TabelaTaxas
 from app.domain.troca import TabelaTroca
 
@@ -91,6 +95,28 @@ class CasosDeUsoConfig:
         config = validacao.montar_config_preco(entrada)
         await self.config.salvar_config_preco(loja_id, config)
         return config
+
+    # --- pagamento ----------------------------------------------------------------------------
+
+    async def obter_pagamento(self, loja_id: UUID) -> PagamentoLoja:
+        """Formas aceitas e chave Pix da loja (lido a cada turno; sem config, o padrao).
+
+        E o leitor da ferramenta que entrega a chave Pix ao cliente: `.chave_pix` (None se a loja
+        ainda nao cadastrou) e `.formas.aceita(tipo)`. A chave nunca vai no prompt de sistema.
+        """
+        await self._loja(loja_id)
+        return await self._pagamento(loja_id)
+
+    async def atualizar_pagamento(self, loja_id: UUID, entrada: EntradaPagamento) -> PagamentoLoja:
+        await self._loja(loja_id)
+        config = validacao.montar_config_pagamento(entrada)
+        await self.config.salvar_config_pagamento(loja_id, config)
+        return await self._pagamento(loja_id)
+
+    async def _pagamento(self, loja_id: UUID) -> PagamentoLoja:
+        config = await self.config.obter_config_pagamento(loja_id)
+        preco = await self.config.obter_config_preco(loja_id)
+        return _montar_pagamento(config, preco)
 
     # --- taxas --------------------------------------------------------------------------------
 
@@ -169,6 +195,7 @@ class CasosDeUsoConfig:
         await self._loja(loja_id)
         perfil = await self.config.obter_perfil(loja_id)
         preco = await self.config.obter_config_preco(loja_id)
+        pagamento = _montar_pagamento(await self.config.obter_config_pagamento(loja_id), preco)
         taxas = await self.config.obter_taxas(loja_id)
         troca = await self.config.obter_tabela_troca(loja_id)
         estoque = await self.estoque.listar(loja_id)
@@ -179,11 +206,23 @@ class CasosDeUsoConfig:
             _item_perfil(perfil),
             _item_vendedores(pesos),
             _item_preco(preco),
+            _item_pagamento(pagamento),
             _item_taxas(preco, taxas),
             _item_troca(troca),
             _item_estoque(len(estoque), erp),
             _item_mapeamento(pendentes),
         ]
+
+
+def _montar_pagamento(config: ConfigPagamento, preco: ConfigPreco | None) -> PagamentoLoja:
+    entrada_mais_cartao = preco is not None and preco.regras.aceita_entrada_mais_cartao
+    formas = FormasAceitas.de(
+        pix=config.aceita_pix,
+        debito=config.aceita_debito,
+        credito=config.aceita_credito,
+        entrada_mais_cartao=entrada_mais_cartao,
+    )
+    return PagamentoLoja(formas, config.chave_pix)
 
 
 def _item_perfil(perfil: PerfilLoja | None) -> ItemChecklist:
@@ -225,6 +264,18 @@ def _item_preco(preco: ConfigPreco | None) -> ItemChecklist:
     return ItemChecklist(
         "regras_preco", rotulo, True, f"Até {preco.regras.max_parcelas}x no cartão."
     )
+
+
+def _item_pagamento(pagamento: PagamentoLoja) -> ItemChecklist:
+    rotulo = "Formas de pagamento"
+    formas = pagamento.formas
+    if not formas.tipos():
+        return ItemChecklist("pagamento", rotulo, False, "Nenhuma forma de pagamento aceita.")
+    if formas.pix and pagamento.chave_pix is None:
+        return ItemChecklist(
+            "pagamento", rotulo, False, "O Pix está aceito, mas falta cadastrar a chave Pix."
+        )
+    return ItemChecklist("pagamento", rotulo, True, f"{len(formas.tipos())} forma(s) aceita(s).")
 
 
 def _item_taxas(preco: ConfigPreco | None, taxas: TabelaTaxas) -> ItemChecklist:

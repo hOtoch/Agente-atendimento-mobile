@@ -12,12 +12,14 @@ from app.application.config.entradas import (
     EntradaLinhaEstoque,
     EntradaLinhaMapeamento,
     EntradaLinhaTroca,
+    EntradaPagamento,
     EntradaPreco,
     EntradaTaxa,
     EntradaVendedor,
 )
 from app.application.config.modelos import (
     CONDICOES,
+    ConfigPagamento,
     ConfigPreco,
     ErroCampo,
     ErrosDeValidacao,
@@ -26,6 +28,7 @@ from app.application.config.modelos import (
     PerfilLoja,
 )
 from app.domain.bandeira import Bandeira
+from app.domain.chave_pix import ChavePix, ChavePixInvalida, montar_chave_pix
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
 from app.domain.estoque import Condicao
 from app.domain.pagamento import (
@@ -72,6 +75,29 @@ def validar_perfil(perfil: PerfilLoja) -> None:
     if contato and not 10 <= len(re.sub(r"\D", "", contato)) <= 15:
         erros.append(ErroCampo("whatsapp_contato", "WhatsApp deve ter de 10 a 15 dígitos."))
     _levantar(erros)
+
+
+# --- pagamento --------------------------------------------------------------------------------
+
+_CAMPOS_PIX = {
+    "tipo": "chave_pix_tipo",
+    "chave": "chave_pix",
+    "favorecido": "chave_pix_favorecido",
+}
+
+
+def montar_config_pagamento(e: EntradaPagamento) -> ConfigPagamento:
+    """Os tres campos da chave em branco = sem chave; qualquer um preenchido valida os tres."""
+    campos = (e.chave_pix_tipo, e.chave_pix, e.chave_pix_favorecido)
+    chave: ChavePix | None = None
+    if any((c or "").strip() for c in campos):
+        try:
+            chave = montar_chave_pix(*(c or "" for c in campos))
+        except ChavePixInvalida as exc:
+            raise ErrosDeValidacao(
+                [ErroCampo(_CAMPOS_PIX[campo], mensagem) for campo, mensagem in exc.erros]
+            ) from exc
+    return ConfigPagamento(e.aceita_pix, e.aceita_debito, e.aceita_credito, chave)
 
 
 # --- preco ------------------------------------------------------------------------------------

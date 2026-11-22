@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
+from app.domain.chave_pix import ChavePix
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
 from app.domain.estoque import Condicao
+from app.domain.formas_pagamento import FormasAceitas
 from app.domain.pagamento import RegrasPreco
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
 
@@ -53,6 +55,31 @@ class ConfigPreco:
     regras: RegrasPreco
     politica: PoliticaDesconto
     oportunidade: RegraOportunidadeUnica
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigPagamento:
+    """O que a loja grava sobre pagamento: Pix, debito e credito ligados e a chave Pix.
+
+    Entrada + cartao nao esta aqui: vem de `RegrasPreco.aceita_entrada_mais_cartao`.
+    """
+
+    aceita_pix: bool = True
+    aceita_debito: bool = True
+    aceita_credito: bool = True
+    chave_pix: ChavePix | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PagamentoLoja:
+    """Visao completa de pagamento da loja: formas aceitas (com entrada + cartao) e chave Pix.
+
+    E o que `CasosDeUsoConfig.obter_pagamento` devolve; a ferramenta que entrega a chave Pix ao
+    cliente le `chave_pix` daqui (a chave nao entra no prompt de sistema).
+    """
+
+    formas: FormasAceitas
+    chave_pix: ChavePix | None
 
 
 @dataclass(frozen=True, slots=True)

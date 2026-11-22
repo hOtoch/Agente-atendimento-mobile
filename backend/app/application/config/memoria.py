@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.entradas import EntradaVendedor
 from app.application.config.modelos import (
+    ConfigPagamento,
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
@@ -40,6 +41,7 @@ class MemoriaConfigLoja:
     def __init__(self) -> None:
         self._perfil: dict[UUID, PerfilLoja] = {}
         self._preco: dict[UUID, ConfigPreco] = {}
+        self._pagamento: dict[UUID, ConfigPagamento] = {}
         self._taxas: dict[UUID, TabelaTaxas] = {}
         self._troca: dict[UUID, TabelaTroca] = {}
 
@@ -54,6 +56,12 @@ class MemoriaConfigLoja:
 
     async def salvar_config_preco(self, loja_id: UUID, config: ConfigPreco) -> None:
         self._preco[loja_id] = config
+
+    async def obter_config_pagamento(self, loja_id: UUID) -> ConfigPagamento:
+        return self._pagamento.get(loja_id, ConfigPagamento())
+
+    async def salvar_config_pagamento(self, loja_id: UUID, config: ConfigPagamento) -> None:
+        self._pagamento[loja_id] = config
 
     async def obter_taxas(self, loja_id: UUID) -> TabelaTaxas:
         return self._taxas.get(loja_id, TabelaTaxas({}))

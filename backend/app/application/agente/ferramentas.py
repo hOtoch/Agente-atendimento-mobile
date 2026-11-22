@@ -17,6 +17,11 @@ from typing import Any
 from app.application.agente.contexto import ContextoFerramentas, ErroFerramenta
 from app.application.agente.estado import EstadoAtendimento
 from app.application.agente.imagem import LeituraImagem, TipoImagem, decidir_leitura
+from app.application.agente.pergunta_pagamento import (
+    ROTULOS_INSTRUCAO,
+    pergunta_pagamento_ao_cliente,
+    rotulos_aceitos,
+)
 from app.application.agente.proposta import FRASE_OBRIGATORIA, montar_proposta
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.estoque import EstoqueIndisponivel
@@ -242,6 +247,20 @@ def _situacao(ficha: Ficha) -> dict[str, Any]:
         "faltam": [_TEXTOS_PENDENCIA[p][0] for p in faltas],
         "proxima_pergunta": _TEXTOS_PENDENCIA[faltas[0]][1] if faltas else None,
     }
+
+
+async def _com_formas_na_pergunta(saida: _Saida, ctx: ContextoFerramentas) -> dict[str, Any]:
+    """A `proxima_pergunta` de pagamento lista so as formas que a loja aceita.
+
+    Os handlers montam a pergunta com o texto padrao (todas as formas); aqui, num ponto so, ela e
+    trocada pela versao da config da loja (lida a cada chamada).
+    """
+    conteudo = saida.conteudo
+    faltas = pendencias(saida.estado.ficha)
+    if "proxima_pergunta" not in conteudo or not faltas or faltas[0] is not _P.PAGAMENTO_TIPO:
+        return conteudo
+    formas = (await ctx.config.obter_pagamento(ctx.loja_id)).formas
+    return {**conteudo, "proxima_pergunta": pergunta_pagamento_ao_cliente(formas)}
 
 
 def _bloqueio(ficha: Ficha) -> dict[str, Any]:
@@ -609,6 +628,22 @@ def _normalizar_pagamento(
     return {"tipo": tipo, "parcelas": parcelas, "bandeira": bandeira, "entrada": entrada}
 
 
+async def _exigir_forma_aceita(tipo: TipoPagamento, ctx: ContextoFerramentas) -> None:
+    """O dominio decide: forma desligada pela loja e recusada, e o erro lista as aceitas."""
+    formas = (await ctx.config.obter_pagamento(ctx.loja_id)).formas
+    if formas.aceita(tipo):
+        return
+    aceitas = rotulos_aceitos(formas)
+    if aceitas:
+        oferta = f"Formas aceitas: {', '.join(aceitas)}. Peça ao cliente para escolher uma delas."
+    else:
+        oferta = "A loja não tem forma de pagamento configurada. Chame o vendedor."
+    raise ErroFerramenta(
+        f"A loja não aceita {ROTULOS_INSTRUCAO[tipo]} como forma de pagamento. {oferta}",
+        formas_aceitas=[t.value for t in formas.tipos()],
+    )
+
+
 async def _registrar_compra(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
@@ -666,6 +701,9 @@ async def _registrar_compra(
             raise ErroFerramenta(f"Valor de entrada inválido: {bruto!r}.") from None
         if valor_entrada.negativo:
             raise ErroFerramenta("A entrada não pode ser negativa.")
+
+    if tipo is not None:
+        await _exigir_forma_aceita(tipo, ctx)
 
     atual = ficha.pagamento
     tipo_efetivo = tipo or atual.tipo
@@ -1046,6 +1084,7 @@ class CatalogoFerramentas:
             return {"erro": "A entrada da ferramenta deve ser um objeto JSON."}, estado, True
         try:
             saida = await handler(entrada, estado, ctx)
+            conteudo = await _com_formas_na_pergunta(saida, ctx)
         except ErroFerramenta as exc:
             return {"erro": str(exc), **exc.extras}, estado, True
         except EstoqueIndisponivel:
@@ -1063,4 +1102,4 @@ class CatalogoFerramentas:
             )
         except LojaNaoEncontrada:
             return {"erro": "Loja não encontrada. Chame o vendedor."}, estado, True
-        return saida.conteudo, saida.estado, False
+        return conteudo, saida.estado, False

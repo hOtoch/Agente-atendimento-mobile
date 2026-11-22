@@ -22,6 +22,7 @@ import {
 } from "./grades"
 import { ImportarVendedoresErp } from "./importar-vendedores-erp"
 import { PassoGrade } from "./passo-grade"
+import { PassoPagamento } from "./passo-pagamento"
 import { PassoPerfil } from "./passo-perfil"
 import { PassoPreco } from "./passo-preco"
 import { PassoWhatsapp } from "./passo-whatsapp"
@@ -95,6 +96,8 @@ function ConteudoDoPasso({
       )
     case "preco":
       return <PassoPreco cliente={cliente} lojaId={lojaId} aoSalvar={aoSalvar} />
+    case "pagamento":
+      return <PassoPagamento cliente={cliente} lojaId={lojaId} aoSalvar={aoSalvar} />
     case "taxas":
       return <PassoGrade definicao={GRADE_TAXAS} cliente={cliente} lojaId={lojaId} aoSalvar={aoSalvar} />
     case "troca":

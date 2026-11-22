@@ -197,7 +197,8 @@ class _Turno:
         self._loja_quer_audio = perfil.responder_em_audio
         config_preco = await c._config.obter_preco(loja_id)
         marcas = marcas_do_estoque(await c._config.obter_estoque(loja_id))
-        sistema = montar_sistema(perfil, config_preco, marcas)
+        formas = (await c._config.obter_pagamento(loja_id)).formas
+        sistema = montar_sistema(perfil, config_preco, marcas, formas)
 
         textos, so_falhas_de_audio = await self._textos_das_entradas(entradas)
         blocos_texto = [BlocoTexto(t) for t in textos]
@@ -217,6 +218,7 @@ class _Turno:
                         proposta_apresentada=self._estado.proposta_apresentada,
                         desconto_liberado=_brl(liberado) if liberado > Dinheiro.zero() else None,
                         handoff_solicitado=self._estado.handoff_solicitado,
+                        formas=formas,
                     )
                 )
             ],

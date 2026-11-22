@@ -1,4 +1,4 @@
-export type IdPasso = "perfil" | "vendedores" | "preco" | "taxas" | "troca" | "estoque" | "whatsapp" | "teste"
+export type IdPasso = "perfil" | "vendedores" | "preco" | "pagamento" | "taxas" | "troca" | "estoque" | "whatsapp" | "teste"
 
 export type Passo = {
   id: IdPasso
@@ -26,6 +26,12 @@ export const PASSOS: Passo[] = [
     titulo: "Regras de preço",
     descricao: "Parcelamento, desconto Pix e limites de desconto.",
     chaves: ["regras_preco"],
+  },
+  {
+    id: "pagamento",
+    titulo: "Formas de pagamento",
+    descricao: "O que a loja aceita e a chave Pix que a IA passa ao cliente.",
+    chaves: ["pagamento"],
   },
   {
     id: "taxas",

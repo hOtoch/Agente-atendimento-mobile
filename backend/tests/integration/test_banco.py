@@ -26,6 +26,7 @@ TABELAS = {
     "mapeamento_sku",
     "config_followup",
     "conexao_erp",
+    "pagamento_loja",
 }
 
 

@@ -61,6 +61,7 @@ Vitrine viva em **`/design`** (todos os componentes e estados; o botão no topo 
 | Table | `table.tsx` | tabela somente leitura |
 | DataGrid | `data-grid.tsx` | tabela editável (base do onboarding): colunas tipadas, `onChange` por célula, erro por célula, adicionar/remover linha |
 | Campo | `campo.tsx` | rótulo + controle + dica + erro; `children` recebe `{ id, aria-labelledby, aria-invalid, aria-describedby }` para espalhar no `Input`, `Textarea` ou `SelectTrigger` |
+| SeletorCampo | `seletor-campo.tsx` | `Select` de lista fechada pronto para dentro de um `Campo`: `controle` (do `Campo`), `valor`, `itens` `{ value, label }[]`, `aoMudar(valor)` |
 | Toast | `toast.tsx` | `<Toaster />` no layout raiz; `useToast()` com `sucesso`, `aviso`, `erro`, `info`, `fechar` (pt-BR) |
 | Skeleton | `skeleton.tsx` | `aria-hidden`; pulsa sobre `bg-muted` |
 | MessageBubble | `message-bubble.tsx` | balão de conversa: `lado` (`cliente`/`atendente`, quem escreveu), `tipo` (`texto`, `imagem`, `audio` com `<audio controls>`), `texto`, `midiaUrl`, `horario` (HH:mm pt-BR), `autor`, `erro`; `perspectiva` define quem está olhando (as mensagens dele ficam à direita e em `primary`; padrão `atendente` para a inbox, o simulador usa `cliente`) |

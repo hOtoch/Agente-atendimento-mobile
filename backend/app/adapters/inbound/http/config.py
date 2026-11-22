@@ -15,6 +15,7 @@ from app.application.config.entradas import (
     EntradaLinhaEstoque,
     EntradaLinhaMapeamento,
     EntradaLinhaTroca,
+    EntradaPagamento,
     EntradaPreco,
     EntradaTaxa,
     EntradaVendedor,
@@ -23,6 +24,7 @@ from app.application.config.modelos import (
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
+    PagamentoLoja,
     PerfilLoja,
     VendedorLoja,
 )
@@ -84,6 +86,19 @@ def _preco_out(c: ConfigPreco) -> s.PrecoSchema:
         oportunidade_dias_minimos=op.dias_minimos,
         oportunidade_valor=op.valor.valor,
         oportunidade_conta_no_teto=op.conta_no_teto,
+    )
+
+
+def _pagamento_out(p: PagamentoLoja) -> s.PagamentoSchema:
+    chave = p.chave_pix
+    return s.PagamentoSchema(
+        aceita_pix=p.formas.pix,
+        aceita_debito=p.formas.debito,
+        aceita_credito=p.formas.credito,
+        aceita_entrada_mais_credito=p.formas.entrada_mais_credito,
+        chave_pix_tipo=None if chave is None else chave.tipo.value,
+        chave_pix=None if chave is None else chave.chave,
+        chave_pix_favorecido=None if chave is None else chave.favorecido,
     )
 
 
@@ -222,6 +237,20 @@ async def atualizar_preco(
     config = await casos.atualizar_preco(loja_id, EntradaPreco(**corpo.model_dump()))
     await sessao.commit()
     return _preco_out(config)
+
+
+@router.get("/lojas/{loja_id}/config/pagamento", response_model=s.PagamentoSchema)
+async def obter_pagamento(loja_id: UUID, casos: Casos) -> s.PagamentoSchema:
+    return _pagamento_out(await casos.obter_pagamento(loja_id))
+
+
+@router.put("/lojas/{loja_id}/config/pagamento", response_model=s.PagamentoSchema)
+async def atualizar_pagamento(
+    loja_id: UUID, corpo: s.PagamentoIn, casos: Casos, sessao: Sessao
+) -> s.PagamentoSchema:
+    pagamento = await casos.atualizar_pagamento(loja_id, EntradaPagamento(**corpo.model_dump()))
+    await sessao.commit()
+    return _pagamento_out(pagamento)
 
 
 @router.get("/lojas/{loja_id}/config/taxas", response_model=s.TaxasSchema)

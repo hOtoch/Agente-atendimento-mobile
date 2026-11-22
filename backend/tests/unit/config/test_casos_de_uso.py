@@ -441,6 +441,7 @@ CHAVES = [
     "perfil",
     "vendedores",
     "regras_preco",
+    "pagamento",
     "taxas",
     "tabela_troca",
     "estoque",

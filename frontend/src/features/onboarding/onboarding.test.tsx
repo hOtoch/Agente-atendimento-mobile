@@ -448,3 +448,35 @@ describe("Onboarding: importar planilha", () => {
     expect(within(grade).getAllByRole("textbox", { name: /^SKU, linha/ })).toHaveLength(5)
   })
 })
+
+describe("Onboarding: passo Pagamento", () => {
+  it("lista o passo Pagamento e usa o item do checklist", async () => {
+    const itens = [
+      ...ITENS,
+      { chave: "pagamento", rotulo_ptbr: "Formas de pagamento", completo: false, detalhe: "O Pix está aceito, mas falta cadastrar a chave Pix." },
+    ]
+    const { cliente } = apiFalsa({
+      [`GET ${CHECKLIST}`]: { corpo: { itens } },
+      [`GET /lojas/${LOJA}/config/pagamento`]: {
+        corpo: {
+          aceita_pix: true,
+          aceita_debito: true,
+          aceita_credito: true,
+          aceita_entrada_mais_credito: true,
+          chave_pix_tipo: null,
+          chave_pix: null,
+          chave_pix_favorecido: null,
+        },
+      },
+    })
+    params = new URLSearchParams("passo=pagamento")
+    render(<Onboarding cliente={cliente} lojaId={LOJA} />)
+
+    const nav = await screen.findByRole("navigation", { name: /passos/i })
+    const link = within(nav).getByRole("link", { name: /formas de pagamento/i })
+    expect(link).toHaveAttribute("href", "/onboarding?passo=pagamento")
+    expect(within(link).getByText("Pendente")).toBeInTheDocument()
+    expect(await screen.findByText(/falta cadastrar a chave pix/i)).toBeInTheDocument()
+    expect(await screen.findByLabelText("Chave Pix")).toBeInTheDocument()
+  })
+})

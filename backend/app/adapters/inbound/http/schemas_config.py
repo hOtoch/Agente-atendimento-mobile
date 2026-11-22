@@ -48,6 +48,21 @@ class PrecoSchema(BaseModel):
     oportunidade_conta_no_teto: bool = False
 
 
+class PagamentoIn(BaseModel):
+    aceita_pix: bool = True
+    aceita_debito: bool = True
+    aceita_credito: bool = True
+    chave_pix_tipo: str | None = None
+    """cpf, cnpj, email, telefone ou aleatoria. Os tres campos da chave vazios = sem chave."""
+    chave_pix: str | None = None
+    chave_pix_favorecido: str | None = None
+
+
+class PagamentoSchema(PagamentoIn):
+    aceita_entrada_mais_credito: bool = False
+    """Somente leitura: vem das regras de preco (`aceita_entrada_mais_cartao`) e exige credito."""
+
+
 class TaxaSchema(BaseModel):
     chave: int | str
     bandeira: str
