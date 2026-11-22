@@ -23,9 +23,11 @@ from app.application.estoque import EstoqueIndisponivel
 from app.application.llm import DefinicaoFerramenta
 from app.domain.desconto import TetoAtingido, liberar_proximo
 from app.domain.estoque import (
+    Condicao,
     ItemEstoque,
     ModeloAmbiguo,
     ModeloResolvido,
+    filtrar,
     resolver_modelo,
 )
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, UsadoInformado, pendencias
@@ -303,9 +305,76 @@ async def _registrar_interesse(
     return _Saida(conteudo, novo)
 
 
+def _ordem_condicao(condicao: Condicao) -> int:
+    return 0 if condicao is Condicao.NOVO else 1
+
+
+def _resumo_capacidades(itens: list[ItemEstoque]) -> list[dict[str, Any]]:
+    """Todas as capacidades em ordem crescente, com condicoes e unidades. Sem preco."""
+    por_cap: dict[Capacidade, dict[Condicao, int]] = {}
+    for i in itens:
+        unidades = por_cap.setdefault(i.capacidade, {})
+        unidades[i.condicao] = unidades.get(i.condicao, 0) + i.quantidade
+    return [
+        {
+            "capacidade": str(cap),
+            "condicoes": [
+                {"condicao": c.value, "unidades": n}
+                for c, n in sorted(por_cap[cap].items(), key=lambda par: _ordem_condicao(par[0]))
+            ],
+        }
+        for cap in sorted(por_cap)
+    ]
+
+
+def _resumo_cores(itens: list[ItemEstoque]) -> list[dict[str, Any]]:
+    """Cores (por condicao) na ordem do estoque, com as unidades. Sem preco nem sku."""
+    por_cor: dict[tuple[str | None, Condicao], int] = {}
+    for i in itens:
+        chave = (i.cor, i.condicao)
+        por_cor[chave] = por_cor.get(chave, 0) + i.quantidade
+    return [
+        {"cor": cor, "condicao": cond.value, "unidades": n} for (cor, cond), n in por_cor.items()
+    ]
+
+
+def _chave_cor(item: ItemEstoque) -> str:
+    return (item.cor or "").strip().lower()
+
+
+def _etapa_capacidades(itens: list[ItemEstoque], aviso: str = "") -> dict[str, Any]:
+    return {
+        "etapa": "capacidades",
+        "capacidades": _resumo_capacidades(itens),
+        "mensagem": (
+            f"{aviso}Apresente TODAS as capacidades listadas, com a condição de cada uma "
+            "(novo/seminovo), sem falar de cor ainda. Pergunte qual capacidade o "
+            "cliente prefere; não escolha por ele. Depois chame consultar_estoque com a "
+            "capacidade escolhida."
+        ),
+    }
+
+
+def _etapa_cores(
+    itens: list[ItemEstoque], capacidade: Capacidade, aviso: str = "", unica: bool = False
+) -> dict[str, Any]:
+    ja_dito = "Esta é a única capacidade do modelo; avise o cliente. " if unica else ""
+    return {
+        "etapa": "cores",
+        "capacidade": str(capacidade),
+        "cores": _resumo_cores(itens),
+        "mensagem": (
+            f"{aviso}{ja_dito}Apresente TODAS as cores disponíveis da capacidade {capacidade}, "
+            "com a condição de cada uma. Pergunte qual cor o cliente prefere. Depois chame "
+            "consultar_estoque de novo com a capacidade e a cor escolhidas."
+        ),
+    }
+
+
 async def _consultar_estoque(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
+    """Estoque em etapas: capacidades, depois cores, depois as opcoes (sku) do que ele escolheu."""
     modelo = await _modelo_da_loja(_texto_obrigatorio(entrada, "modelo"), ctx)
     capacidade = _capacidade_opcional(entrada)
     cor = _texto_opcional(entrada, "cor")
@@ -314,38 +383,78 @@ async def _consultar_estoque(
         capacidade = capacidade or atual.capacidade
         cor = cor or atual.cor
 
-    itens = await ctx.estoque.buscar(ctx.loja_id, modelo, capacidade, cor)
+    todos = await ctx.estoque.buscar(ctx.loja_id, modelo)
+    itens = filtrar(todos, modelo, capacidade, cor)
 
     ficha, _ = _aplicar_interesse(estado.ficha, modelo, capacidade, cor)
     confirmado = ficha.interesse.sku_estoque_confirmado
     if confirmado is not None and confirmado not in {i.sku for i in itens}:
         ficha = ficha.com_interesse(sku_estoque_confirmado=None)
-    unico = len(itens) == 1
-    if unico:
+
+    etapa: dict[str, Any]
+    if not todos:
+        etapa = {"mensagem": "Não há unidades disponíveis com esses critérios."}
+    elif capacidade is not None and not any(i.capacidade == capacidade for i in todos):
+        # a capacidade pedida nao existe: diz quais existem e nao grava a escolha
+        ficha = ficha.com_interesse(capacidade=None, cor=None, sku_estoque_confirmado=None)
+        etapa = _etapa_capacidades(todos, f"Não há {capacidade} disponível deste modelo. ")
+    elif not itens:
+        # a capacidade existe, mas nao nessa cor
+        ficha = ficha.com_interesse(cor=None, sku_estoque_confirmado=None)
+        da_capacidade = [i for i in todos if i.capacidade == capacidade]
+        assert capacidade is not None  # sem filtro nenhum, `itens` nunca fica vazio
+        etapa = _etapa_cores(da_capacidade, capacidade, f"Não há a cor {cor} nessa capacidade. ")
+    elif len(itens) == 1:
         i = itens[0]
         ficha = ficha.com_interesse(
             capacidade=i.capacidade, cor=i.cor, sku_estoque_confirmado=i.sku
         )
+        etapa = {
+            "sku_confirmado": i.sku,
+            "mensagem": (
+                "Só existe uma opção compatível e ela já foi confirmada; confirme com o cliente."
+            ),
+        }
+    else:
+        etapa, unica = _etapa_apos_filtros(itens, capacidade)
+        if unica is not None:
+            ficha = ficha.com_interesse(capacidade=unica)
 
     conteudo: dict[str, Any] = {
         "status": "ok",
-        "opcoes": [_opcao(i) for i in itens[:_MAX_OPCOES]],
         "total_opcoes": len(itens),
         "confirmado": ficha.interesse.sku_estoque_confirmado is not None,
+        **etapa,
     }
-    if not itens:
-        conteudo["mensagem"] = "Não há unidades disponíveis com esses critérios."
-    elif unico:
-        conteudo["sku_confirmado"] = itens[0].sku
-        conteudo["mensagem"] = (
-            "Só existe uma opção compatível e ela já foi confirmada; confirme com o cliente."
-        )
-    else:
-        conteudo["mensagem"] = (
-            "Há mais de uma opção: pergunte ao cliente qual prefere "
-            "(capacidade, cor ou condição) e use confirmar_item com o sku escolhido."
-        )
+    if "etapa" not in conteudo:
+        conteudo["opcoes"] = [_opcao(i) for i in itens[:_MAX_OPCOES]]
     return _Saida(conteudo, replace(estado, ficha=ficha, estoque_consultado=True))
+
+
+def _etapa_apos_filtros(
+    itens: list[ItemEstoque], capacidade: Capacidade | None
+) -> tuple[dict[str, Any], Capacidade | None]:
+    """Varios itens compativeis: capacidades se ainda houver mais de uma, depois cores.
+
+    Devolve a etapa e, se o modelo so tem uma capacidade (nao ha o que escolher), qual e.
+    """
+    unica: Capacidade | None = None
+    if capacidade is None:
+        capacidades = {i.capacidade for i in itens}
+        if len(capacidades) > 1:
+            return _etapa_capacidades(itens), None
+        capacidade = unica = next(iter(capacidades))
+    if len({_chave_cor(i) for i in itens}) > 1:
+        return _etapa_cores(itens, capacidade, unica=unica is not None), unica
+    etapa = {
+        "etapa": "opcoes",
+        "opcoes": [_opcao(i) for i in itens[:_MAX_OPCOES]],
+        "mensagem": (
+            "Há mais de uma opção da mesma cor: mostre todas ao cliente (seminovo com a "
+            "bateria), pergunte qual prefere e use confirmar_item com o sku escolhido."
+        ),
+    }
+    return etapa, unica
 
 
 async def _confirmar_item(
@@ -712,17 +821,23 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
     DefinicaoFerramenta(
         nome="consultar_estoque",
         descricao=(
-            "Consulta no estoque as opções disponíveis do modelo (sku, capacidade, cor, condição e "
-            "bateria do seminovo). NUNCA devolve valores: para falar de dinheiro use "
-            "calcular_proposta. Se houver exatamente uma opção compatível ela já é confirmada; "
-            "se houver várias, pergunte ao cliente qual prefere e use confirmar_item. Se o estoque "
-            "estiver fora do ar, avise o cliente e tente de novo depois."
+            "Consulta o estoque do modelo em etapas. Sem capacidade: devolve TODAS as capacidades "
+            "(ordem crescente, com condição e unidades); apresente todas e pergunte qual ele "
+            "prefere. Com capacidade e sem cor: devolve as cores dessa capacidade; pergunte a cor. "
+            "Com capacidade e cor: devolve os itens (sku, condição e bateria do seminovo) para ele "
+            "escolher com confirmar_item. Só existindo um item compatível ele já é confirmado. "
+            "NUNCA devolve valores: para falar de dinheiro use calcular_proposta. Nunca ofereça "
+            "só uma opção quando a ferramenta devolveu outras. Se o estoque estiver fora do ar, "
+            "avise o cliente e tente de novo depois."
         ),
         esquema_json=_objeto(
             {
                 "modelo": _txt("Marca e modelo, ex.: 'iPhone 15' ou 'Galaxy A07'.", nulo=False),
-                "capacidade": _txt("Capacidade para filtrar, ex.: '256GB'; null para todas."),
-                "cor": _txt("Cor para filtrar; null para todas."),
+                "capacidade": _txt(
+                    "Capacidade que o cliente escolheu, ex.: '256GB'; null para listar todas as "
+                    "capacidades do modelo."
+                ),
+                "cor": _txt("Cor que o cliente escolheu; null para listar as cores."),
             }
         ),
         estrita=False,

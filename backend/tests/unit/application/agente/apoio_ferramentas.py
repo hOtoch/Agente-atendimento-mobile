@@ -60,6 +60,28 @@ ITENS_PADRAO = [
 ]
 
 
+# iPhone 16 com varias capacidades/cores/condicoes; o 512GB vem primeiro de proposito (a ordem do
+# estoque nao pode ditar a ordem das capacidades) e o 256GB Azul esta esgotado.
+ITENS_16_VARIOS = [
+    item("IP16-512-PRETO", "iPhone 16", 512, "Preto", 7230, qtd=3),
+    item("IP16-128-PRETO", "iPhone 16", 128, "Preto", 4830, qtd=2),
+    item("IP16-128-BRANCO", "iPhone 16", 128, "Branco", 4830, qtd=1),
+    item(
+        "IP16-128-PRETO-SEMI",
+        "iPhone 16",
+        128,
+        "Preto",
+        4130,
+        qtd=1,
+        condicao=Condicao.SEMINOVO,
+        bateria=91,
+    ),
+    item("IP16-256-PRETO", "iPhone 16", 256, "Preto", 5430),
+    item("IP16-256-AZUL", "iPhone 16", 256, "Azul", 5430, qtd=0),
+    item("IP16-256-ROSA", "iPhone 16", 256, "Rosa", 5430),
+]
+
+
 class EstoqueFora:
     """Estoque que sempre falha (ERP fora do ar)."""
 

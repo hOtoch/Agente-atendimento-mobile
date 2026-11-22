@@ -53,9 +53,12 @@ ROTULOS_PENDENCIA: Final[dict[Pendencia, str]] = {
 
 _PERGUNTAS: Final[dict[Pendencia, str]] = {
     _P.APARELHO_MODELO: "Pergunte qual aparelho (marca e modelo) o cliente quer.",
-    _P.APARELHO_CAPACIDADE: "Pergunte qual capacidade de armazenamento ele prefere.",
+    _P.APARELHO_CAPACIDADE: (
+        "Apresente todas as capacidades devolvidas por consultar_estoque e pergunte qual ele "
+        "prefere."
+    ),
     _P.ESTOQUE_CONFIRMADO: (
-        "Mostre as opções devolvidas por consultar_estoque e pergunte qual ele quer."
+        "Mostre as cores ou opções devolvidas por consultar_estoque e pergunte qual ele quer."
     ),
     _P.TEM_TROCA: "Pergunte se ele tem um aparelho para dar na troca.",
     _P.USADO_MODELO: "Pergunte qual é o modelo do aparelho que ele daria na troca.",
@@ -205,12 +208,20 @@ def mensagem_estado(
 
 def _pede_estoque(ficha: Ficha, estoque_consultado: bool) -> bool:
     i = ficha.interesse
-    return not estoque_consultado and i.modelo is not None and i.capacidade is not None
+    return not estoque_consultado and i.modelo is not None
 
 
 def _pergunta(pendencia: Pendencia, estoque_consultado: bool) -> str:
+    if pendencia is Pendencia.APARELHO_CAPACIDADE and not estoque_consultado:
+        return (
+            "Chame consultar_estoque só com o modelo (sem capacidade), apresente TODAS as "
+            "capacidades disponíveis e pergunte qual ele prefere."
+        )
     if pendencia is Pendencia.ESTOQUE_CONFIRMADO and not estoque_consultado:
-        return "Chame consultar_estoque com o modelo e a capacidade e depois apresente as opções."
+        return (
+            "Chame consultar_estoque com o modelo e a capacidade, apresente as cores "
+            "disponíveis e pergunte qual ele quer."
+        )
     return _PERGUNTAS[pendencia]
 
 

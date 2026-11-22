@@ -302,6 +302,35 @@ def test_estado_avisa_para_consultar_estoque_quando_nao_consultado() -> None:
     assert "consultar_estoque" in estado(ficha, estoque_consultado=False)
 
 
+def test_so_com_modelo_manda_consultar_o_estoque_para_listar_as_capacidades() -> None:
+    ficha = Ficha.vazia().com_interesse(modelo=ModeloAparelho.de("iPhone 16"))
+    proxima = _linha_proxima_pergunta(estado(ficha, estoque_consultado=False)).lower()
+    assert "consultar_estoque" in proxima
+    assert "todas as capacidades" in proxima
+    assert "consultar_estoque" in estado(ficha, estoque_consultado=False).split("Lembretes")[0]
+
+
+def test_com_capacidades_ja_listadas_pergunta_qual_capacidade() -> None:
+    ficha = Ficha.vazia().com_interesse(modelo=ModeloAparelho.de("iPhone 16"))
+    proxima = _linha_proxima_pergunta(estado(ficha, estoque_consultado=True)).lower()
+    assert "capacidade" in proxima and "consultar_estoque" in proxima
+
+
+def test_com_capacidade_escolhida_manda_consultar_para_ver_as_cores() -> None:
+    ficha = Ficha.vazia().com_interesse(
+        modelo=ModeloAparelho.de("iPhone 16"), capacidade=Capacidade(128)
+    )
+    proxima = _linha_proxima_pergunta(estado(ficha, estoque_consultado=False)).lower()
+    assert "consultar_estoque" in proxima and "cor" in proxima
+
+
+def test_metodologia_pede_capacidade_antes_de_cor_e_todas_as_opcoes() -> None:
+    sistema = montar_sistema(perfil_demo(), config_demo())[0]
+    assert "TODAS as capacidades" in sistema
+    assert "depois de ele escolher a capacidade" in sistema.lower()
+    assert "nunca ofereça só uma opção" in sistema.lower()
+
+
 def test_pagamento_e_data_aparecem_quando_informados() -> None:
     ficha = ficha_completa().com_pagamento(
         tipo=TipoPagamento.ENTRADA_MAIS_CREDITO, parcelas=10, entrada=Dinheiro(Decimal(500))

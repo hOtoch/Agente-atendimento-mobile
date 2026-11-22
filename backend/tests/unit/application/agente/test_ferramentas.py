@@ -7,6 +7,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from app.application.agente.estado import EstadoAtendimento
+from app.application.agente.ferramentas import ResultadoFerramenta
 from app.application.config.modelos import LinhaEstoqueLocal
 from app.domain.desconto import EstadoDesconto
 from app.domain.estoque import Condicao, ItemEstoque
@@ -17,11 +18,13 @@ from .apoio_ferramentas import (
     COMPRA_HOJE_12X,
     HOJE,
     INTERESSE_16,
+    ITENS_16_VARIOS,
     ITENS_PADRAO,
     USADO_EXEMPLO,
     Ambiente,
     EstoqueFora,
     criar_ambiente,
+    item,
     sem_valores,
 )
 
@@ -221,10 +224,23 @@ async def test_consultar_estoque_nunca_devolve_preco() -> None:
     assert "preco" not in texto.lower() and "preço" not in texto.lower()
     for preco in ("4199", "4.199", "4830"):
         assert preco not in texto
-    assert len(r.conteudo["opcoes"]) == 2
-    opcao = r.conteudo["opcoes"][0]
-    assert {"sku", "modelo", "capacidade", "cor", "condicao"} <= set(opcao)
+    # iPhone 15 so tem 128GB: pula direto para as cores dessa capacidade
+    assert r.conteudo["etapa"] == "cores"
+    assert {c["cor"] for c in r.conteudo["cores"]} == {"Rosa", "Preto"}
     assert r.estado.estoque_consultado
+
+
+async def test_consultar_estoque_nunca_devolve_preco_em_nenhuma_etapa() -> None:
+    amb = await criar_ambiente(ITENS_16_VARIOS)
+    for cap, cor in [(None, None), ("128GB", None), ("128GB", "Preto"), ("256GB", "Rosa")]:
+        r = await amb.rodar(
+            "consultar_estoque", {"modelo": "iPhone 16", "capacidade": cap, "cor": cor}, VAZIO
+        )
+        assert not r.erro
+        texto = json.dumps(r.conteudo, ensure_ascii=False).lower()
+        assert "r$" not in texto and "preco" not in texto and "preço" not in texto
+        for preco in ("7230", "4830", "4130", "5430"):
+            assert preco not in texto
 
 
 async def test_consultar_estoque_com_varias_opcoes_nao_confirma() -> None:
@@ -234,6 +250,7 @@ async def test_consultar_estoque_com_varias_opcoes_nao_confirma() -> None:
     )
     assert r.estado.ficha.interesse.sku_estoque_confirmado is None
     assert r.conteudo["confirmado"] is False
+    assert r.conteudo["etapa"] == "cores"
 
 
 async def test_consultar_estoque_com_uma_opcao_confirma_o_sku() -> None:
@@ -252,8 +269,8 @@ async def test_consultar_usa_o_interesse_ja_registrado() -> None:
     r = await amb.rodar(
         "consultar_estoque", {"modelo": "iPhone 16", "capacidade": None, "cor": None}, estado
     )
-    # capacidade veio do interesse: so o 128GB
-    assert [o["sku"] for o in r.conteudo["opcoes"]] == ["IP16-128-PRETO"]
+    # capacidade veio do interesse: so o 128GB (um item so, confirmado)
+    assert r.conteudo["sku_confirmado"] == "IP16-128-PRETO"
 
 
 async def test_seminovo_mostra_bateria_e_esgotado_nao_aparece() -> None:
@@ -261,6 +278,7 @@ async def test_seminovo_mostra_bateria_e_esgotado_nao_aparece() -> None:
     r13 = await amb.rodar(
         "consultar_estoque", {"modelo": "iPhone 13", "capacidade": None, "cor": None}, VAZIO
     )
+    assert r13.conteudo["sku_confirmado"] == "IP13-128-AZUL"
     assert r13.conteudo["opcoes"][0]["bateria_pct"] == 88
     r14 = await amb.rodar(
         "consultar_estoque", {"modelo": "iPhone 14", "capacidade": None, "cor": None}, VAZIO
@@ -288,6 +306,178 @@ async def test_consultar_modelo_desconhecido_e_erro() -> None:
     )
     assert r.erro
     assert "iPhone" in json.dumps(r.conteudo, ensure_ascii=False)
+
+
+# --- consultar_estoque em etapas: capacidades, depois cores -----------------------------------
+
+
+async def _consulta_16(
+    cap: str | None, cor: str | None = None, estado: EstadoAtendimento = VAZIO
+) -> tuple[Ambiente, ResultadoFerramenta]:
+    amb = await criar_ambiente(ITENS_16_VARIOS)
+    r = await amb.rodar(
+        "consultar_estoque", {"modelo": "iPhone 16", "capacidade": cap, "cor": cor}, estado
+    )
+    assert not r.erro, r.conteudo
+    return amb, r
+
+
+async def test_sem_capacidade_lista_todas_em_ordem_crescente() -> None:
+    _, r = await _consulta_16(None)
+    c = r.conteudo
+    assert c["etapa"] == "capacidades"
+    assert [x["capacidade"] for x in c["capacidades"]] == ["128GB", "256GB", "512GB"]
+    assert "capacidade" in c["mensagem"].lower() and "pergunte" in c["mensagem"].lower()
+    assert c["confirmado"] is False
+    assert "opcoes" not in c
+    ficha = r.estado.ficha.interesse
+    assert ficha.sku_estoque_confirmado is None and ficha.capacidade is None
+    assert r.estado.estoque_consultado
+
+
+async def test_capacidades_trazem_condicoes_e_unidades() -> None:
+    _, r = await _consulta_16(None)
+    por_cap = {x["capacidade"]: x["condicoes"] for x in r.conteudo["capacidades"]}
+    assert por_cap["128GB"] == [
+        {"condicao": "novo", "unidades": 3},
+        {"condicao": "seminovo", "unidades": 1},
+    ]
+    assert por_cap["256GB"] == [
+        {"condicao": "novo", "unidades": 4}
+    ]  # Preto 2 + Rosa 2; o esgotado nao conta
+    assert por_cap["512GB"] == [{"condicao": "novo", "unidades": 3}]
+
+
+async def test_com_capacidade_sem_cor_lista_so_as_cores_dela() -> None:
+    _, r = await _consulta_16("256GB")
+    c = r.conteudo
+    assert c["etapa"] == "cores"
+    assert c["capacidade"] == "256GB"
+    assert {x["cor"] for x in c["cores"]} == {"Preto", "Rosa"}  # Azul esgotado; Branco e 128GB
+    assert "cor" in c["mensagem"].lower() and "pergunte" in c["mensagem"].lower()
+    assert c["confirmado"] is False
+    assert r.estado.ficha.interesse.sku_estoque_confirmado is None
+    assert r.estado.ficha.interesse.capacidade == Capacidade(256)
+
+
+async def test_cores_mostram_a_condicao_e_as_unidades() -> None:
+    _, r = await _consulta_16("128GB")
+    assert r.conteudo["cores"] == [
+        {"cor": "Preto", "condicao": "novo", "unidades": 2},
+        {"cor": "Branco", "condicao": "novo", "unidades": 1},
+        {"cor": "Preto", "condicao": "seminovo", "unidades": 1},
+    ]
+
+
+async def test_com_capacidade_e_cor_varios_itens_pede_escolha_com_bateria() -> None:
+    _, r = await _consulta_16("128GB", "Preto")
+    c = r.conteudo
+    assert c["etapa"] == "opcoes"
+    assert {o["sku"] for o in c["opcoes"]} == {"IP16-128-PRETO", "IP16-128-PRETO-SEMI"}
+    semi = next(o for o in c["opcoes"] if o["condicao"] == "seminovo")
+    assert semi["bateria_pct"] == 91
+    assert "confirmar_item" in c["mensagem"]
+    assert c["confirmado"] is False
+    assert r.estado.ficha.interesse.sku_estoque_confirmado is None
+
+
+async def test_com_capacidade_e_cor_item_unico_e_confirmado() -> None:
+    _, r = await _consulta_16("128GB", "Branco")
+    assert r.conteudo["confirmado"] is True
+    assert r.conteudo["sku_confirmado"] == "IP16-128-BRANCO"
+    assert r.estado.ficha.interesse.sku_estoque_confirmado == "IP16-128-BRANCO"
+
+
+async def test_cor_aceita_variacao_de_caixa_e_acento() -> None:
+    _, r = await _consulta_16("256GB", "rosa")
+    assert r.estado.ficha.interesse.sku_estoque_confirmado == "IP16-256-ROSA"
+
+
+async def test_capacidade_inexistente_diz_quais_existem_e_nao_grava() -> None:
+    _, r = await _consulta_16("64GB")
+    c = r.conteudo
+    assert c["etapa"] == "capacidades"
+    assert [x["capacidade"] for x in c["capacidades"]] == ["128GB", "256GB", "512GB"]
+    assert "64GB" in c["mensagem"]
+    assert r.estado.ficha.interesse.capacidade is None
+    assert r.estado.ficha.interesse.sku_estoque_confirmado is None
+
+
+async def test_cor_inexistente_na_capacidade_lista_as_cores_dela() -> None:
+    _, r = await _consulta_16("256GB", "Verde")
+    c = r.conteudo
+    assert c["etapa"] == "cores"
+    assert {x["cor"] for x in c["cores"]} == {"Preto", "Rosa"}
+    assert "Verde" in c["mensagem"]
+    assert r.estado.ficha.interesse.cor is None
+    assert r.estado.ficha.interesse.sku_estoque_confirmado is None
+
+
+async def test_capacidade_unica_no_modelo_vai_direto_para_as_cores() -> None:
+    amb = await criar_ambiente(
+        [
+            item("A-128-PRETO", "iPhone 13", 128, "Preto", 2399),
+            item("A-128-AZUL", "iPhone 13", 128, "Azul", 2399),
+        ]
+    )
+    r = await amb.rodar(
+        "consultar_estoque", {"modelo": "iPhone 13", "capacidade": None, "cor": None}, VAZIO
+    )
+    assert r.conteudo["etapa"] == "cores"
+    assert r.conteudo["capacidade"] == "128GB"
+    assert r.estado.ficha.interesse.sku_estoque_confirmado is None
+
+
+async def test_cor_de_condicoes_diferentes_sem_outras_cores_mostra_as_opcoes() -> None:
+    amb = await criar_ambiente(
+        [
+            item("A-128-PRETO", "iPhone 13", 128, "Preto", 2399),
+            item(
+                "A-128-PRETO-S",
+                "iPhone 13",
+                128,
+                "Preto",
+                1999,
+                condicao=Condicao.SEMINOVO,
+                bateria=85,
+            ),
+        ]
+    )
+    r = await amb.rodar(
+        "consultar_estoque", {"modelo": "iPhone 13", "capacidade": "128GB", "cor": None}, VAZIO
+    )
+    assert r.conteudo["etapa"] == "opcoes"
+    assert len(r.conteudo["opcoes"]) == 2
+
+
+async def test_capacidade_do_interesse_registrado_segue_para_as_cores() -> None:
+    amb = await criar_ambiente(ITENS_16_VARIOS)
+    estado, _ = await amb.seq(
+        VAZIO,
+        ("registrar_interesse", {"modelo": "iPhone 16", "capacidade": "256GB", "cor": None}),
+    )
+    r = await amb.rodar(
+        "consultar_estoque", {"modelo": "iPhone 16", "capacidade": None, "cor": None}, estado
+    )
+    assert r.conteudo["etapa"] == "cores"
+    assert r.conteudo["capacidade"] == "256GB"
+
+
+async def test_fluxo_completo_capacidade_depois_cor_depois_confirma() -> None:
+    amb = await criar_ambiente(ITENS_16_VARIOS)
+    estado, (r1, r2, r3) = await amb.seq(
+        VAZIO,
+        ("consultar_estoque", {"modelo": "iPhone 16", "capacidade": None, "cor": None}),
+        ("consultar_estoque", {"modelo": "iPhone 16", "capacidade": "128GB", "cor": None}),
+        ("consultar_estoque", {"modelo": "iPhone 16", "capacidade": "128GB", "cor": "Preto"}),
+    )
+    assert [r1.conteudo["etapa"], r2.conteudo["etapa"], r3.conteudo["etapa"]] == [
+        "capacidades",
+        "cores",
+        "opcoes",
+    ]
+    r4 = await amb.rodar("confirmar_item", {"sku": "IP16-128-PRETO"}, estado)
+    assert r4.estado.ficha.interesse.sku_estoque_confirmado == "IP16-128-PRETO"
 
 
 # --- confirmar_item ----------------------------------------------------------------------
