@@ -78,6 +78,20 @@ class MemoriaEstoqueLocal:
     async def substituir(self, loja_id: UUID, linhas: Sequence[LinhaEstoqueLocal]) -> None:
         self._linhas[loja_id] = list(linhas)
 
+    async def atualizar_linha(
+        self, loja_id: UUID, sku: str, linha: LinhaEstoqueLocal | None
+    ) -> None:
+        atuais = self._linhas.setdefault(loja_id, [])
+        for i, atual in enumerate(atuais):
+            if atual.sku == sku:
+                if linha is None:
+                    del atuais[i]
+                else:
+                    atuais[i] = linha
+                return
+        if linha is not None:
+            atuais.append(linha)
+
 
 class MemoriaMapeamentoSku:
     def __init__(self) -> None:

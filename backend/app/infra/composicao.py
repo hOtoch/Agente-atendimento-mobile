@@ -46,6 +46,8 @@ from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
 from app.adapters.outbound.db.vinculo_erp import VinculosErpLeadSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
 from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
+from app.adapters.outbound.mercadophone.cliente import ClienteMercadoPhone
+from app.adapters.outbound.mercadophone.conferencia import ConferenciaItemMercadoPhone
 from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
 from app.adapters.outbound.mercadophone.pedido import PedidoMercadoPhone
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
@@ -58,6 +60,8 @@ from app.application.canal import BarramentoMensagens, Canal, CanalPort
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
 from app.application.distribuir_lead import DistribuirLead
+from app.application.estoque import EstoquePort
+from app.application.estoque_ao_vivo import EstoqueConferidoAoVivo
 from app.application.estoque_erp import FonteEstoqueErp, SincronizarEstoqueErp
 from app.application.estoque_resiliente import EstoqueResiliente
 from app.application.exportar_handoff_erp import ExportarHandoffParaErp, ServicosDaExportacao
@@ -340,6 +344,35 @@ def montar_casos_painel(
     )
 
 
+def cliente_erp_ou_none() -> ClienteMercadoPhone | None:
+    """Cliente do Mercado Phone, ou None se o servidor nao tem a chave (integracao desligada)."""
+    try:
+        return get_cliente_mercadophone()
+    except MercadoPhoneNaoConfigurado:
+        return None
+
+
+def montar_estoque_do_agente(
+    session: AsyncSession,
+    casos: CasosDeUsoConfig,
+    cliente_erp: Callable[[], ClienteMercadoPhone | None] = cliente_erp_ou_none,
+) -> EstoquePort:
+    """Estoque do agente: conferencia ao vivo (por fora) -> resiliente (cache) -> banco.
+
+    A conferencia fica por fora da resiliencia para o cache de 60 s nao esconde-la; so age com
+    conexao do ERP ativa e chave no servidor, senao o comportamento e o de sempre.
+    """
+    resiliente = EstoqueResiliente(
+        PlanilhaAdapter(FonteEstoqueLocalSql(casos.estoque)), RelogioParede()
+    )
+    return EstoqueConferidoAoVivo(
+        resiliente,
+        ConferenciaItemMercadoPhone(RepositorioConexaoErpSql(session), cliente_erp),
+        casos.estoque,
+        commit=session.commit,
+    )
+
+
 def montar_processar_conversa(
     session: AsyncSession,
     *,
@@ -352,12 +385,11 @@ def montar_processar_conversa(
     max_iteracoes: int = 6,
     midia: ArmazenamentoMidia | None = None,
     audio_saida: ResponderEmAudio | None = None,
+    cliente_erp: Callable[[], ClienteMercadoPhone | None] = cliente_erp_ou_none,
 ) -> ProcessarConversa:
-    """Caso de uso real sobre uma sessao: estoque = banco -> planilha -> resiliente."""
+    """Caso de uso real sobre uma sessao: estoque = banco -> planilha -> resiliente -> ao vivo."""
     casos = montar_casos_config(session)
-    estoque = EstoqueResiliente(
-        PlanilhaAdapter(FonteEstoqueLocalSql(casos.estoque)), RelogioParede()
-    )
+    estoque = montar_estoque_do_agente(session, casos, cliente_erp)
     return ProcessarConversa(
         conversas=RepositorioProcessamentoSql(session),
         transcricao=RepositorioTranscricaoSql(session),

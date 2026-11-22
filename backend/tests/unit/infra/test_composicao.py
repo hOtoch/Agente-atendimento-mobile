@@ -134,3 +134,14 @@ async def test_sem_chave_do_erp_a_exportacao_falha_com_erro_tipado_e_sem_rede(
     dados = DadosHandoff("N", None, None, None, None)
     with pytest.raises(FalhaPedidoErp, match="MERCADOPHONE_API_KEY"):
         await pedido.registrar_handoff(MagicMock(), dados)
+
+
+def test_estoque_do_agente_confere_ao_vivo_por_fora_da_resiliencia() -> None:
+    """A ordem importa: o cache de 60 s da resiliencia nao pode esconder a conferencia."""
+    from app.application.estoque_ao_vivo import EstoqueConferidoAoVivo
+    from app.application.estoque_resiliente import EstoqueResiliente
+
+    estoque = composicao.montar_estoque_do_agente(MagicMock(), MagicMock(), lambda: None)
+
+    assert isinstance(estoque, EstoqueConferidoAoVivo)
+    assert isinstance(estoque._base, EstoqueResiliente)

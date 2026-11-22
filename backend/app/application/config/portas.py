@@ -52,6 +52,12 @@ class RepositorioEstoqueLocal(Protocol):
 
     async def substituir(self, loja_id: UUID, linhas: Sequence[LinhaEstoqueLocal]) -> None: ...
 
+    async def atualizar_linha(
+        self, loja_id: UUID, sku: str, linha: LinhaEstoqueLocal | None
+    ) -> None:
+        """Atualiza (ou insere, no fim) a linha do SKU; `None` remove. So essa linha e loja."""
+        ...
+
 
 class RepositorioMapeamentoSku(Protocol):
     async def listar(self, loja_id: UUID) -> list[LinhaMapeamentoSku]: ...
