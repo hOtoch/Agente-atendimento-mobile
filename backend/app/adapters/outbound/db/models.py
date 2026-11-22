@@ -242,6 +242,43 @@ class RegrasPrecoRow(Base):
     oportunidade_conta_no_teto: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
 
+class PagamentoLojaRow(Base):
+    """Formas de pagamento ligadas pela loja e chave Pix (entrada + cartao fica em regras_preco).
+
+    Sem linha = padrao (Pix, debito e credito aceitos, sem chave). A chave e opcional, mas os tres
+    campos dela andam juntos.
+    """
+
+    __tablename__ = "pagamento_loja"
+    __table_args__ = (
+        CheckConstraint(
+            "chave_pix_tipo IS NULL OR chave_pix_tipo IN "
+            "('cpf', 'cnpj', 'email', 'telefone', 'aleatoria')",
+            name="chave_pix_tipo_valido",
+        ),
+        CheckConstraint(
+            "(chave_pix_tipo IS NULL AND chave_pix IS NULL AND chave_pix_favorecido IS NULL) OR "
+            "(chave_pix_tipo IS NOT NULL AND chave_pix IS NOT NULL "
+            "AND chave_pix_favorecido IS NOT NULL)",
+            name="chave_pix_completa_ou_vazia",
+        ),
+    )
+
+    loja_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lojas.id", ondelete="CASCADE"), primary_key=True
+    )
+    aceita_pix: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    aceita_debito: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    aceita_credito: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    chave_pix_tipo: Mapped[str | None] = mapped_column(String(16))
+    chave_pix: Mapped[str | None] = mapped_column(String(100))
+    chave_pix_favorecido: Mapped[str | None] = mapped_column(String(100))
+
+
 class TaxaRow(Base):
     """`taxa_pct` NULL = "igual" (usa a Mastercard); `chave` = '1'..'21' ou 'debito'."""
 

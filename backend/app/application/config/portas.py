@@ -10,6 +10,7 @@ from uuid import UUID
 
 from app.application.config.entradas import EntradaVendedor
 from app.application.config.modelos import (
+    ConfigPagamento,
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
@@ -37,6 +38,12 @@ class RepositorioConfigLoja(Protocol):
     async def obter_config_preco(self, loja_id: UUID) -> ConfigPreco | None: ...
 
     async def salvar_config_preco(self, loja_id: UUID, config: ConfigPreco) -> None: ...
+
+    async def obter_config_pagamento(self, loja_id: UUID) -> ConfigPagamento:
+        """Sem nada gravado, devolve o padrao (Pix, debito e credito aceitos, sem chave)."""
+        ...
+
+    async def salvar_config_pagamento(self, loja_id: UUID, config: ConfigPagamento) -> None: ...
 
     async def obter_taxas(self, loja_id: UUID) -> TabelaTaxas: ...
 

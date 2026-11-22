@@ -17,6 +17,7 @@ from app.application.agente.prompt import (
 from app.application.config.modelos import ConfigPreco, PerfilLoja
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, pendencias
+from app.domain.formas_pagamento import FormasAceitas
 from app.domain.pagamento import DescontoPixNenhum, RegrasPreco
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
 
@@ -110,6 +111,7 @@ def estado(
     proposta_apresentada: bool = False,
     desconto_liberado: str | None = None,
     handoff_solicitado: bool = False,
+    formas: FormasAceitas | None = None,
 ) -> str:
     return mensagem_estado(
         ficha,
@@ -118,6 +120,7 @@ def estado(
         proposta_apresentada=proposta_apresentada,
         desconto_liberado=desconto_liberado,
         handoff_solicitado=handoff_solicitado,
+        formas=formas,
     )
 
 
@@ -347,3 +350,95 @@ def test_rotulos_cobrem_todas_as_pendencias() -> None:
     assert set(ROTULOS_PENDENCIA) == set(Pendencia)
     assert all(v.strip() for v in ROTULOS_PENDENCIA.values())
     assert len(set(ROTULOS_PENDENCIA.values())) == len(Pendencia)
+
+
+# --- formas de pagamento aceitas pela loja ------------------------------------------------
+
+
+def _formas(**sobre: bool) -> FormasAceitas:
+    base = {"pix": True, "debito": True, "credito": True, "entrada_mais_cartao": True}
+    return FormasAceitas.de(**(base | sobre))
+
+
+def _linha_formas(bloco: str) -> str:
+    return next(x for x in bloco.splitlines() if x.startswith("Formas de pagamento aceitas"))
+
+
+def _ficha_so_falta_pagamento() -> Ficha:
+    return (
+        ficha_intermediaria()
+        .com_usado(
+            carcaca_marcada=False,
+            bateria_pct=87,
+            camera_ok=True,
+            outros_defeitos=(),
+            peca_trocada=False,
+        )
+        .com(data_prevista_compra=date(2026, 11, 27))
+    )
+
+
+def test_bloco_da_loja_com_todas_as_formas_mantem_o_texto() -> None:
+    bloco = montar_sistema(perfil_demo(), config_demo(), formas=_formas())[1]
+    assert _linha_formas(bloco) == (
+        "Formas de pagamento aceitas: Pix, débito, crédito em até 18 parcelas, entrada mais cartão"
+    )
+    assert bloco == montar_sistema(perfil_demo(), config_demo())[1]
+
+
+def test_bloco_da_loja_lista_so_as_formas_ligadas() -> None:
+    formas = _formas(debito=False, entrada_mais_cartao=False)
+    bloco = montar_sistema(perfil_demo(), config_demo(), formas=formas)[1]
+    assert _linha_formas(bloco) == "Formas de pagamento aceitas: Pix, crédito em até 18 parcelas"
+    assert "débito" not in bloco
+    assert "entrada" not in bloco
+
+
+def test_bloco_da_loja_sem_credito_nao_fala_de_parcelas() -> None:
+    bloco = montar_sistema(perfil_demo(), config_demo(), formas=_formas(credito=False))[1]
+    assert "parcela" not in bloco.lower()
+    assert "crédito" not in bloco
+
+
+def test_bloco_da_loja_nao_inclui_a_chave_pix() -> None:
+    bloco = montar_sistema(perfil_demo(), config_demo(), formas=_formas())[1]
+    assert "chave" not in bloco.lower()
+
+
+def test_bloco_da_loja_sem_nenhuma_forma() -> None:
+    formas = _formas(pix=False, debito=False, credito=False)
+    bloco = montar_sistema(perfil_demo(), config_demo(), formas=formas)[1]
+    assert "Formas de pagamento aceitas: nenhuma" in bloco
+
+
+def test_pergunta_de_pagamento_sem_formas_mantem_o_texto_antigo() -> None:
+    ficha = _ficha_so_falta_pagamento()
+    assert pendencias(ficha) == [Pendencia.PAGAMENTO_TIPO]
+    linha = _linha_proxima_pergunta(estado(ficha))
+    assert linha.endswith("Pix, débito, crédito ou entrada mais cartão.")
+    assert linha == _linha_proxima_pergunta(estado(ficha, formas=_formas()))
+
+
+def test_pergunta_de_pagamento_lista_so_as_formas_aceitas() -> None:
+    ficha = _ficha_so_falta_pagamento()
+    linha = _linha_proxima_pergunta(estado(ficha, formas=_formas(debito=False, credito=False)))
+    assert "Pix" in linha and "entrada" not in linha  # entrada exige crédito
+    assert "débito" not in linha and "crédito" not in linha
+
+
+def test_pergunta_de_pagamento_com_duas_formas_usa_ou() -> None:
+    ficha = _ficha_so_falta_pagamento()
+    linha = _linha_proxima_pergunta(
+        estado(ficha, formas=_formas(debito=False, credito=False, entrada_mais_cartao=False))
+    )
+    assert "Pix" in linha
+    linha2 = _linha_proxima_pergunta(
+        estado(ficha, formas=_formas(credito=False, entrada_mais_cartao=False))
+    )
+    assert "Pix ou débito" in linha2
+
+
+def test_pergunta_de_pagamento_sem_nenhuma_forma_manda_chamar_vendedor() -> None:
+    ficha = _ficha_so_falta_pagamento()
+    formas = _formas(pix=False, debito=False, credito=False)
+    assert "chamar_vendedor" in _linha_proxima_pergunta(estado(ficha, formas=formas))

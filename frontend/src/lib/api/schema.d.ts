@@ -152,6 +152,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/config/pagamento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter Pagamento */
+        get: operations["obter_pagamento_lojas__loja_id__config_pagamento_get"];
+        /** Atualizar Pagamento */
+        put: operations["atualizar_pagamento_lojas__loja_id__config_pagamento_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/config/perfil": {
         parameters: {
             query?: never;
@@ -1182,6 +1200,59 @@ export interface components {
         MoverEtapaIn: {
             etapa: components["schemas"]["Etapa"];
         };
+        /** PagamentoIn */
+        PagamentoIn: {
+            /**
+             * Aceita Credito
+             * @default true
+             */
+            aceita_credito: boolean;
+            /**
+             * Aceita Debito
+             * @default true
+             */
+            aceita_debito: boolean;
+            /**
+             * Aceita Pix
+             * @default true
+             */
+            aceita_pix: boolean;
+            /** Chave Pix */
+            chave_pix?: string | null;
+            /** Chave Pix Favorecido */
+            chave_pix_favorecido?: string | null;
+            /** Chave Pix Tipo */
+            chave_pix_tipo?: string | null;
+        };
+        /** PagamentoSchema */
+        PagamentoSchema: {
+            /**
+             * Aceita Credito
+             * @default true
+             */
+            aceita_credito: boolean;
+            /**
+             * Aceita Debito
+             * @default true
+             */
+            aceita_debito: boolean;
+            /**
+             * Aceita Entrada Mais Credito
+             * @default false
+             */
+            aceita_entrada_mais_credito: boolean;
+            /**
+             * Aceita Pix
+             * @default true
+             */
+            aceita_pix: boolean;
+            /** Chave Pix */
+            chave_pix?: string | null;
+            /** Chave Pix Favorecido */
+            chave_pix_favorecido?: string | null;
+            /** Chave Pix Tipo */
+            chave_pix_tipo?: string | null;
+        };
         /** PerfilSchema */
         PerfilSchema: {
             /**
@@ -1821,6 +1892,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MapeamentoSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_pagamento_lojas__loja_id__config_pagamento_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagamentoSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    atualizar_pagamento_lojas__loja_id__config_pagamento_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PagamentoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagamentoSchema"];
                 };
             };
             /** @description Validation Error */

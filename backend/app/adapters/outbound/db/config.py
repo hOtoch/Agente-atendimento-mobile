@@ -18,6 +18,7 @@ from app.adapters.outbound.db.models import (
     EstoqueLocalRow,
     Loja,
     MapeamentoSkuRow,
+    PagamentoLojaRow,
     PerfilLojaRow,
     RegrasPrecoRow,
     TaxaRow,
@@ -26,6 +27,7 @@ from app.adapters.outbound.db.models import (
 )
 from app.application.config.entradas import EntradaVendedor
 from app.application.config.modelos import (
+    ConfigPagamento,
     ConfigPreco,
     LinhaEstoqueLocal,
     LinhaMapeamentoSku,
@@ -33,6 +35,7 @@ from app.application.config.modelos import (
     VendedorLoja,
 )
 from app.domain.bandeira import Bandeira
+from app.domain.chave_pix import ChavePix, TipoChavePix
 from app.domain.desconto import PoliticaDesconto, RegraOportunidadeUnica
 from app.domain.estoque import Condicao
 from app.domain.pagamento import (
@@ -207,6 +210,33 @@ class RepositorioConfigLojaSql:
         r.oportunidade_dias_minimos = config.oportunidade.dias_minimos
         r.oportunidade_valor = config.oportunidade.valor.valor
         r.oportunidade_conta_no_teto = config.oportunidade.conta_no_teto
+        await self._s.flush()
+
+    async def obter_config_pagamento(self, loja_id: uuid.UUID) -> ConfigPagamento:
+        r = await self._s.get(PagamentoLojaRow, loja_id, populate_existing=True)
+        if r is None:
+            return ConfigPagamento()
+        chave: ChavePix | None = None
+        if (
+            r.chave_pix_tipo is not None
+            and r.chave_pix is not None
+            and r.chave_pix_favorecido is not None
+        ):
+            chave = ChavePix(TipoChavePix(r.chave_pix_tipo), r.chave_pix, r.chave_pix_favorecido)
+        return ConfigPagamento(r.aceita_pix, r.aceita_debito, r.aceita_credito, chave)
+
+    async def salvar_config_pagamento(self, loja_id: uuid.UUID, config: ConfigPagamento) -> None:
+        r = await self._s.get(PagamentoLojaRow, loja_id)
+        if r is None:
+            r = PagamentoLojaRow(loja_id=loja_id)
+            self._s.add(r)
+        chave = config.chave_pix
+        r.aceita_pix = config.aceita_pix
+        r.aceita_debito = config.aceita_debito
+        r.aceita_credito = config.aceita_credito
+        r.chave_pix_tipo = None if chave is None else chave.tipo.value
+        r.chave_pix = None if chave is None else chave.chave
+        r.chave_pix_favorecido = None if chave is None else chave.favorecido
         await self._s.flush()
 
     async def obter_taxas(self, loja_id: uuid.UUID) -> TabelaTaxas:

@@ -3,16 +3,10 @@
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Campo, type CampoControle } from "@/components/ui/campo"
+import { Campo } from "@/components/ui/campo"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SeletorCampo } from "@/components/ui/seletor-campo"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/toast"
 
@@ -106,39 +100,6 @@ function paraCorpo(f: Form) {
     oportunidade_valor: envio(f.oportunidade_valor),
     oportunidade_conta_no_teto: false,
   }
-}
-
-function SeletorCampo({
-  controle,
-  valor,
-  itens,
-  aoMudar,
-}: {
-  controle: CampoControle
-  valor: string
-  itens: { value: string; label: string }[]
-  aoMudar: (valor: string) => void
-}) {
-  return (
-    <Select value={valor} items={itens} onValueChange={(v) => aoMudar(String(v))}>
-      <SelectTrigger
-        id={controle.id}
-        aria-labelledby={controle["aria-labelledby"]}
-        aria-invalid={controle["aria-invalid"]}
-        aria-describedby={controle["aria-describedby"]}
-        className="w-full"
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {itens.map((i) => (
-          <SelectItem key={i.value} value={i.value}>
-            {i.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
 }
 
 export function PassoPreco({

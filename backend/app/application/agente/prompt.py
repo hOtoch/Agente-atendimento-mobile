@@ -15,8 +15,13 @@ from functools import cache
 from importlib import resources
 from typing import Final
 
+from app.application.agente.pergunta_pagamento import (
+    ROTULOS_INSTRUCAO,
+    instrucao_pergunta_pagamento,
+)
 from app.application.config.modelos import ConfigPreco, LinhaEstoqueLocal, PerfilLoja
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, pendencias
+from app.domain.formas_pagamento import FormasAceitas
 
 _DIAS_SEMANA: Final = (
     "segunda-feira",
@@ -74,9 +79,7 @@ _PERGUNTAS: Final[dict[Pendencia, str]] = {
     _P.USADO_OUTROS_DEFEITOS: "Pergunte se o aparelho usado tem algum outro defeito.",
     _P.USADO_PECA_TROCADA: "Pergunte se o aparelho usado já teve alguma peça trocada.",
     _P.DATA_COMPRA: "Pergunte quando o cliente pretende comprar.",
-    _P.PAGAMENTO_TIPO: (
-        "Pergunte como ele prefere pagar: Pix, débito, crédito ou entrada mais cartão."
-    ),
+    _P.PAGAMENTO_TIPO: instrucao_pergunta_pagamento(None),
     _P.PAGAMENTO_PARCELAS: "Pergunte em quantas parcelas ele quer pagar no crédito.",
     _P.PAGAMENTO_BANDEIRA: "Pergunte qual a bandeira do cartão.",
     _P.PAGAMENTO_ENTRADA: "Pergunte qual valor ele quer dar de entrada.",
@@ -102,13 +105,18 @@ def carregar_prefixo() -> str:
 
 
 def montar_sistema(
-    perfil: PerfilLoja, config: ConfigPreco | None, marcas: Sequence[str] = ()
+    perfil: PerfilLoja,
+    config: ConfigPreco | None,
+    marcas: Sequence[str] = (),
+    formas: FormasAceitas | None = None,
 ) -> list[str]:
     """`[prefixo_estavel, bloco_da_loja]`; so o prefixo (indice 0) e cacheado.
 
     `marcas` sao as do estoque da loja (de `marcas_do_estoque`): ficam no bloco da loja.
+    `formas` sao as formas de pagamento aceitas (de `obter_pagamento`); sem elas, vale o padrao
+    das regras de preco. A chave Pix nunca entra aqui: ela so sai por ferramenta.
     """
-    return [carregar_prefixo(), _bloco_loja(perfil, config, marcas)]
+    return [carregar_prefixo(), _bloco_loja(perfil, config, marcas, formas)]
 
 
 def marcas_do_estoque(linhas: Iterable[LinhaEstoqueLocal]) -> list[str]:
@@ -121,7 +129,12 @@ def _rotulo_marca(marca: str) -> str:
     return "iPhone (Apple)" if marca == "Apple" else marca
 
 
-def _bloco_loja(perfil: PerfilLoja, config: ConfigPreco | None, marcas: Sequence[str]) -> str:
+def _bloco_loja(
+    perfil: PerfilLoja,
+    config: ConfigPreco | None,
+    marcas: Sequence[str],
+    formas: FormasAceitas | None,
+) -> str:
     horarios = "; ".join(f"{dia}: {faixa}" for dia, faixa in perfil.horarios.items())
     linhas = [
         "# Dados da loja",
@@ -134,14 +147,30 @@ def _bloco_loja(perfil: PerfilLoja, config: ConfigPreco | None, marcas: Sequence
     ]
     if marcas:
         linhas.append(f"Marcas no estoque: {', '.join(_rotulo_marca(m) for m in marcas)}")
-    if config is not None:
-        regras = config.regras
-        formas = ["Pix", "débito", f"crédito em até {regras.max_parcelas} parcelas"]
-        if regras.aceita_entrada_mais_cartao:
-            formas.append("entrada mais cartão")
-        linhas.append(f"Formas de pagamento aceitas: {', '.join(formas)}")
-        linhas.append(f"Máximo de parcelas no crédito: {regras.max_parcelas}")
+    if formas is None and config is not None:
+        formas = FormasAceitas.de(
+            pix=True,
+            debito=True,
+            credito=True,
+            entrada_mais_cartao=config.regras.aceita_entrada_mais_cartao,
+        )
+    if formas is not None:
+        linhas.extend(_linhas_pagamento(formas, config))
     return "\n".join(linhas)
+
+
+def _linhas_pagamento(formas: FormasAceitas, config: ConfigPreco | None) -> list[str]:
+    maximo = None if config is None else config.regras.max_parcelas
+    aceitas: list[str] = []
+    for tipo in formas.tipos():
+        rotulo = ROTULOS_INSTRUCAO[tipo]
+        if tipo is TipoPagamento.CREDITO and maximo is not None:
+            rotulo = f"crédito em até {maximo} parcelas"
+        aceitas.append(rotulo)
+    linhas = [f"Formas de pagamento aceitas: {', '.join(aceitas) or 'nenhuma'}"]
+    if formas.credito and maximo is not None:
+        linhas.append(f"Máximo de parcelas no crédito: {maximo}")
+    return linhas
 
 
 def mensagem_estado(
@@ -152,8 +181,12 @@ def mensagem_estado(
     proposta_apresentada: bool,
     desconto_liberado: str | None,
     handoff_solicitado: bool,
+    formas: FormasAceitas | None = None,
 ) -> str:
-    """Mensagem de sistema do turno: data, ficha, pendencias, proxima pergunta e lembretes."""
+    """Mensagem de sistema do turno: data, ficha, pendencias, proxima pergunta e lembretes.
+
+    `formas` (as aceitas pela loja) montam a pergunta de pagamento; None = todas.
+    """
     faltas = pendencias(ficha)
     linhas = [
         "ESTADO DO ATENDIMENTO (atualizado a cada turno; é só para você, não repita ao cliente)",
@@ -166,7 +199,7 @@ def mensagem_estado(
     if faltas:
         linhas.append("Pendências, em ordem:")
         linhas.extend(f"{n}. {ROTULOS_PENDENCIA[p]}" for n, p in enumerate(faltas, start=1))
-        linhas.append(f"PRÓXIMA PERGUNTA: {_pergunta(faltas[0], estoque_consultado)}")
+        linhas.append(f"PRÓXIMA PERGUNTA: {_pergunta(faltas[0], estoque_consultado, formas)}")
         linhas.append(
             f"NÃO chame calcular_proposta ainda (faltam {len(faltas)} itens). "
             "Se o cliente pedir preço, explique que faltam informações e faça a próxima pergunta."
@@ -211,7 +244,7 @@ def _pede_estoque(ficha: Ficha, estoque_consultado: bool) -> bool:
     return not estoque_consultado and i.modelo is not None
 
 
-def _pergunta(pendencia: Pendencia, estoque_consultado: bool) -> str:
+def _pergunta(pendencia: Pendencia, estoque_consultado: bool, formas: FormasAceitas | None) -> str:
     if pendencia is Pendencia.APARELHO_CAPACIDADE and not estoque_consultado:
         return (
             "Chame consultar_estoque só com o modelo (sem capacidade), apresente TODAS as "
@@ -222,6 +255,8 @@ def _pergunta(pendencia: Pendencia, estoque_consultado: bool) -> str:
             "Chame consultar_estoque com o modelo e a capacidade, apresente as cores "
             "disponíveis e pergunte qual ele quer."
         )
+    if pendencia is Pendencia.PAGAMENTO_TIPO:
+        return instrucao_pergunta_pagamento(formas)
     return _PERGUNTAS[pendencia]
 
 

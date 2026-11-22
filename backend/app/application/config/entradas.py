@@ -23,6 +23,17 @@ class EntradaPreco:
 
 
 @dataclass(frozen=True, slots=True)
+class EntradaPagamento:
+    aceita_pix: bool
+    aceita_debito: bool
+    aceita_credito: bool
+    chave_pix_tipo: str | None
+    chave_pix: str | None
+    chave_pix_favorecido: str | None
+    """Os tres campos da chave em branco = sem chave Pix cadastrada."""
+
+
+@dataclass(frozen=True, slots=True)
 class EntradaTaxa:
     chave: int | str
     bandeira: str

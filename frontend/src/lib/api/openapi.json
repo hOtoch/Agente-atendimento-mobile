@@ -1547,6 +1547,119 @@
         "title": "MoverEtapaIn",
         "type": "object"
       },
+      "PagamentoIn": {
+        "properties": {
+          "aceita_credito": {
+            "default": true,
+            "title": "Aceita Credito",
+            "type": "boolean"
+          },
+          "aceita_debito": {
+            "default": true,
+            "title": "Aceita Debito",
+            "type": "boolean"
+          },
+          "aceita_pix": {
+            "default": true,
+            "title": "Aceita Pix",
+            "type": "boolean"
+          },
+          "chave_pix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave Pix"
+          },
+          "chave_pix_favorecido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave Pix Favorecido"
+          },
+          "chave_pix_tipo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave Pix Tipo"
+          }
+        },
+        "title": "PagamentoIn",
+        "type": "object"
+      },
+      "PagamentoSchema": {
+        "properties": {
+          "aceita_credito": {
+            "default": true,
+            "title": "Aceita Credito",
+            "type": "boolean"
+          },
+          "aceita_debito": {
+            "default": true,
+            "title": "Aceita Debito",
+            "type": "boolean"
+          },
+          "aceita_entrada_mais_credito": {
+            "default": false,
+            "title": "Aceita Entrada Mais Credito",
+            "type": "boolean"
+          },
+          "aceita_pix": {
+            "default": true,
+            "title": "Aceita Pix",
+            "type": "boolean"
+          },
+          "chave_pix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave Pix"
+          },
+          "chave_pix_favorecido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave Pix Favorecido"
+          },
+          "chave_pix_tipo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave Pix Tipo"
+          }
+        },
+        "title": "PagamentoSchema",
+        "type": "object"
+      },
       "PerfilSchema": {
         "properties": {
           "endereco": {
@@ -2838,6 +2951,100 @@
           }
         },
         "summary": "Atualizar Mapeamento",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/pagamento": {
+      "get": {
+        "operationId": "obter_pagamento_lojas__loja_id__config_pagamento_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagamentoSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Pagamento",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_pagamento_lojas__loja_id__config_pagamento_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagamentoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagamentoSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Pagamento",
         "tags": [
           "config"
         ]
