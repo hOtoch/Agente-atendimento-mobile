@@ -14,6 +14,7 @@ from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoE
 from app.application.config.vendedores_erp import (
     ErpCredencialInvalida,
     ErpIndisponivel,
+    ErpRespostaVazia,
     ErroIntegracaoErp,
     LojaSemConexaoErp,
 )
@@ -123,5 +124,6 @@ _STATUS_ERP: dict[type[ErroIntegracaoErp], int] = {
     LojaSemConexaoErp: 409,
     VendedoresErpNaoConfigurado: 409,
     ErpIndisponivel: 503,
+    ErpRespostaVazia: 409,
     ErpCredencialInvalida: 502,
 }

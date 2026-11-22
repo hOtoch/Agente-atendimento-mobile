@@ -65,6 +65,15 @@ class ErpIndisponivel(ErroIntegracaoErp):
         super().__init__("ERP indisponível no momento. Tente novamente em instantes.")
 
 
+class ErpRespostaVazia(ErroIntegracaoErp):
+    """O ERP devolveu zero vendedores, mas a loja ja tem vendedores importados dele."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "O ERP não devolveu nenhum vendedor; nada foi alterado. Confira a unidade da loja."
+        )
+
+
 class ErpCredencialInvalida(ErroIntegracaoErp):
     """O ERP recusou a chave ou a unidade: so a configuracao resolve."""
 
@@ -115,6 +124,9 @@ class ImportarVendedoresErp:
         for item in do_erp:
             por_codigo.setdefault(item.codigo_erp, item)
         locais = {v.codigo_erp: v for v in await self._vendedores.listar(loja_id) if v.codigo_erp}
+        if not por_codigo and locais:
+            # Resposta vazia desativaria todo mundo: mais provavel um glitch ou unidade errada.
+            raise ErpRespostaVazia
 
         criados = atualizados = desativados = sem_alteracao = 0
         for codigo, item in por_codigo.items():
