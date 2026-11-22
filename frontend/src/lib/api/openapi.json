@@ -1921,6 +1921,34 @@
         "title": "ResumoHandoffSchema",
         "type": "object"
       },
+      "ResumoImportacaoVendedoresSchema": {
+        "properties": {
+          "atualizados": {
+            "title": "Atualizados",
+            "type": "integer"
+          },
+          "criados": {
+            "title": "Criados",
+            "type": "integer"
+          },
+          "desativados": {
+            "title": "Desativados",
+            "type": "integer"
+          },
+          "sem_alteracao": {
+            "title": "Sem Alteracao",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "criados",
+          "atualizados",
+          "desativados",
+          "sem_alteracao"
+        ],
+        "title": "ResumoImportacaoVendedoresSchema",
+        "type": "object"
+      },
       "SessaoSchema": {
         "properties": {
           "sessao": {
@@ -2201,6 +2229,17 @@
           "ativo": {
             "title": "Ativo",
             "type": "boolean"
+          },
+          "codigo_erp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Erp"
           },
           "id": {
             "format": "uuid",
@@ -3885,6 +3924,49 @@
           }
         },
         "summary": "Checklist",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/vendedores/importar-erp": {
+      "post": {
+        "operationId": "importar_vendedores_erp_lojas__loja_id__vendedores_importar_erp_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoImportacaoVendedoresSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Importar Vendedores Erp",
         "tags": [
           "config"
         ]

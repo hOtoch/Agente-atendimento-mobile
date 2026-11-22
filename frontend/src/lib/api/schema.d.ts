@@ -401,6 +401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/vendedores/importar-erp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importar Vendedores Erp */
+        post: operations["importar_vendedores_erp_lojas__loja_id__vendedores_importar_erp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/whatsapp/conectar": {
         parameters: {
             query?: never;
@@ -1305,6 +1322,17 @@ export interface components {
             /** Valor Troca */
             valor_troca: string | null;
         };
+        /** ResumoImportacaoVendedoresSchema */
+        ResumoImportacaoVendedoresSchema: {
+            /** Atualizados */
+            atualizados: number;
+            /** Criados */
+            criados: number;
+            /** Desativados */
+            desativados: number;
+            /** Sem Alteracao */
+            sem_alteracao: number;
+        };
         /** SessaoSchema */
         SessaoSchema: {
             /** Sessao */
@@ -1392,6 +1420,8 @@ export interface components {
         VendedorSchema: {
             /** Ativo */
             ativo: boolean;
+            /** Codigo Erp */
+            codigo_erp?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2512,6 +2542,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChecklistSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importar_vendedores_erp_lojas__loja_id__vendedores_importar_erp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoImportacaoVendedoresSchema"];
                 };
             };
             /** @description Validation Error */

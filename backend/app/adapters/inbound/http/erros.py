@@ -11,6 +11,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
+from app.application.config.vendedores_erp import (
+    ErpCredencialInvalida,
+    ErpIndisponivel,
+    ErroIntegracaoErp,
+    LojaSemConexaoErp,
+)
+from app.application.config.vendedores_erp import ErpNaoConfigurado as VendedoresErpNaoConfigurado
 from app.application.estoque_erp import ConexaoErpNaoConfigurada, ErpNaoConfigurado
 from app.application.handoff import ConflitoDono, LeadNaoEncontrado, VendedorNaoEncontrado
 from app.application.midia import MidiaGrandeDemais, MidiaNaoEncontrada, TipoMidiaNaoSuportado
@@ -104,3 +111,17 @@ def registrar_handlers(app: FastAPI) -> None:
     async def _conexao_erp(_: Request, exc: ConexaoErpNaoConfigurada) -> JSONResponse:
         erro = ErroCampo("conexao", "Configure e salve a conexão com o ERP antes de usar.")
         return JSONResponse(_corpo([erro]), status_code=409)
+
+    # --- integracao com o ERP (vendedores): mensagem pronta para o painel, sem segredos ---
+    @app.exception_handler(ErroIntegracaoErp)
+    async def _integracao_erp(_: Request, exc: ErroIntegracaoErp) -> JSONResponse:
+        status = _STATUS_ERP.get(type(exc), 502)
+        return JSONResponse(_corpo([ErroCampo("erp", exc.mensagem)]), status_code=status)
+
+
+_STATUS_ERP: dict[type[ErroIntegracaoErp], int] = {
+    LojaSemConexaoErp: 409,
+    VendedoresErpNaoConfigurado: 409,
+    ErpIndisponivel: 503,
+    ErpCredencialInvalida: 502,
+}

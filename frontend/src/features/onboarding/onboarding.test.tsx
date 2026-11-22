@@ -292,6 +292,56 @@ describe("Onboarding: vendedores e percentuais", () => {
   })
 })
 
+describe("Onboarding: vendedores do ERP", () => {
+  it("importar do ERP recarrega a grade com os vendedores novos (peso 0) e o checklist", async () => {
+    params = new URLSearchParams("passo=vendedores")
+    const importado = {
+      vendedores: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          nome: "Fulano de Tal",
+          telefone: null,
+          peso_percentual: "0.00",
+          ativo: true,
+          codigo_erp: "9",
+        },
+      ],
+    }
+    let importou = false
+    const { cliente, chamadas } = apiFalsa({
+      [`GET ${CHECKLIST}`]: { corpo: { itens: ITENS } },
+      [`GET /lojas/${LOJA}/config/vendedores`]: () => ({ corpo: importou ? importado : { vendedores: [] } }),
+      [`POST /lojas/${LOJA}/vendedores/importar-erp`]: () => {
+        importou = true
+        return { corpo: { criados: 1, atualizados: 0, desativados: 0, sem_alteracao: 0 } }
+      },
+    })
+    const user = userEvent.setup()
+    render(<Onboarding cliente={cliente} lojaId={LOJA} />)
+
+    await screen.findByText(/nenhuma linha ainda/i)
+    await user.click(screen.getByRole("button", { name: "Importar do ERP" }))
+
+    expect(await screen.findByDisplayValue("Fulano de Tal")).toBeInTheDocument()
+    expect(screen.getByLabelText("Percentual (%), linha 1")).toHaveValue("0")
+    expect(screen.getByRole("status")).toHaveTextContent("1 criado")
+    const gets = (fim: string) => chamadas.filter((c) => c.method === "GET" && c.url.endsWith(fim))
+    expect(gets("/config/vendedores")).toHaveLength(2)
+    expect(gets("/onboarding/checklist").length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("só o passo de vendedores oferece a importação do ERP", async () => {
+    params = new URLSearchParams("passo=taxas")
+    const { cliente } = apiFalsa({
+      [`GET ${CHECKLIST}`]: { corpo: { itens: ITENS } },
+      [`GET /lojas/${LOJA}/config/taxas`]: { corpo: { taxas: [] } },
+    })
+    render(<Onboarding cliente={cliente} lojaId={LOJA} />)
+    await screen.findByRole("heading", { name: "Taxas da maquininha", level: 2 })
+    expect(screen.queryByRole("button", { name: "Importar do ERP" })).not.toBeInTheDocument()
+  })
+})
+
 describe("Onboarding: importar planilha", () => {
   function arquivo() {
     return new File(["xlsx"], "troca.xlsx", {
