@@ -156,8 +156,9 @@ Regra de dependência: `domain` não importa nada do projeto; `application` impo
 | `CanalPort` | `WebChatAdapter`, `EvolutionAdapter`, (`InstagramAdapter` esqueleto) |
 | `STTPort` / `TTSPort` | adaptador de API + fake |
 | Repositórios | SQLAlchemy + in-memory (testes) |
+| `FonteEstoqueErp` / `PedidoPort` (M8) | Mercado Phone via MCP (`ClienteMercadoPhone`) + fake |
 
-ERP ainda não definido → porta mínima (`buscar`, `obter`). Capacidades opcionais declaradas (`suporta_reserva`, `suporta_webhook`). Escrita no ERP (reserva/baixa) seria uma `PedidoPort` futura. Todos os adaptadores de estoque passam na **mesma suíte de testes de contrato**.
+ERP definido: **Mercado Phone** (M8). A plataforma expõe um servidor MCP; o backend fala com ele direto, com allowlist de ferramentas, e a IA nunca recebe as ferramentas do MCP. O estoque é **sincronizado** para o `estoque_local` (cron no worker), então o agente continua lendo banco → planilha → resiliente; antes da proposta o SKU é conferido ao vivo. No handoff o lead vira cliente e a proposta vira orçamento no ERP (desligado por padrão). Capacidades opcionais declaradas (`suporta_reserva`, `suporta_webhook`). Todos os adaptadores de estoque passam na **mesma suíte de testes de contrato**.
 
 ### 4.3 Painel web
 - Next.js (App Router) + TypeScript + Tailwind + **shadcn/ui** como base do design system; tokens em CSS variables; `DESIGN.md` é a fonte da verdade visual.
@@ -228,7 +229,8 @@ Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa,
 | M4 | Painel web | `milestone/m4-painel` | 2026-11-21 | ✅ concluído (PR #51) |
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR #52; correções PR #53, #54) |
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR #55) |
-| M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ✅ concluído (PR do M7) |
+| M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ✅ concluído (PR #56) |
+| M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | a definir | 📋 planejado (#57–#64) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -243,6 +245,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | M5 | #32 handoff, #33 Evolution, #34 distribuição % | #35 notificação + QR | | |
 | M6 | #36 visão, #37 STT, #38 TTS, #39 follow-up | #40 Instagram | | |
 | M7 | #41 carga k6, #42 custos | #43 README, #44 roteiro demo | | |
+| M8 | #57 cliente MCP, #58 qualidade/mapeamento, #59 conexão da loja (schema do M8) | #60 sincronização do estoque, #61 vendedores do ERP | #62 cliente + orçamento no handoff, #63 confirmação ao vivo | #64 docs, smoke e demo |
 
 Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa ponta a ponta no chat web.
 
@@ -306,12 +309,21 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-21 | Cache incremental: breakpoint no último bloco da última mensagem do usuário | Eval real: entrada sem cache caiu de ~70 mil para ~3 mil tokens por conversa; Sonnet de US$ 0,177 para US$ 0,079 |
 | 2026-11-21 | Eval: `handoff` não é fixado e `etapa_final` é "ao menos"; recusas e valores citados pelo cliente não reprovam | O cliente simulado aceita a proposta e chamar o vendedor é o certo; as reprovações eram falsos negativos |
 | 2026-11-21 | `LLM_FAKE_LATENCIA_MS` liga um LLM simulado (desligado por padrão) só para teste de carga | k6 sem custo e com latência realista |
+| 2026-11-22 | ERP = Mercado Phone, acessado pelo MCP da plataforma só pelo backend (allowlist, sem `delete_*`); a IA não recebe as ferramentas do MCP | O código decide; o MCP tem 81 ferramentas, inclusive de exclusão |
+| 2026-11-22 | Estoque do ERP sincronizado para o `estoque_local` (intervalo por loja, padrão 15 min), substituído só com leitura completa; SKU conferido ao vivo antes da proposta | O MCP não filtra por modelo e lê ~300 itens por 1,6 s; ler tudo a cada turno levaria ~15 s |
+| 2026-11-22 | Só entra no estoque do agente celular ofertável: com preço (> R$ 0,01), disponível para venda, estado e capacidade informados; LACRADO = novo; bateria do ERP vira % só em seminovo | Dados reais vêm sujos; descartes ficam no relatório da sincronização |
+| 2026-11-22 | `valorVenda` do ERP é o preço base (`preco_pix`); `valorVenda2/3` ignorados | Premissa até a resposta do recrutador (§11) |
+| 2026-11-22 | Chave do Mercado Phone só no `.env` (`MERCADOPHONE_API_KEY`); loja ↔ `system_unit_id` + filtro opcional pelo campo `obs` | Uma chave cobre várias unidades; na loja do hackathon as lojas A e B dividem a mesma unidade |
+| 2026-11-22 | A planilha "Estoque duas lojas" e os dados da loja do ERP não entram no repositório; testes usam fixtures sintéticas | Estoque real de lojas de terceiros |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
 2. Teste ao vivo será pelo WhatsApp ou pode ser chat web?
-3. Existe formato de planilha de estoque ou definimos o nosso?
-4. Qual ERP (quando souber).
+3. ~~Existe formato de planilha de estoque ou definimos o nosso?~~ Respondida: o estoque vem do ERP Mercado Phone (a planilha das duas lojas é uma foto dele).
+4. ~~Qual ERP?~~ Respondida: Mercado Phone, pelo MCP da plataforma (M8).
+5. No Mercado Phone, `valorVenda` é o preço à vista/Pix ou o de etiqueta? O que é `valorVenda3`?
+6. Podemos escrever na loja do hackathon (criar cliente e orçamento no handoff) durante a avaliação?
+7. As lojas A e B (mesma unidade, separadas pelo campo de observação) devem virar duas lojas no nosso painel?
 
 ---
 
