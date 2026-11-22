@@ -38,6 +38,14 @@ function ResumoHandoff({ detalhe }: { detalhe: DetalheLead }) {
             {r.dataPrevista ? <Linha rotulo="Data prevista" valor={r.dataPrevista} /> : null}
             <Linha rotulo="Próximo passo" valor={r.proximoPasso} />
           </dl>
+          {r.acordo?.length ? (
+            <dl role="group" aria-label="Acordo fechado" className="flex flex-col gap-2">
+              <h4 className="text-xs font-medium text-foreground">Acordo fechado</h4>
+              {r.acordo.map((l) => (
+                <Linha key={l.rotulo} rotulo={l.rotulo} valor={l.valor} />
+              ))}
+            </dl>
+          ) : null}
           {r.observacoes ? (
             <div className="flex flex-col gap-1">
               <h4 className="text-xs text-muted-foreground">Observações da IA</h4>

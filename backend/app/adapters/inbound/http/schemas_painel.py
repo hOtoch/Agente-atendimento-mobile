@@ -12,7 +12,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
 
-from app.application.handoff import ResumoHandoff
+from app.application.handoff import AcordoFechado, ResumoHandoff
 from app.application.painel.casos_de_uso import (
     CardLead,
     ColunaKanban,
@@ -135,6 +135,32 @@ class EventoLeadSchema(BaseModel):
         return cls(id=e.id, tipo=e.tipo, payload=e.payload, criado_em=e.criado_em)
 
 
+class AcordoFechadoSchema(BaseModel):
+    """Acordo que a IA fechou com o cliente antes de chamar o vendedor."""
+
+    fechado_em: datetime
+    forma: str | None = Field(description="Forma escolhida na proposta (ex.: crédito em 12x).")
+    valor_total: Decimal | None = None
+    data_prevista: date | None = Field(description="Quando o cliente vai à loja.")
+    endereco: str | None = Field(description="Endereço que a IA informou ao cliente.")
+    horarios: str | None = Field(description="Horários que a IA informou ao cliente.")
+    pix_chave: str | None = Field(description="Chave Pix informada (só no Pix); null sem chave.")
+    pix_favorecido: str | None = None
+
+    @classmethod
+    def de(cls, a: AcordoFechado) -> AcordoFechadoSchema:
+        return cls(
+            fechado_em=a.fechado_em,
+            forma=a.forma,
+            valor_total=a.valor_total,
+            data_prevista=a.data_prevista,
+            endereco=a.endereco,
+            horarios=a.horarios,
+            pix_chave=a.pix_chave,
+            pix_favorecido=a.pix_favorecido,
+        )
+
+
 class ResumoHandoffSchema(BaseModel):
     """Resumo para o vendedor: campos estruturados (deterministicos) + observacoes do LLM."""
 
@@ -164,6 +190,9 @@ class ResumoHandoffSchema(BaseModel):
     ultimas_mensagens_cliente: list[str] = Field(
         default_factory=list, description="Ultimas falas do cliente (truncadas)."
     )
+    acordo: AcordoFechadoSchema | None = Field(
+        default=None, description="Acordo fechado pela IA antes do handoff; null se não houve."
+    )
 
     @classmethod
     def de(cls, r: ResumoHandoff) -> ResumoHandoffSchema:
@@ -188,6 +217,7 @@ class ResumoHandoffSchema(BaseModel):
             parcelas=r.parcelas,
             valor_parcela=r.valor_parcela,
             ultimas_mensagens_cliente=list(r.ultimas_mensagens_cliente),
+            acordo=None if r.acordo is None else AcordoFechadoSchema.de(r.acordo),
         )
 
 

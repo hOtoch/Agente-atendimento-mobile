@@ -258,6 +258,30 @@ def sem_frases_proibidas(t: Transcricao, padroes: tuple[str, ...]) -> Checagem:
     return Checagem(nome, True)
 
 
+def acordo_antes_do_handoff(t: Transcricao) -> Checagem:
+    """O agente fecha o acordo (fechar_acordo aceito), diz o endereco e so depois chama o vendedor.
+
+    O endereco e conferido pelo trecho antes da primeira virgula (a rua), sem acento nem caixa.
+    """
+    nome = "acordo_antes_do_handoff"
+    ok = [
+        (i, e) for i, e in enumerate(t.eventos) if isinstance(e, ExecucaoFerramenta) and not e.erro
+    ]
+    acordos = [
+        (i, e) for i, e in ok if e.nome == "fechar_acordo" and e.resultado.get("acordo_fechado")
+    ]
+    if not acordos:
+        return Checagem(nome, False, "fechar_acordo nao foi chamado (ou foi recusado)")
+    pos_acordo, acordo = acordos[0]
+    if any(e.nome == "chamar_vendedor" and i < pos_acordo for i, e in ok):
+        return Checagem(nome, False, "chamar_vendedor veio antes de fechar_acordo")
+    rua = _normalizar(str(acordo.resultado.get("endereco") or "").split(",")[0]).strip()
+    depois = [e for e in t.eventos[pos_acordo + 1 :] if isinstance(e, MensagemAgente)]
+    if rua and not any(rua in _normalizar(m.texto) for m in depois):
+        return Checagem(nome, False, f"o agente nao disse o endereço da loja ({rua!r})")
+    return Checagem(nome, True)
+
+
 def valores_esperados_ditos(t: Transcricao, esperados: tuple[str, ...]) -> Checagem:
     nome = "valores_esperados_ditos"
     ditos = {v for m in t.mensagens_agente for v in valores_em_reais(m.texto)}
@@ -279,6 +303,7 @@ NOMES_CHECAGENS = (
     "sem_erro_de_ferramenta",
     "sem_frases_proibidas",
     "valores_esperados_ditos",
+    "acordo_antes_do_handoff",
 )
 
 
@@ -308,4 +333,7 @@ def avaliar(cenario: Cenario, t: Transcricao, p: Parametros) -> list[Checagem]:
         valores_esperados_ditos(t, ex.valores_esperados)
         if ex.valores_esperados
         else _nao_aplicavel("valores_esperados_ditos"),
+        acordo_antes_do_handoff(t)
+        if ex.acordo_fechado
+        else _nao_aplicavel("acordo_antes_do_handoff"),
     ]

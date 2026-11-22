@@ -182,10 +182,12 @@ def mensagem_estado(
     desconto_liberado: str | None,
     handoff_solicitado: bool,
     formas: FormasAceitas | None = None,
+    acordo_fechado: bool = False,
 ) -> str:
     """Mensagem de sistema do turno: data, ficha, pendencias, proxima pergunta e lembretes.
 
     `formas` (as aceitas pela loja) montam a pergunta de pagamento; None = todas.
+    `acordo_fechado`: `fechar_acordo` ja gravou o acordo (falta so agradecer e chamar o vendedor).
     """
     faltas = pendencias(ficha)
     linhas = [
@@ -211,6 +213,8 @@ def mensagem_estado(
                 "A proposta já foi apresentada. Chame calcular_proposta de novo só se o cliente "
                 "mudar algum dado."
             )
+            if not handoff_solicitado:
+                linhas.append(_lembrete_acordo(acordo_fechado))
         else:
             linhas.append("PODE chamar calcular_proposta agora e apresentar as opções.")
     linhas.append("")
@@ -232,11 +236,25 @@ def mensagem_estado(
         [
             "Lembretes: uma pergunta por mensagem, no máximo 3 frases, sem inventar valores.",
             "Registre cada resposta do cliente com a ferramenta certa antes da próxima pergunta.",
-            "Se o cliente pedir um vendedor, quiser fechar, reclamar ou sair do escopo: "
+            "Se o cliente pedir para falar com uma pessoa, reclamar ou sair do escopo: "
             "chamar_vendedor.",
         ]
     )
     return "\n".join(linhas)
+
+
+def _lembrete_acordo(acordo_fechado: bool) -> str:
+    if acordo_fechado:
+        return (
+            "O acordo já foi fechado (fechar_acordo): envie o endereço, os horários (e a chave "
+            "Pix, se houver) que a ferramenta devolveu, agradeça a preferência e chame "
+            "chamar_vendedor com motivo 'acordo_fechado'."
+        )
+    return (
+        "Quando o cliente aceitar a proposta, chame fechar_acordo; depois envie endereço e "
+        "horário, agradeça a preferência e chame chamar_vendedor com motivo 'acordo_fechado'. "
+        "Se ele mudar algo, refaça a proposta."
+    )
 
 
 def _pede_estoque(ficha: Ficha, estoque_consultado: bool) -> bool:

@@ -33,6 +33,7 @@ FERRAMENTAS = (
     "registrar_leitura_imagem",
     "calcular_proposta",
     "liberar_desconto",
+    "fechar_acordo",
     "chamar_vendedor",
 )
 
@@ -112,6 +113,7 @@ def estado(
     desconto_liberado: str | None = None,
     handoff_solicitado: bool = False,
     formas: FormasAceitas | None = None,
+    acordo_fechado: bool = False,
 ) -> str:
     return mensagem_estado(
         ficha,
@@ -121,6 +123,7 @@ def estado(
         desconto_liberado=desconto_liberado,
         handoff_solicitado=handoff_solicitado,
         formas=formas,
+        acordo_fechado=acordo_fechado,
     )
 
 
@@ -442,3 +445,44 @@ def test_pergunta_de_pagamento_sem_nenhuma_forma_manda_chamar_vendedor() -> None
     ficha = _ficha_so_falta_pagamento()
     formas = _formas(pix=False, debito=False, credito=False)
     assert "chamar_vendedor" in _linha_proxima_pergunta(estado(ficha, formas=formas))
+
+
+# --- fechamento do acordo pela IA (#74) -----------------------------------------------------
+
+
+def test_proposta_apresentada_com_ficha_completa_lembra_de_fechar_o_acordo() -> None:
+    msg = estado(ficha_completa(), proposta_apresentada=True)
+    assert "fechar_acordo" in msg
+    assert "chamar_vendedor" in msg
+    assert "acordo_fechado" in msg
+
+
+def test_sem_proposta_apresentada_nao_manda_fechar_o_acordo() -> None:
+    assert "fechar_acordo" not in estado(ficha_completa())
+    assert "fechar_acordo" not in estado(ficha_intermediaria(), proposta_apresentada=True)
+
+
+def test_acordo_ja_fechado_manda_enviar_os_dados_e_chamar_o_vendedor() -> None:
+    msg = estado(ficha_completa(), proposta_apresentada=True, acordo_fechado=True)
+    assert "acordo já foi fechado" in msg.lower()
+    assert "chamar_vendedor" in msg
+    assert "NÃO chame fechar_acordo" not in msg
+
+
+def test_lembrete_final_nao_manda_chamar_vendedor_so_porque_quer_fechar() -> None:
+    msg = estado(ficha_intermediaria())
+    assert "quiser fechar" not in msg
+    assert "falar com uma pessoa" in msg
+
+
+def test_prefixo_conduz_ate_o_fechamento_do_acordo() -> None:
+    prefixo = carregar_prefixo()
+    assert "Fechar o acordo" in prefixo
+    assert "fechar_acordo" in prefixo
+    assert "acordo_fechado" in prefixo
+    assert "agradeça a preferência" in prefixo.lower()
+    # o vendedor so entra por pedido de pessoa, reclamacao, fora do escopo, avaliacao ou acordo
+    secao = prefixo.split("# Quando chamar o vendedor")[1].split("# Estilo")[0]
+    for trecho in ("pedir para falar com uma pessoa", "reclamação", "fugir do escopo"):
+        assert trecho in secao, trecho
+    assert "quiser fechar a compra" not in secao

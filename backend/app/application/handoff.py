@@ -23,9 +23,11 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Protocol, Self
 from uuid import UUID
 
+from app.application.agente.acordo import MOTIVO_ACORDO_FECHADO
 from app.application.agente.estado import (
     EstadoAtendimento,
     aparelho_desejado,
+    descrever_troca,
     fatos_do_lead,
 )
 from app.application.agente.prompt import ROTULOS_PENDENCIA, descrever_pagamento
@@ -95,6 +97,48 @@ class ConflitoDono(Exception):
 
 
 @dataclass(frozen=True, slots=True)
+class AcordoFechado:
+    """O acordo que a IA fechou com o cliente (do `estado.acordo`; deterministico)."""
+
+    fechado_em: datetime
+    forma: str | None
+    """Forma escolhida na proposta (rotulo), ex.: "Cartão de crédito em 12x Mastercard"."""
+    valor_total: Decimal | None
+    data_prevista: date | None
+    endereco: str | None
+    """O que a IA informou ao cliente (endereco, horarios e chave Pix da loja)."""
+    horarios: str | None
+    pix_chave: str | None
+    pix_favorecido: str | None
+
+    def para_dict(self) -> dict[str, Any]:
+        return {
+            "fechado_em": self.fechado_em.isoformat(),
+            "forma": self.forma,
+            "valor_total": None if self.valor_total is None else str(self.valor_total),
+            "data_prevista": None if self.data_prevista is None else self.data_prevista.isoformat(),
+            "endereco": self.endereco,
+            "horarios": self.horarios,
+            "pix_chave": self.pix_chave,
+            "pix_favorecido": self.pix_favorecido,
+        }
+
+    @classmethod
+    def de_dict(cls, dados: dict[str, Any]) -> Self:
+        data = dados.get("data_prevista")
+        return cls(
+            fechado_em=datetime.fromisoformat(dados["fechado_em"]),
+            forma=dados.get("forma"),
+            valor_total=_decimal(dados.get("valor_total")),
+            data_prevista=None if data is None else date.fromisoformat(data),
+            endereco=dados.get("endereco"),
+            horarios=dados.get("horarios"),
+            pix_chave=dados.get("pix_chave"),
+            pix_favorecido=dados.get("pix_favorecido"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ResumoHandoff:
     """O que o vendedor precisa saber ao assumir. Os campos estruturados sao deterministicos."""
 
@@ -120,6 +164,8 @@ class ResumoHandoff:
     parcelas: int | None = None
     valor_parcela: Decimal | None = None
     ultimas_mensagens_cliente: list[str] = field(default_factory=list)
+    acordo: AcordoFechado | None = None
+    """Acordo fechado pela IA antes do handoff (None quando nao houve)."""
 
     def para_dict(self) -> dict[str, Any]:
         return {
@@ -143,6 +189,7 @@ class ResumoHandoff:
             "parcelas": self.parcelas,
             "valor_parcela": None if self.valor_parcela is None else str(self.valor_parcela),
             "ultimas_mensagens_cliente": list(self.ultimas_mensagens_cliente),
+            "acordo": None if self.acordo is None else self.acordo.para_dict(),
         }
 
     @classmethod
@@ -169,6 +216,7 @@ class ResumoHandoff:
             parcelas=dados.get("parcelas"),
             valor_parcela=_decimal(dados.get("valor_parcela")),
             ultimas_mensagens_cliente=list(dados.get("ultimas_mensagens_cliente") or []),
+            acordo=None if not dados.get("acordo") else AcordoFechado.de_dict(dados["acordo"]),
         )
 
 
@@ -207,22 +255,16 @@ class AoSolicitarHandoffNulo:
 
 
 def _decimal(valor: object) -> Decimal | None:
+    """Decimal puro ("3900.00") ou texto pt-BR da proposta ("R$ 3.900,00"); None se ilegivel."""
+    if valor is None:
+        return None
+    texto = str(valor).replace("R$", "").replace(" ", "").strip()
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
     try:
-        return Decimal(str(valor)) if valor is not None else None
+        return Decimal(texto)
     except InvalidOperation:
         return None
-
-
-def _descrever_troca(estado: EstadoAtendimento) -> str | None:
-    ficha = estado.ficha
-    if ficha.tem_troca is None:
-        return None
-    if ficha.tem_troca is False:
-        return "Sem aparelho na troca"
-    u = ficha.usado
-    if u.modelo is None:
-        return "Aparelho usado (modelo ainda não informado)"
-    return f"{u.modelo.nome} {u.capacidade}" if u.capacidade is not None else u.modelo.nome
 
 
 def _condicao_do_usado(estado: EstadoAtendimento) -> str | None:
@@ -267,8 +309,45 @@ def _o_que_falta(faltas: list[str]) -> str:
     return f"falta: {texto} e mais {resto}" if resto else f"falta: {texto}"
 
 
-def _motivo_legivel(motivo: str, estado: EstadoAtendimento, faltas: list[str]) -> str:
+def _acordo_do_estado(estado: EstadoAtendimento) -> AcordoFechado | None:
+    dados = estado.acordo
+    if not dados:
+        return None
+    forma = dados.get("forma_escolhida") or {}
+    valor = None
+    for chave in ("total_pago", "valor_a_vista"):
+        valor = _decimal(forma.get(chave))
+        if valor is not None:
+            break
+    informado = dados.get("informado") or {}
+    pix = informado.get("chave_pix") or {}
+    data = dados.get("data_prevista")
+    return AcordoFechado(
+        fechado_em=datetime.fromisoformat(dados["fechado_em"]),
+        forma=forma.get("rotulo"),
+        valor_total=valor,
+        data_prevista=None if data is None else date.fromisoformat(data),
+        endereco=informado.get("endereco"),
+        horarios=informado.get("horarios"),
+        pix_chave=pix.get("chave"),
+        pix_favorecido=pix.get("favorecido"),
+    )
+
+
+def _motivo_acordo_fechado(acordo: AcordoFechado) -> str:
+    quando = f" em {acordo.data_prevista:%d/%m/%Y}" if acordo.data_prevista else ""
+    return (
+        f"Acordo fechado pela IA: cliente vai à loja{quando} para concluir; "
+        "confira os detalhes abaixo."
+    )
+
+
+def _motivo_legivel(
+    motivo: str, estado: EstadoAtendimento, faltas: list[str], acordo: AcordoFechado | None
+) -> str:
     """Traduz motivos do sistema em texto acionavel; motivo da IA (texto livre) passa direto."""
+    if motivo == MOTIVO_ACORDO_FECHADO and acordo is not None:
+        return _motivo_acordo_fechado(acordo)
     if motivo != MOTIVO_FALHA_LLM:
         return motivo
     etapa = _etapa_antes_do_handoff(estado).nome_exibicao
@@ -314,10 +393,11 @@ def montar_resumo_estruturado(
             break
     ficha = estado.ficha
     faltas = [ROTULOS_PENDENCIA[p] for p in pendencias(ficha)]
+    acordo = _acordo_do_estado(estado)
     return ResumoHandoff(
-        motivo=_motivo_legivel(motivo, estado, faltas),
+        motivo=_motivo_legivel(motivo, estado, faltas, acordo),
         aparelho_desejado=aparelho_desejado(estado),
-        troca=_descrever_troca(estado),
+        troca=descrever_troca(estado),
         valor_troca=valor_troca,
         proposta=forma.get("rotulo"),
         valor_proposta=valor_proposta,
@@ -335,6 +415,7 @@ def montar_resumo_estruturado(
         parcelas=forma.get("parcelas"),
         valor_parcela=_decimal(forma.get("valor_parcela")),
         ultimas_mensagens_cliente=_falas_do_cliente(mensagens),
+        acordo=acordo,
     )
 
 

@@ -90,3 +90,12 @@ def test_qualificado_vem_da_trava_de_preco() -> None:
 def test_handoff_solicitado_vira_handoff_realizado() -> None:
     estado = replace(EstadoAtendimento(), handoff_solicitado=True)
     assert fatos_do_lead(estado).handoff_realizado
+
+
+def test_acordo_comeca_vazio_e_faz_ida_e_volta() -> None:
+    assert EstadoAtendimento().acordo is None
+    acordo = {"fechado_em": "2026-11-20T15:00:00+00:00", "aparelho": {"sku": "X"}, "pagamento": {}}
+    estado = replace(EstadoAtendimento(), acordo=acordo)
+    volta = EstadoAtendimento.de_dict(json.loads(json.dumps(estado.para_dict())))
+    assert volta.acordo == acordo
+    assert volta == estado

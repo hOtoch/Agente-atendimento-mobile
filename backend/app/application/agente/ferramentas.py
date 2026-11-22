@@ -14,6 +14,12 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any
 
+from app.application.agente.acordo import (
+    MOTIVO_ACORDO_FECHADO,
+    conteudo_para_ia,
+    mesmo_acordo,
+    montar_acordo,
+)
 from app.application.agente.contexto import ContextoFerramentas, ErroFerramenta
 from app.application.agente.estado import EstadoAtendimento
 from app.application.agente.imagem import LeituraImagem, TipoImagem, decidir_leitura
@@ -789,6 +795,46 @@ async def _liberar_desconto(
     return _Saida(conteudo, replace(novo, ultima_proposta=proposta))
 
 
+async def _fechar_acordo(
+    entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
+) -> _Saida:
+    """O codigo decide se da para fechar: proposta apresentada e vigente, ficha completa e forma
+    aceita pela loja. Grava o acordo e devolve endereco, horarios e (no Pix) a chave da loja."""
+    if not estado.proposta_apresentada or estado.ultima_proposta is None:
+        raise ErroFerramenta(
+            "Ainda não há proposta apresentada ao cliente. Chame calcular_proposta, apresente os "
+            "valores e só feche o acordo depois que ele aceitar."
+        )
+    faltas = pendencias(estado.ficha)
+    if faltas:
+        raise ErroFerramenta(
+            "A ficha está incompleta, não dá para fechar o acordo. Falta: "
+            + ", ".join(_TEXTOS_PENDENCIA[p][0] for p in faltas)
+            + ". Pergunte ao cliente, uma coisa por vez.",
+            faltam=[_TEXTOS_PENDENCIA[p][0] for p in faltas],
+            proxima_pergunta=_TEXTOS_PENDENCIA[faltas[0]][1],
+        )
+    tipo = estado.ficha.pagamento.tipo
+    assert tipo is not None  # sem pendencias, a forma de pagamento esta na ficha
+    await _exigir_forma_aceita(tipo, ctx)
+    if await montar_proposta(ctx, estado) != estado.ultima_proposta:
+        raise ErroFerramenta(
+            "A proposta mudou desde a última que o cliente viu (a ficha ou o estoque mudou). "
+            "Chame calcular_proposta, apresente os valores novos e só feche o acordo depois que "
+            "ele aceitar."
+        )
+    acordo = montar_acordo(
+        estado,
+        estado.ultima_proposta,
+        perfil=await ctx.config.obter_perfil(ctx.loja_id),
+        pagamento=await ctx.config.obter_pagamento(ctx.loja_id),
+        fechado_em=ctx.agora(),
+    )
+    if estado.acordo is not None and mesmo_acordo(estado.acordo, acordo):
+        acordo["fechado_em"] = estado.acordo["fechado_em"]  # idempotente: nada mudou
+    return _Saida(conteudo_para_ia(acordo, tipo), replace(estado, acordo=acordo))
+
+
 async def _chamar_vendedor(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
@@ -1019,15 +1065,43 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
         esquema_json=_objeto({"motivo": _txt("Por que o desconto foi pedido.", nulo=False)}),
     ),
     DefinicaoFerramenta(
+        nome="fechar_acordo",
+        descricao=(
+            "Fecha o acordo com o cliente. Chame quando ele aceitar a proposta apresentada e a "
+            "forma de pagamento estiver definida. O sistema só fecha com proposta apresentada, "
+            "ficha completa e forma aceita pela loja (senão devolve o que falta). Devolve o "
+            "endereço, os horários e, no Pix, a chave e o favorecido: envie ao cliente "
+            "exatamente isso, agradeça a preferência e depois chame chamar_vendedor com motivo "
+            f"'{MOTIVO_ACORDO_FECHADO}'. Nunca invente endereço, horário ou chave Pix. Se o "
+            "cliente mudar algo depois, refaça a proposta e feche de novo."
+        ),
+        esquema_json=_objeto({}),
+    ),
+    DefinicaoFerramenta(
         nome="chamar_vendedor",
         descricao=(
-            "Aciona um vendedor humano da loja. Use quando o cliente quiser fechar a compra, pedir "
-            "para falar com uma pessoa, ou quando a situação fugir do que você pode resolver. "
-            "Depois de chamar, avise o cliente que um vendedor continuará o atendimento."
+            "Aciona um vendedor humano da loja. Use quando o cliente pedir para falar com uma "
+            "pessoa, fizer uma reclamação, quando a situação fugir do que você pode resolver, "
+            "para avaliação na loja, ou depois de fechar o acordo (motivo "
+            f"'{MOTIVO_ACORDO_FECHADO}'). Não chame só porque o cliente quer fechar: conduza com "
+            "fechar_acordo. Depois de chamar, avise o cliente que um vendedor continuará o "
+            "atendimento."
         ),
         esquema_json=_objeto({"motivo": _txt("Motivo do acionamento, em uma frase.", nulo=False)}),
     ),
 )
+
+
+def _sem_acordo_velho(antes: EstadoAtendimento, depois: EstadoAtendimento) -> EstadoAtendimento:
+    """Mudou a ficha, o desconto ou a proposta depois de fechar? O acordo antigo deixa de valer."""
+    if depois.acordo is None or depois.acordo is not antes.acordo:
+        return depois
+    mudou = (
+        depois.ficha != antes.ficha
+        or depois.desconto != antes.desconto
+        or depois.ultima_proposta != antes.ultima_proposta
+    )
+    return replace(depois, acordo=None) if mudou else depois
 
 
 def _resumir(conteudo: dict[str, Any]) -> str:
@@ -1048,6 +1122,7 @@ class CatalogoFerramentas:
             "registrar_compra": _registrar_compra,
             "calcular_proposta": _calcular_proposta,
             "liberar_desconto": _liberar_desconto,
+            "fechar_acordo": _fechar_acordo,
             "chamar_vendedor": _chamar_vendedor,
         }
 
@@ -1102,4 +1177,4 @@ class CatalogoFerramentas:
             )
         except LojaNaoEncontrada:
             return {"erro": "Loja não encontrada. Chame o vendedor."}, estado, True
-        return conteudo, saida.estado, False
+        return conteudo, _sem_acordo_velho(estado, saida.estado), False

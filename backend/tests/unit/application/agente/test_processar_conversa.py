@@ -325,6 +325,99 @@ async def test_chamar_vendedor_passa_a_conversa_para_aguardando_vendedor() -> No
     assert len(c.canal.enviadas) == 1
 
 
+def _diz_o_endereco(msgs: list[MensagemLLM]) -> RespostaRoteirizada:
+    """Como um agente bem comportado: repassa o que `fechar_acordo` devolveu."""
+    acordo = next(
+        r for m in reversed(msgs) for r in resultados_json(m) if r.get("acordo_fechado") is True
+    )
+    return texto(
+        f"Fechado! Te esperamos em {acordo['endereco']}, horário: {acordo['horarios']}. "
+        "Obrigado pela preferência!"
+    )
+
+
+async def test_acordo_fechado_pela_ia_envia_endereco_agradece_e_passa_ao_vendedor() -> None:
+    c = await criar_cenario(
+        [
+            RespostaRoteirizada(
+                chamadas=[
+                    chamada("t1", "registrar_interesse", INTERESSE_16),
+                    chamada("t2", "consultar_estoque", INTERESSE_16),
+                ]
+            ),
+            RespostaRoteirizada(chamadas=[chamada("t3", "registrar_usado", USADO_EXEMPLO)]),
+            RespostaRoteirizada(chamadas=[chamada("t4", "registrar_compra", COMPRA_HOJE_12X)]),
+            RespostaRoteirizada(chamadas=[chamada("t5", "calcular_proposta")]),
+            texto("Aqui está a proposta. Pré-avaliação, valor final confirmado na loja."),
+            # turno 2: o cliente aceita
+            RespostaRoteirizada(chamadas=[chamada("t6", "fechar_acordo")]),
+            RespostaRoteirizada(
+                chamadas=[chamada("t7", "chamar_vendedor", {"motivo": "acordo_fechado"})]
+            ),
+            _diz_o_endereco,
+            texto("Cliente aceitou a proposta e vai à loja."),  # observacoes do resumo
+        ]
+    )
+    await c.turno("quero o iphone 16, tenho um 13 pra troca, 12x no master, compro hoje")
+    assert c.canal.textos == [
+        "Aqui está a proposta. Pré-avaliação, valor final confirmado na loja."
+    ]
+    assert not (await c.atendimento.obter(c.loja_id, c.lead_id)).handoff_solicitado
+
+    await c.turno("fechado, pode ser assim!")
+
+    assert len(c.canal.textos) == 2
+    resposta = c.canal.textos[1]
+    assert "Rua das Palmeiras, 123" in resposta
+    assert "seg: 09:00-18:00" in resposta
+    assert "preferência" in resposta
+    estado = await c.atendimento.obter(c.loja_id, c.lead_id)
+    assert estado.acordo is not None and estado.handoff_solicitado
+    assert estado.motivo_handoff == "acordo_fechado"
+    assert c.painel_repo.leads[c.lead_id].dono == "vendedor"
+
+    resumo = await c.handoff.resumo_do_lead(c.loja_id, c.lead_id)
+    assert resumo is not None
+    assert resumo.motivo.startswith("Acordo fechado pela IA: cliente vai à loja em 20/11/2026")
+    assert resumo.acordo is not None
+    assert resumo.acordo.forma == "Cartão de crédito em 12x Mastercard"
+    assert resumo.acordo.endereco.startswith("Rua das Palmeiras, 123")  # type: ignore[union-attr]
+    assert resumo.valor_proposta is not None  # exportacao ao ERP segue usando a ultima proposta
+    # a IA fica em silencio dali em diante
+    antes = len(c.llm.chamadas)
+    await c.turno("obrigado!")
+    assert len(c.llm.chamadas) == antes
+
+
+async def test_estado_do_turno_lembra_de_fechar_o_acordo_depois_da_proposta() -> None:
+    c = await criar_cenario(
+        [
+            RespostaRoteirizada(
+                chamadas=[
+                    chamada("t1", "registrar_interesse", INTERESSE_16),
+                    chamada("t2", "consultar_estoque", INTERESSE_16),
+                    chamada("t3", "registrar_usado", USADO_EXEMPLO),
+                    chamada("t4", "registrar_compra", COMPRA_HOJE_12X),
+                    chamada("t5", "calcular_proposta"),
+                ]
+            ),
+            texto("Proposta enviada."),
+            texto("ok"),
+        ]
+    )
+    await c.turno("quero tudo")
+    await c.turno("pode ser")
+    ultima = c.llm.chamadas[-1].mensagens
+    estados = [
+        b.texto
+        for m in ultima
+        if m.papel == "system"
+        for b in m.blocos
+        if isinstance(b, BlocoTexto) and b.texto.startswith("ESTADO DO ATENDIMENTO")
+    ]
+    assert "fechar_acordo" in estados[-1]
+
+
 async def test_falha_do_llm_tambem_passa_para_aguardando_vendedor_com_resumo() -> None:
     c = await criar_cenario([RespostaRoteirizada(erro=LLMIndisponivel("fora"))])
     # no banco real a entrada do cliente ja esta no historico do painel; aqui espelhamos a mao

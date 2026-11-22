@@ -576,6 +576,46 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AcordoFechadoSchema
+         * @description Acordo que a IA fechou com o cliente antes de chamar o vendedor.
+         */
+        AcordoFechadoSchema: {
+            /**
+             * Data Prevista
+             * @description Quando o cliente vai à loja.
+             */
+            data_prevista: string | null;
+            /**
+             * Endereco
+             * @description Endereço que a IA informou ao cliente.
+             */
+            endereco: string | null;
+            /**
+             * Fechado Em
+             * Format: date-time
+             */
+            fechado_em: string;
+            /**
+             * Forma
+             * @description Forma escolhida na proposta (ex.: crédito em 12x).
+             */
+            forma: string | null;
+            /**
+             * Horarios
+             * @description Horários que a IA informou ao cliente.
+             */
+            horarios: string | null;
+            /**
+             * Pix Chave
+             * @description Chave Pix informada (só no Pix); null sem chave.
+             */
+            pix_chave: string | null;
+            /** Pix Favorecido */
+            pix_favorecido?: string | null;
+            /** Valor Total */
+            valor_total?: string | null;
+        };
         /** AssumirIn */
         AssumirIn: {
             /**
@@ -1364,6 +1404,8 @@ export interface components {
          * @description Resumo para o vendedor: campos estruturados (deterministicos) + observacoes do LLM.
          */
         ResumoHandoffSchema: {
+            /** @description Acordo fechado pela IA antes do handoff; null se não houve. */
+            acordo?: components["schemas"]["AcordoFechadoSchema"] | null;
             /** Aparelho Desejado */
             aparelho_desejado: string | null;
             /** Cor */

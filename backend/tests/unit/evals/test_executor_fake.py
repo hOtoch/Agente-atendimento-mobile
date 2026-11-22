@@ -17,7 +17,31 @@ async def test_exemplo_oficial_chega_na_troca_de_2310() -> None:
     assert r.aprovado, [c for c in r.checagens if not c.passou]
     textos = " ".join(m.texto for m in r.transcricao.mensagens_agente)
     assert "R$ 2.310,00" in textos
-    assert r.transcricao.etapa_final == "interesse_qualificado"
+    # o agente fecha o acordo, manda endereco e horario e so entao passa ao vendedor
+    nomes = [f.nome for f in r.transcricao.ferramentas]
+    assert nomes.index("fechar_acordo") < nomes.index("chamar_vendedor")
+    assert "Rua das Palmeiras, 123" in textos
+    assert r.transcricao.handoff
+    assert r.transcricao.etapa_final == "com_o_vendedor"
+
+
+async def test_fecha_acordo_pix_manda_a_chave_pix_e_passa_ao_vendedor() -> None:
+    cenario = next(c for c in CENARIOS if c.id == "fecha_acordo_pix")
+    r = await rodar_cenario_fake(cenario)
+    assert r.aprovado, [c for c in r.checagens if c.aplicavel and not c.passou]
+    textos = " ".join(m.texto for m in r.transcricao.mensagens_agente)
+    assert "pix@lojademo.exemplo" in textos
+    assert "preferência" in textos
+    ferramentas = [f for f in r.transcricao.ferramentas if f.nome == "chamar_vendedor"]
+    assert ferramentas and ferramentas[0].entrada["motivo"] == "acordo_fechado"
+
+
+async def test_controle_handoff_sem_acordo_e_pego() -> None:
+    controle = next(c for c in CONTROLES if c.id == "controle_handoff_sem_acordo")
+    r = await rodar_cenario_fake(controle)
+    assert not r.aprovado
+    reprovadas = {c.nome for c in r.checagens if c.aplicavel and not c.passou}
+    assert reprovadas == {"acordo_antes_do_handoff"}
 
 
 async def test_controle_com_violacao_proposital_e_pego() -> None:
@@ -52,6 +76,7 @@ def test_cli_fake_gera_relatorio_md_e_json(tmp_path: Path) -> None:
     assert por_id["controle_preco_sem_ficha"]["aprovado"] is False
     assert por_id["controle_preco_sem_ficha"]["deve_reprovar"] is True
     assert por_id["exemplo_oficial"]["aprovado"] is True
+    assert por_id["controle_handoff_sem_acordo"]["aprovado"] is False
     assert "custo" in dados and "tokens_medios" in dados and "taxa_aprovacao" in dados
 
 

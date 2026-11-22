@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -530,3 +531,103 @@ def test_resumo_novo_dict_ida_e_volta() -> None:
         mensagens=[_msg("cliente", "quero fechar")],
     )
     assert ResumoHandoff.de_dict(r.para_dict()) == r
+
+
+# --- acordo fechado pela IA (#74) ---------------------------------------------------------------
+
+
+def _acordo() -> dict[str, object]:
+    return {
+        "fechado_em": "2026-11-20T14:30:00+00:00",
+        "aparelho": {"sku": "IP16-128-PT", "modelo": "iPhone 16", "cor": "Preto"},
+        "preco_aparelho": "R$ 4.830,00",
+        "troca": {
+            "status": "avaliada",
+            "valor": "R$ 1.200,00",
+            "aparelho_usado": "iPhone 13 128GB",
+        },
+        "desconto": {"negociado": "R$ 100,00", "total": "R$ 130,00"},
+        "desconto_liberado": "R$ 100,00",
+        "forma_escolhida": {
+            "rotulo": "Cartão de crédito em 12x Mastercard",
+            "parcelas": 12,
+            "valor_parcela": "R$ 325,00",
+            "total_pago": "R$ 3.900,00",
+        },
+        "pagamento": {"tipo": "credito", "parcelas": 12, "bandeira": "mastercard", "entrada": None},
+        "data_prevista": "2026-11-25",
+        "informado": {
+            "endereco": "Rua das Palmeiras, 123",
+            "horarios": "seg: 09:00-18:00; sab: 09:00-14:00",
+            "chave_pix": {"tipo": "email", "chave": "pix@loja.exemplo", "favorecido": "Loja Demo"},
+        },
+    }
+
+
+def test_resumo_sem_acordo_nao_tem_o_bloco() -> None:
+    r = montar_resumo_estruturado(_estado_rico(), motivo="x", agora=AGORA)
+    assert r.acordo is None
+
+
+def test_resumo_traz_o_acordo_completo() -> None:
+    estado = replace(_estado_rico(), acordo=_acordo())
+    r = montar_resumo_estruturado(estado, motivo="acordo_fechado", agora=AGORA)
+    a = r.acordo
+    assert a is not None
+    assert a.fechado_em == datetime(2026, 11, 20, 14, 30, tzinfo=UTC)
+    assert a.forma == "Cartão de crédito em 12x Mastercard"
+    assert a.valor_total == Decimal("3900.00")
+    assert a.data_prevista == date(2026, 11, 25)
+    assert a.endereco == "Rua das Palmeiras, 123"
+    assert a.horarios == "seg: 09:00-18:00; sab: 09:00-14:00"
+    assert a.pix_chave == "pix@loja.exemplo"
+    assert a.pix_favorecido == "Loja Demo"
+
+
+def test_acordo_sem_chave_pix_no_resumo() -> None:
+    dados = _acordo()
+    dados["informado"] = {"endereco": "Rua A", "horarios": "seg: 09:00-18:00", "chave_pix": None}
+    r = montar_resumo_estruturado(
+        replace(_estado_rico(), acordo=dados), motivo="acordo_fechado", agora=AGORA
+    )
+    assert r.acordo is not None
+    assert r.acordo.pix_chave is None and r.acordo.pix_favorecido is None
+
+
+def test_motivo_acordo_fechado_e_legivel() -> None:
+    estado = replace(_estado_rico(), acordo=_acordo())
+    r = montar_resumo_estruturado(estado, motivo="acordo_fechado", agora=AGORA)
+    assert r.motivo == (
+        "Acordo fechado pela IA: cliente vai à loja em 25/11/2026 para concluir; "
+        "confira os detalhes abaixo."
+    )
+
+
+def test_motivo_acordo_fechado_sem_data_no_acordo() -> None:
+    dados = _acordo()
+    dados["data_prevista"] = None
+    estado = replace(_estado_rico(), acordo=dados)
+    estado = replace(estado, ficha=estado.ficha.com(data_prevista_compra=None))
+    r = montar_resumo_estruturado(estado, motivo="acordo_fechado", agora=AGORA)
+    assert r.motivo.startswith("Acordo fechado pela IA: cliente vai à loja para concluir")
+
+
+def test_motivo_acordo_fechado_sem_acordo_no_estado_passa_direto() -> None:
+    # o codigo nao inventa um acordo que nao existe
+    r = montar_resumo_estruturado(_estado_rico(), motivo="acordo_fechado", agora=AGORA)
+    assert "Acordo fechado pela IA" not in r.motivo
+
+
+def test_resumo_com_acordo_dict_ida_e_volta() -> None:
+    estado = replace(_estado_rico(), acordo=_acordo())
+    r = montar_resumo_estruturado(estado, motivo="acordo_fechado", agora=AGORA)
+    volta = ResumoHandoff.de_dict(json.loads(json.dumps(r.para_dict())))
+    assert volta == r
+    assert volta.acordo is not None
+
+
+def test_resumo_antigo_sem_acordo_continua_valido() -> None:
+    r = montar_resumo_estruturado(_estado_rico(), motivo="x", agora=AGORA)
+    dados = r.para_dict()
+    dados.pop("acordo")
+    assert ResumoHandoff.de_dict(dados).acordo is None

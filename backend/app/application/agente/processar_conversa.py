@@ -219,6 +219,7 @@ class _Turno:
                         desconto_liberado=_brl(liberado) if liberado > Dinheiro.zero() else None,
                         handoff_solicitado=self._estado.handoff_solicitado,
                         formas=formas,
+                        acordo_fechado=self._estado.acordo is not None,
                     )
                 )
             ],

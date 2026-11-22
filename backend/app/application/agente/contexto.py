@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.estoque import EstoquePort
+
+
+def _agora() -> datetime:
+    return datetime.now(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +25,8 @@ class ContextoFerramentas:
     estoque: EstoquePort
     config: CasosDeUsoConfig
     hoje: date
+    agora: Callable[[], datetime] = _agora
+    """Relogio do fechamento do acordo (injetavel nos testes)."""
 
 
 class ErroFerramenta(Exception):
