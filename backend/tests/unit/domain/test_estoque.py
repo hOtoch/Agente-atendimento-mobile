@@ -5,7 +5,15 @@ from decimal import Decimal
 
 import pytest
 
-from app.domain.estoque import Condicao, ItemEstoque, filtrar
+from app.domain.estoque import (
+    Condicao,
+    ItemEstoque,
+    ModeloAmbiguo,
+    ModeloForaDoEstoque,
+    ModeloResolvido,
+    filtrar,
+    resolver_modelo,
+)
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
 
 
@@ -110,3 +118,45 @@ class TestFiltrar:
     def test_modelo_vazio_levanta(self) -> None:
         with pytest.raises(ValueError):
             filtrar([item()], "   ")
+
+
+class TestResolverModelo:
+    """Modelo pedido pelo cliente -> modelo da loja (iPhone conhecido ou o que esta no estoque)."""
+
+    GALAXY_A07 = ModeloAparelho.de("Galaxy A07 4G", "Samsung")
+    GALAXY_S23 = ModeloAparelho.de("Galaxy S23", "Samsung")
+    REDMI = ModeloAparelho.de("Redmi 15C", "Xiaomi")
+    IPHONE_18_PRO = ModeloAparelho.de("IPHONE 18 PRO")
+    IPHONE_18_PRO_MAX = ModeloAparelho.de("IPHONE 18 PRO MAX")
+    ESTOQUE = (GALAXY_A07, GALAXY_S23, REDMI, IPHONE_18_PRO, IPHONE_18_PRO_MAX)
+
+    def test_iphone_conhecido_vale_mesmo_fora_do_estoque(self) -> None:
+        assert resolver_modelo("iphone15 pro", ()) == ModeloResolvido(
+            ModeloAparelho.de("iPhone 15 Pro")
+        )
+
+    def test_outra_marca_casa_com_o_estoque_sem_a_marca_e_pelo_comeco_do_nome(self) -> None:
+        assert resolver_modelo("galaxy a07", self.ESTOQUE) == ModeloResolvido(self.GALAXY_A07)
+
+    def test_outra_marca_casa_com_a_marca_na_frente_e_sem_acento_ou_caixa(self) -> None:
+        assert resolver_modelo("SAMSUNG galáxy-a07 4g", self.ESTOQUE) == ModeloResolvido(
+            self.GALAXY_A07
+        )
+
+    def test_nome_exato_ganha_do_prefixo(self) -> None:
+        assert resolver_modelo("iphone 18 pro", self.ESTOQUE) == ModeloResolvido(self.IPHONE_18_PRO)
+
+    def test_mais_de_um_candidato_e_ambiguo(self) -> None:
+        r = resolver_modelo("galaxy", self.ESTOQUE)
+        assert isinstance(r, ModeloAmbiguo)
+        assert set(r.candidatos) == {self.GALAXY_A07, self.GALAXY_S23}
+
+    def test_so_a_marca_lista_os_modelos_dela(self) -> None:
+        r = resolver_modelo("samsung", self.ESTOQUE)
+        assert isinstance(r, ModeloAmbiguo)
+        assert set(r.candidatos) == {self.GALAXY_A07, self.GALAXY_S23}
+
+    def test_modelo_que_a_loja_nao_tem(self) -> None:
+        assert resolver_modelo("moto g84", self.ESTOQUE) == ModeloForaDoEstoque()
+        assert resolver_modelo("   ", self.ESTOQUE) == ModeloForaDoEstoque()
+        assert resolver_modelo("?!", self.ESTOQUE) == ModeloForaDoEstoque()

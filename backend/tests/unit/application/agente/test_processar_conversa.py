@@ -424,3 +424,37 @@ def _vendedor(c: Any) -> Any:
     vendedor = uuid4()
     c.painel_repo.adicionar_vendedor(c.loja_id, vendedor, "Carla")
     return vendedor
+
+
+async def test_marcas_do_estoque_da_loja_chegam_ao_bloco_da_loja() -> None:
+    from app.application.config.modelos import LinhaEstoqueLocal
+    from app.domain.estoque import Condicao
+    from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
+
+    c = await criar_cenario([texto("Oi! Qual aparelho você procura?")])
+    linhas = [
+        LinhaEstoqueLocal(
+            "SS-1",
+            ModeloAparelho.de("Galaxy S23", "Samsung"),
+            Capacidade(256),
+            "Preto",
+            Condicao.NOVO,
+            Dinheiro.de(1000),
+            1,
+            None,
+        ),
+        LinhaEstoqueLocal(
+            "IP-1",
+            ModeloAparelho.de("iPhone 15"),
+            Capacidade(128),
+            "Preto",
+            Condicao.NOVO,
+            Dinheiro.de(3000),
+            1,
+            None,
+        ),
+    ]
+    await c.amb.casos.estoque.substituir(c.loja_id, linhas)
+    await c.turno("oi")
+    bloco_da_loja = c.llm.chamadas[0].sistema[1]
+    assert "Samsung" in bloco_da_loja and "iPhone" in bloco_da_loja

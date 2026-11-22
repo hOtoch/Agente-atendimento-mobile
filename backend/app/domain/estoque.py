@@ -1,7 +1,8 @@
-"""Item de estoque e filtro puro de busca (sem IO)."""
+"""Item de estoque, filtro puro de busca e resolucao do modelo pedido (sem IO)."""
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -84,3 +85,63 @@ def filtrar(
         and (capacidade is None or i.capacidade == capacidade)
         and (cor_alvo is None or (i.cor is not None and _norm_cor(i.cor) == cor_alvo))
     ]
+
+
+@dataclass(frozen=True, slots=True)
+class ModeloResolvido:
+    modelo: ModeloAparelho
+
+
+@dataclass(frozen=True, slots=True)
+class ModeloAmbiguo:
+    """O texto casa com mais de um modelo do estoque: o cliente precisa escolher."""
+
+    candidatos: tuple[ModeloAparelho, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ModeloForaDoEstoque:
+    """Nem iPhone conhecido nem modelo que a loja tenha no estoque."""
+
+
+ResolucaoModelo = ModeloResolvido | ModeloAmbiguo | ModeloForaDoEstoque
+
+
+def _chave_modelo(texto: str) -> str:
+    """Forma comparavel: sem acento, caixa, espacos e separadores."""
+    ascii_ = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]", "", ascii_)
+
+
+def _chaves(modelo: ModeloAparelho) -> tuple[str, str]:
+    return _chave_modelo(modelo.nome), _chave_modelo(f"{modelo.marca} {modelo.nome}")
+
+
+def _casa(chave: str, alvo: str, exato: bool) -> bool:
+    return chave == alvo if exato else chave.startswith(alvo)
+
+
+def resolver_modelo(texto: str, modelos_do_estoque: Iterable[ModeloAparelho]) -> ResolucaoModelo:
+    """Modelo que o cliente pediu -> modelo da loja.
+
+    iPhone conhecido vale sempre (mesmo sem estoque). Fora isso, casa com os modelos do estoque,
+    com ou sem a marca na frente: nome exato antes de comeco do nome. Mais de um candidato e
+    ambiguo; nenhum e `ModeloForaDoEstoque`.
+    """
+    try:
+        pedido = ModeloAparelho.de(texto)
+    except ValueError:
+        return ModeloForaDoEstoque()
+    if pedido.conhecido:
+        return ModeloResolvido(pedido)
+    alvo = _chave_modelo(texto)
+    if not alvo:
+        return ModeloForaDoEstoque()
+    modelos = list(dict.fromkeys(modelos_do_estoque))
+    for exato in (True, False):
+        candidatos = tuple(m for m in modelos if any(_casa(k, alvo, exato) for k in _chaves(m)))
+        if len(candidatos) == 1:
+            return ModeloResolvido(candidatos[0])
+        if candidatos:
+            return ModeloAmbiguo(candidatos)
+    return ModeloForaDoEstoque()

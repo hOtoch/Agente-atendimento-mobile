@@ -7,7 +7,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from app.application.agente.estado import EstadoAtendimento
+from app.application.config.modelos import LinhaEstoqueLocal
 from app.domain.desconto import EstadoDesconto
+from app.domain.estoque import Condicao, ItemEstoque
 from app.domain.ficha import TipoPagamento
 from app.domain.valores import Bandeira, Capacidade, Dinheiro, ModeloAparelho
 
@@ -15,7 +17,9 @@ from .apoio_ferramentas import (
     COMPRA_HOJE_12X,
     HOJE,
     INTERESSE_16,
+    ITENS_PADRAO,
     USADO_EXEMPLO,
+    Ambiente,
     EstoqueFora,
     criar_ambiente,
     sem_valores,
@@ -106,6 +110,80 @@ async def test_modelo_desconhecido_informa_o_que_a_loja_trabalha() -> None:
     texto = json.dumps(r.conteudo, ensure_ascii=False)
     assert "iPhone" in texto
     assert "iPhone 16" in texto  # modelo que existe no estoque
+
+
+def _de_outra_marca(sku: str, modelo: str, marca: str, gb: int = 128) -> ItemEstoque:
+    return ItemEstoque(
+        sku=sku,
+        modelo=ModeloAparelho.de(modelo, marca),
+        capacidade=Capacidade(gb),
+        cor="Preto",
+        condicao=Condicao.NOVO,
+        preco_pix=Dinheiro(Decimal(900)),
+        quantidade=1,
+    )
+
+
+MULTIMARCA = [
+    *ITENS_PADRAO,
+    _de_outra_marca("SS-A07", "Galaxy A07 4G", "Samsung"),
+    _de_outra_marca("SS-S23", "Galaxy S23", "Samsung", 256),
+]
+
+
+async def _ambiente_multimarca() -> Ambiente:
+    """Mesmo estoque na porta do agente e no estoque local da loja (de onde vem o catalogo)."""
+    amb = await criar_ambiente(MULTIMARCA)
+    linhas = [
+        LinhaEstoqueLocal(
+            i.sku, i.modelo, i.capacidade, i.cor or "", i.condicao, i.preco_pix, i.quantidade, None
+        )
+        for i in MULTIMARCA
+    ]
+    await amb.casos.estoque.substituir(amb.loja_id, linhas)
+    return amb
+
+
+async def test_outra_marca_do_estoque_e_aceita_como_interesse() -> None:
+    amb = await _ambiente_multimarca()
+    r = await amb.rodar(
+        "registrar_interesse", {"modelo": "galaxy a07", "capacidade": None, "cor": None}, VAZIO
+    )
+    assert not r.erro, r.conteudo
+    assert r.estado.ficha.interesse.modelo == ModeloAparelho.de("Galaxy A07 4G", "Samsung")
+
+
+async def test_consultar_estoque_encontra_outra_marca() -> None:
+    amb = await _ambiente_multimarca()
+    r = await amb.rodar(
+        "consultar_estoque",
+        {"modelo": "Samsung Galaxy A07", "capacidade": None, "cor": None},
+        VAZIO,
+    )
+    assert not r.erro, r.conteudo
+    assert r.conteudo["total_opcoes"] == 1
+    assert r.estado.ficha.interesse.sku_estoque_confirmado == "SS-A07"
+
+
+async def test_modelo_ambiguo_pede_para_escolher_entre_os_do_estoque() -> None:
+    amb = await _ambiente_multimarca()
+    r = await amb.rodar(
+        "registrar_interesse", {"modelo": "galaxy", "capacidade": None, "cor": None}, VAZIO
+    )
+    assert r.erro
+    assert r.estado == VAZIO
+    texto = json.dumps(r.conteudo, ensure_ascii=False)
+    assert "Galaxy A07 4G" in texto and "Galaxy S23" in texto
+    assert "trabalha com iPhone" not in texto
+
+
+async def test_iphone_conhecido_continua_aceito_mesmo_sem_estoque() -> None:
+    amb = await _ambiente_multimarca()
+    r = await amb.rodar(
+        "registrar_interesse", {"modelo": "iPhone 17 Pro", "capacidade": None, "cor": None}, VAZIO
+    )
+    assert not r.erro
+    assert r.estado.ficha.interesse.modelo == ModeloAparelho.de("iPhone 17 Pro")
 
 
 async def test_capacidade_invalida_e_erro_amigavel() -> None:

@@ -211,7 +211,7 @@ def test_modelo_vazio(modelo: str | None) -> None:
 def test_modelo_com_erro_de_digitacao_passa_normalizado_sem_virar_canonico() -> None:
     r = linha(aparelhoDescricao="IPHONE 15 PRO MAXX")
     assert r.linha.modelo.conhecido is False
-    assert r.linha.modelo.nome == "Iphone 15 Pro Maxx"
+    assert r.linha.modelo.nome == "iPhone 15 Pro Maxx"
 
 
 def test_marca_resolvida_pelo_mapa_do_erp() -> None:

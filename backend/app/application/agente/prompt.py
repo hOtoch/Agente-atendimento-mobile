@@ -8,12 +8,14 @@ Nenhum valor monetario entra aqui: preco, troca, parcela e desconto vem so das f
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from datetime import date
 from functools import cache
 from importlib import resources
 from typing import Final
 
-from app.application.config.modelos import ConfigPreco, PerfilLoja
+from app.application.config.modelos import ConfigPreco, LinhaEstoqueLocal, PerfilLoja
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, pendencias
 
 _DIAS_SEMANA: Final = (
@@ -50,13 +52,13 @@ ROTULOS_PENDENCIA: Final[dict[Pendencia, str]] = {
 }
 
 _PERGUNTAS: Final[dict[Pendencia, str]] = {
-    _P.APARELHO_MODELO: "Pergunte qual modelo de iPhone o cliente quer.",
+    _P.APARELHO_MODELO: "Pergunte qual aparelho (marca e modelo) o cliente quer.",
     _P.APARELHO_CAPACIDADE: "Pergunte qual capacidade de armazenamento ele prefere.",
     _P.ESTOQUE_CONFIRMADO: (
         "Mostre as opções devolvidas por consultar_estoque e pergunte qual ele quer."
     ),
     _P.TEM_TROCA: "Pergunte se ele tem um aparelho para dar na troca.",
-    _P.USADO_MODELO: "Pergunte qual é o modelo do iPhone que ele daria na troca.",
+    _P.USADO_MODELO: "Pergunte qual é o modelo do aparelho que ele daria na troca.",
     _P.USADO_CAPACIDADE: "Pergunte a capacidade de armazenamento do aparelho usado.",
     _P.USADO_TELA: "Pergunte se a tela do aparelho usado tem trincos, riscos fundos ou manchas.",
     _P.USADO_TRASEIRA: "Pergunte se o vidro traseiro do aparelho usado está trincado ou quebrado.",
@@ -96,12 +98,27 @@ def carregar_prefixo() -> str:
     return texto.strip()
 
 
-def montar_sistema(perfil: PerfilLoja, config: ConfigPreco | None) -> list[str]:
-    """`[prefixo_estavel, bloco_da_loja]`; so o prefixo (indice 0) e cacheado."""
-    return [carregar_prefixo(), _bloco_loja(perfil, config)]
+def montar_sistema(
+    perfil: PerfilLoja, config: ConfigPreco | None, marcas: Sequence[str] = ()
+) -> list[str]:
+    """`[prefixo_estavel, bloco_da_loja]`; so o prefixo (indice 0) e cacheado.
+
+    `marcas` sao as do estoque da loja (de `marcas_do_estoque`): ficam no bloco da loja.
+    """
+    return [carregar_prefixo(), _bloco_loja(perfil, config, marcas)]
 
 
-def _bloco_loja(perfil: PerfilLoja, config: ConfigPreco | None) -> str:
+def marcas_do_estoque(linhas: Iterable[LinhaEstoqueLocal]) -> list[str]:
+    """Marcas com unidades disponiveis, da que tem mais unidades para a que tem menos."""
+    contagem = Counter(linha.modelo.marca for linha in linhas if linha.quantidade > 0)
+    return [marca for marca, _ in contagem.most_common()]
+
+
+def _rotulo_marca(marca: str) -> str:
+    return "iPhone (Apple)" if marca == "Apple" else marca
+
+
+def _bloco_loja(perfil: PerfilLoja, config: ConfigPreco | None, marcas: Sequence[str]) -> str:
     horarios = "; ".join(f"{dia}: {faixa}" for dia, faixa in perfil.horarios.items())
     linhas = [
         "# Dados da loja",
@@ -112,6 +129,8 @@ def _bloco_loja(perfil: PerfilLoja, config: ConfigPreco | None) -> str:
         f"Horários: {horarios or 'não informados'}",
         f"WhatsApp da loja: {perfil.whatsapp_contato}",
     ]
+    if marcas:
+        linhas.append(f"Marcas no estoque: {', '.join(_rotulo_marca(m) for m in marcas)}")
     if config is not None:
         regras = config.regras
         formas = ["Pix", "débito", f"crédito em até {regras.max_parcelas} parcelas"]
