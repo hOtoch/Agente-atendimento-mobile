@@ -15,6 +15,7 @@ from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.canal.enviadas import RegistroEnviadasRedis
 from app.adapters.outbound.canal.evolution import EvolutionAdapter
 from app.adapters.outbound.canal.evolution_api import EvolutionGateway
+from app.adapters.outbound.db.conexao_erp import RepositorioConexaoErpSql
 from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.followup import RepositorioConfigFollowupSql
@@ -25,6 +26,7 @@ from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
 from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
+from app.application.config.conexao_erp import ConfigurarConexaoErp
 from app.application.config.portas import RepositorioLojas
 from app.application.followup import ConfigurarFollowup
 from app.application.importacao.importar import ImportarPlanilha
@@ -71,6 +73,12 @@ def get_configurar_followup(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ConfigurarFollowup:
     return ConfigurarFollowup(RepositorioLojasSql(session), RepositorioConfigFollowupSql(session))
+
+
+def get_configurar_conexao_erp(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ConfigurarConexaoErp:
+    return ConfigurarConexaoErp(RepositorioLojasSql(session), RepositorioConexaoErpSql(session))
 
 
 def get_importador(session: Annotated[AsyncSession, Depends(get_session)]) -> ImportarPlanilha:

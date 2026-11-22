@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -70,6 +71,7 @@ class Vendedor(Base):
     loja_id: Mapped[uuid.UUID] = _loja_fk()
     nome: Mapped[str] = mapped_column(String(200), nullable=False)
     telefone: Mapped[str | None] = mapped_column(String(32))
+    codigo_erp: Mapped[str | None] = mapped_column(Text)
     peso_percentual: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False, server_default=text("0")
     )
@@ -97,6 +99,8 @@ class Lead(Base):
     vendedor_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("vendedores.id", ondelete="SET NULL")
     )
+    erp_cliente_id: Mapped[int | None] = mapped_column(BigInteger)
+    erp_orcamento_id: Mapped[int | None] = mapped_column(BigInteger)
     criado_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -316,6 +320,7 @@ class EstoqueLocalRow(Base):
     preco_pix: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     quantidade: Mapped[int] = mapped_column(Integer, nullable=False)
     bateria_pct: Mapped[int | None] = mapped_column(Integer)
+    erp_produto_id: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class MapeamentoSkuRow(Base):
@@ -359,3 +364,31 @@ class ConfigFollowupRow(Base):
     hora_inicio: Mapped[time] = mapped_column(Time, nullable=False, server_default=text("'09:00'"))
     hora_fim: Mapped[time] = mapped_column(Time, nullable=False, server_default=text("'18:00'"))
     max_dias_parado: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("7"))
+
+
+class ConexaoErpRow(Base):
+    """Conexao da loja com o ERP. A chave de acesso fica no .env do servidor, nunca aqui."""
+
+    __tablename__ = "conexao_erp"
+    __table_args__ = (
+        CheckConstraint("provedor IN ('mercadophone')", name="provedor_valido"),
+        CheckConstraint("system_unit_id > 0", name="unidade_ok"),
+        CheckConstraint("intervalo_min >= 5 AND intervalo_min <= 1440", name="intervalo_ok"),
+    )
+
+    loja_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lojas.id", ondelete="CASCADE"), primary_key=True
+    )
+    provedor: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default=text("'mercadophone'")
+    )
+    system_unit_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    filtro_loja: Mapped[str | None] = mapped_column(Text)
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    intervalo_min: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("15"))
+    exportar_handoff: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    ultima_sincronizacao_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ultimo_status: Mapped[str | None] = mapped_column(String(32))
+    ultimo_relatorio: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

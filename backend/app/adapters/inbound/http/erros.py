@@ -46,8 +46,10 @@ def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _requisicao(_: Request, exc: RequestValidationError) -> JSONResponse:
         erros = [ErroCampo(_caminho(e["loc"]), _mensagem(e)) for e in exc.errors()]
+        # sem o `input` de cada erro: a resposta nunca devolve o valor enviado (pode ser segredo)
+        detalhes = [{k: v for k, v in e.items() if k != "input"} for e in exc.errors()]
         return JSONResponse(
-            _corpo(erros, detail=jsonable_encoder(exc.errors(), custom_encoder={Exception: str})),
+            _corpo(erros, detail=jsonable_encoder(detalhes, custom_encoder={Exception: str})),
             status_code=422,
         )
 
