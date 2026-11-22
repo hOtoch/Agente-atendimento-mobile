@@ -230,7 +230,7 @@ Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa,
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR #52; correções PR #53, #54) |
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR #55) |
 | M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ✅ concluído (PR #56) |
-| M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | a definir | 📋 planejado (#57–#64) |
+| M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | 2026-11-22 | ✅ concluído (PR do M8) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -315,6 +315,9 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-22 | `valorVenda` do ERP é o preço base (`preco_pix`); `valorVenda2/3` ignorados | Premissa até a resposta do recrutador (§11) |
 | 2026-11-22 | Chave do Mercado Phone só no `.env` (`MERCADOPHONE_API_KEY`); loja ↔ `system_unit_id` + filtro opcional pelo campo `obs` | Uma chave cobre várias unidades; na loja do hackathon as lojas A e B dividem a mesma unidade |
 | 2026-11-22 | A planilha "Estoque duas lojas" e os dados da loja do ERP não entram no repositório; testes usam fixtures sintéticas | Estoque real de lojas de terceiros |
+| 2026-11-22 | Sincronização: leitura vazia ou sem nenhum item importável vira erro e mantém o estoque; importação de vendedores com resposta vazia (e vendedores já importados) não altera nada | Glitch do ERP ou filtro/unidade errados não podem esvaziar a loja |
+| 2026-11-22 | Conferência ao vivo só em `obter` (confirmar item e proposta), por fora do cache de 60 s; ERP fora → dado local marcado desatualizado | `buscar` segue rápido no banco; o que vira proposta é conferido |
+| 2026-11-22 | Handoff → ERP: só com `exportar_handoff`; roda depois do aviso ao vendedor, nunca desfaz o handoff; valores vêm da `ultima_proposta` do domínio, troca como forma "APARELHO"; edita o orçamento já criado | Escrita em sistema de terceiro, previsível e idempotente |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -442,6 +445,16 @@ _Atualizado ao final de cada milestone._
     - WhatsApp com celular pareado (áudio, imagem, nota de voz) ainda sem ensaio completo; link do vídeo no README a preencher.
     - Sentry não integrado; `WORKER_MAX_JOBS` não configurável (escalar = mais processos).
   - Próximo: ensaio da apresentação (docs/roteiro-demo.md) e gravação do vídeo.
+- **2026-11-22 — M8 Integração Mercado Phone concluído** (#57–#64).
+  - ERP definido: Mercado Phone, pelo MCP da plataforma. Cliente com allowlist (sem `delete_*`), chave só no `.env` e mascarada em logs (#57); regras de oferta no domínio e mapeamento do item (#58); conexão da loja no painel, schema do M8 na migration 0007 (#59); sincronização do estoque para o `estoque_local` com cron no worker, botões "Testar conexão"/"Sincronizar agora" e relatório de descartes (#60); vendedores importados do ERP (#61); handoff cria cliente e orçamento no ERP, desligado por padrão (#62); confirmação ao vivo do SKU antes da proposta, por fora do cache de 60 s (#63); `docs/mercadophone.md`, smoke só leitura e cena da demo (#64).
+  - Validado no ERP real (só leitura): 2.664 itens lidos em ~16–21 s; Loja A 1.087 celulares ofertáveis, Loja B 249; conferência ao vivo ~0,5 s por SKU; vendedores lidos. O smoke real achou dois erros que os fakes não pegavam, corrigidos no `fix(integracao)` da onda 2: argumento da unidade é `system_unit_id` (não `store_id`) e `list_my_stores` responde em `stores`.
+  - Testes: backend 1878, frontend 314, eval fake 6/6.
+  - Pontos de atenção:
+    - A escrita no ERP (#62) não foi validada no real. Premissas: id criado em `id`/`data.id`/`item.id`, desconto do item em reais, pagamento a crédito = total pago (com taxa), entrada como Pix. Validar numa loja de teste com OK do dono antes de ligar `exportar_handoff`.
+    - Questões 5–7 (§11) seguem abertas: significado de `valorVenda`/`valorVenda3`, permissão para escrever na loja do hackathon, lojas A e B como duas lojas do painel.
+    - O cache de 60 s da resiliência pode oferecer na busca um SKU recém-vendido; `obter` confere ao vivo e prevalece.
+    - Importação de vendedores e exportação do handoff sem trava contra cliques/handoffs simultâneos (o botão fica desabilitado; o handoff é serializado pela conversa).
+  - Próximo: validar a escrita no ERP real (com OK) e incluir a cena do Mercado Phone no ensaio.
 
 ---
 
@@ -452,7 +465,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1454 testes) e `cd ../frontend && npm ci && npm test -- --run` (279 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1878 testes) e `cd ../frontend && npm ci && npm test -- --run` (314 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Todos os milestones (M0–M7) estão concluídos. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Todos os milestones (M0–M8) estão concluídos; para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
