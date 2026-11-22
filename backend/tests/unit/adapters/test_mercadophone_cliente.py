@@ -385,6 +385,34 @@ async def test_rate_limited_esgota_tentativas_e_levanta_retentavel() -> None:
     assert relogio.dormidos == [1, 1]
 
 
+async def test_rate_limited_no_initialize_tambem_espera_e_repete() -> None:
+    """Um 429 no handshake nao pode escapar como excecao interna."""
+    srv = Servidor({"list_brands": {"total": 0, "items": []}})
+    original = srv.__call__
+    respostas_initialize = [httpx.Response(429, headers={"retry-after": "3"})]
+
+    def com_429_no_initialize(request: httpx.Request) -> httpx.Response:
+        if json.loads(request.content)["method"] == "initialize" and respostas_initialize:
+            srv.requisicoes.append(request)
+            return respostas_initialize.pop(0)
+        return original(request)
+
+    cliente, relogio = montar(com_429_no_initialize)
+
+    assert (await cliente.chamar("list_brands", {}))["total"] == 0
+    assert relogio.dormidos == [3]
+
+
+async def test_rate_limited_persistente_no_initialize_vira_limite_excedido() -> None:
+    def sempre_429(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, headers={"retry-after": "1"})
+
+    cliente, _ = montar(sempre_429, max_repeticoes_rate_limit=1)
+
+    with pytest.raises(MercadoPhoneLimiteExcedido):
+        await cliente.chamar("list_brands", {})
+
+
 async def test_rate_limited_sem_retry_after_usa_espera_padrao() -> None:
     srv = Servidor({"list_brands": erro_tool("rate_limited", 429)})
     cliente, relogio = montar(srv, max_repeticoes_rate_limit=1)
