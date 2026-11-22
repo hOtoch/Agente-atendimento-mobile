@@ -182,6 +182,19 @@ A plataforma é multi-loja: loja nova é **dados**, não deploy. O painel tem um
 
 **Total estimado: de ~1,5 h a ~4 h**, dominado por preencher a tabela de troca e o estoque. Os tempos são **estimativas** minhas, não medição com um lojista real. Dois pontos que ajudam: a configuração é lida a cada turno (o que muda no painel vale na próxima mensagem) e o checklist da API mostra exatamente o que ainda falta. A primeira instalação da plataforma (servidor, `.env`, Evolution) é uma vez só, na ordem de 1 a 2 h.
 
+## Integração com o ERP (Mercado Phone)
+
+O estoque e os preços da loja podem vir do ERP Mercado Phone, lido por um servidor MCP. Quem fala com o ERP é o backend, por um adaptador atrás de `EstoquePort`; a IA nunca recebe as ferramentas do MCP nem a chave (uma allowlist de 8 ferramentas, sem nenhuma de exclusão).
+
+- **Conectar**: `MERCADOPHONE_API_KEY` no `.env`; no painel, `/configuracoes` > **Conexão com o ERP** (unidade, filtro da loja, intervalo, **Testar conexão**, **Sincronizar agora**).
+- **Sincronização**: cron do worker a cada 5 min respeitando o intervalo da loja. O estoque só é substituído quando a leitura vem completa; leitura vazia ou sem nada importável é erro e o estoque anterior fica.
+- **Só celulares ofertáveis**: regras de descarte no domínio (sem preço, indisponível, sem capacidade, outra loja...), com relatório por motivo.
+- **Confirmação ao vivo**: antes da proposta, o agente confere o SKU no ERP (timeout de 2 s); ERP fora = dado local marcado como desatualizado.
+- **Vendedores** importados do ERP (botão no onboarding) e **handoff que cria cliente e orçamento** no ERP (desligado por padrão; escrita ainda a validar no ERP real).
+- **Smoke de leitura** com a chave do `.env`: `cd backend && uv run python scripts/mercadophone_smoke.py --filtro-loja "Loja A"`.
+
+Passo a passo, tabela de motivos de descarte, o que é escrito no ERP e limites: [docs/mercadophone.md](docs/mercadophone.md).
+
 ## Como rodar local
 
 Testado do zero em um clone limpo (Linux). Os valores de `.env.example` já funcionam em desenvolvimento.
@@ -198,6 +211,7 @@ No `.env`:
 - `ANTHROPIC_API_KEY`: **obrigatória para a IA real** (conversa com o LLM e eval real). Sem ela, o atendimento responde com a mensagem de espera e chama o vendedor.
 - `OPENAI_API_KEY`: **opcional**, só para áudio (STT e TTS). Sem ela o agente pede ao cliente que digite e responde só em texto.
 - `LLM_MODEL`: modelo principal (padrão `claude-sonnet-5-5`; troque por `claude-haiku-5-5` para o custo da seção [Modelo e custo](#modelo-e-custo)).
+- `MERCADOPHONE_API_KEY`: **opcional**, só para sincronizar estoque e vendedores com o ERP Mercado Phone ([docs/mercadophone.md](docs/mercadophone.md)). Sem ela a integração fica desligada.
 
 ```bash
 # 1. Infra: Postgres dev (5432) e de teste (5433), Redis, Evolution API (8080), ERP simulado (8090)
@@ -256,7 +270,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 ## Decisões e trade-offs
 
 - **Inbox própria em vez de Chatwoot.** O handoff (assumir/devolver, resumo, "aguardando vendedor", pausar a IA quando o vendedor digita no celular) é o requisito central e precisa de controle fino do estado da conversa; um Chatwoot adicionaria um serviço pesado e uma integração só para isso no prazo. Em produção com várias equipes, Chatwoot (ou similar) como inbox é um caminho razoável: o `CanalPort` e os eventos de handoff já isolam essa troca.
-- **ERP atrás de uma porta, com um ERP simulado.** O ERP real não é conhecido. O agente só enxerga `EstoquePort` (`buscar`, `obter`); há um adaptador de planilha (estoque no banco) e um do ERP simulado (nomes "sujos", mapeamento de SKU, falhas e latência configuráveis), tudo embrulhado por um decorator resiliente (cache, retry, timeout, fallback). Trocar de ERP é escrever um adaptador novo e passá-lo pela mesma suíte de contrato.
+- **ERP atrás de uma porta, com um ERP simulado e o Mercado Phone real.** O agente só enxerga `EstoquePort` (`buscar`, `obter`); há um adaptador de planilha (estoque no banco) e um do ERP simulado (nomes "sujos", mapeamento de SKU, falhas e latência configuráveis), tudo embrulhado por um decorator resiliente (cache, retry, timeout, fallback). Trocar de ERP é escrever um adaptador novo e passá-lo pela mesma suíte de contrato. O adaptador do Mercado Phone (MCP) vive só no backend, com allowlist de ferramentas, e é descrito em [docs/mercadophone.md](docs/mercadophone.md).
 - **Instagram só como adaptador.** Normalizador, verificação de assinatura e envio estão prontos e testados com fixtures; a revisão do app Meta não cabe no prazo. O que falta para produção está listado em [docs/instagram.md](docs/instagram.md).
 - **Rodar local na apresentação.** A Evolution conecta de dentro para fora, sem túnel; há vídeo de backup. Um túnel (cloudflared/ngrok) só se for preciso um link público.
 - **Mídia em disco local** (`MIDIA_DIR`), atrás de uma porta (`ArmazenamentoMidia`): simples para a demo, mas não serve para várias instâncias; trocar por S3/R2 não toca o caso de uso.
@@ -271,6 +285,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 - **O eval real do Sonnet cobriu só 3 cenários**; a comparação justa com o Haiku (os mesmos 15) custaria ~US$ 1,18 e depende de autorização.
 - **A imagem recebida fica em base64 na transcrição e é reenviada a cada turno** (custo de tokens); redimensionar ou resumir depois de lida é melhoria futura.
 - **Rate limit do LLM e bloqueio do WhatsApp** não são medidos pelo teste de carga (LLM e Evolution simulados). Sentry não está integrado; o acompanhamento no dia depende de logs e do custo por conversa registrado nos eventos.
+- **Escrita no Mercado Phone não validada no ERP real**: a leitura (estoque, vendedores) foi conferida no servidor da loja; o handoff que cria cliente e orçamento foi testado só contra um servidor falso e fica desligado por padrão. Premissas a validar (id criado, desconto em reais, valor do crédito) em [docs/mercadophone.md](docs/mercadophone.md#limites-conhecidos-e-premissas-a-validar).
 - **Premissas de negócio a confirmar com a loja**: "data da compra" = quando o cliente pretende comprar; desconto Pix incide sobre a base já com troca e entrada; "oportunidade única" soma por fora do teto de desconto.
 - **Pequenas dívidas**: cache do `EstoqueResiliente` sem limite de tamanho; a transcrição do áudio só aparece no painel ao recarregar; sem tela para reativar vendedor desativado; `npm audit` com avisos; a barra lateral do painel não recolhe no celular.
 
@@ -284,6 +299,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 | [infra/k6/README.md](infra/k6/README.md) | Como repetir o teste de carga |
 | [docs/audio.md](docs/audio.md) | Áudio de entrada (STT) e de saída (TTS): regra, provedor, preço de referência |
 | [docs/instagram.md](docs/instagram.md) | Adaptador do Instagram e passos para produção |
+| [docs/mercadophone.md](docs/mercadophone.md) | Integração com o ERP Mercado Phone: conectar, sincronizar, regras de descarte, o que é escrito no ERP, limites |
 | [docs/modelos](docs/modelos) | Planilhas modelo de importação (troca, taxas, estoque) |
 | [DESIGN.md](DESIGN.md) | Design system e fonte da verdade visual do painel |
 | [context.md](context.md) | Plano, regras de negócio, decisões e status por milestone |

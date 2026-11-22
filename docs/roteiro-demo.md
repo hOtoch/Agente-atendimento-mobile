@@ -149,6 +149,35 @@ Quatro mostras de ~20 s, na ordem de prioridade do desafio:
   conversa. O repositório e o README têm a arquitetura, os custos e o plano para a Black Friday.
   Obrigado."
 
+### Cena opcional: estoque real do Mercado Phone (cerca de 1:15)
+Só se a chave do ERP estiver no `.env` e o ensaio funcionar (checklist, seção 5). Não está na conta
+dos 8:45: entra no lugar do bloco 6 (loja nova no ar) ou, se sobrar tempo, antes do bloco 7. Detalhes
+da integração em [mercadophone.md](mercadophone.md).
+
+1. `/configuracoes`, seção **Conexão com o ERP** (unidade e filtro "Loja A" já salvos): clicar em
+   **Sincronizar agora**. O botão fica em "Sincronizando…" por 16 a 21 s (a unidade tem ~2,7 mil itens
+   lidos em páginas de 300); falar enquanto espera. Apontar o relatório: itens lidos, **importados**
+   (~1.087 celulares da Loja A), **de outra loja** e os **descartes por motivo** (sem preço, indisponível,
+   não é celular...).
+   - Fala: "Isso é o estoque de verdade da loja, vindo do ERP. O que não pode ser vendido, o código
+     descarta e diz por quê. Se a leitura falhar ou vier vazia, o estoque anterior fica."
+2. No chat do cliente: pedir um iPhone que existe na Loja A (escolha antes, no ensaio, olhando o
+   estoque pelo painel ou pelo `mercadophone_smoke.py --conferir`) e seguir até a proposta.
+   - Fala: "Antes de confirmar o item e calcular a proposta, o sistema pergunta ao ERP se o aparelho
+     ainda está lá e por quanto: é a **confirmação ao vivo**, em cerca de meio segundo. Se tivesse sido
+     vendido no balcão há um minuto, a IA já não ofereceria."
+3. Concluir e aceitar falar com o vendedor. **Só se a escrita estiver liberada** (`Exportar handoff para
+   o ERP` ligado, ver aviso abaixo): abrir o Mercado Phone e mostrar o cliente e o orçamento criados em
+   nome do vendedor atribuído, com a troca como forma de pagamento "APARELHO".
+   - Se a escrita não estiver liberada, pule este passo e diga: "o handoff também sabe criar cliente e
+     orçamento no ERP; está desligado por padrão e ainda não foi validado no ERP real."
+- **Não ligue `Exportar handoff para o ERP` para a apresentação sem antes validar a escrita numa loja de
+  teste** (premissas em `mercadophone.md`: id criado, desconto em reais, valor do crédito). Um orçamento
+  errado no ERP de um lojista é pior do que um passo a menos na demo.
+- Plano B da cena: ERP fora ou sem rede → mostre o relatório da última sincronização
+  (o painel guarda o resultado) e siga com o estoque já sincronizado; a conversa não depende do ERP no
+  ar (dado local marcado como desatualizado).
+
 ---
 
 ## 3. Apresentação de 30 min (avaliador testando ao vivo)
@@ -239,6 +268,13 @@ Faça com pelo menos 1 hora de folga. Marque cada item.
       cenários, ~1/20 do custo). Escolha **um**, rode a conversa de teste com ele e filme com ele.
 - [ ] `OPENAI_API_KEY` no `.env` **só se for mostrar áudio** (STT/TTS). Sem ela o atendimento segue em
       texto e a IA pede para o cliente digitar.
+- [ ] **Só se for mostrar o estoque real (Mercado Phone)**: `MERCADOPHONE_API_KEY` no `.env` (reinicie
+      API e worker); `cd backend && uv run python scripts/mercadophone_smoke.py --filtro-loja "Loja A"
+      --conferir 2` (só leitura) sem erro; no painel, `/configuracoes` > **Conexão com o ERP**: unidade
+      e filtro salvos, **Testar conexão** ok e **Sincronizar agora** com status "Sincronizada" (leva
+      16 a 21 s). Anote um iPhone da Loja A para pedir no chat. Vendedores: **Importar do ERP** (e
+      depois telefone e porcentagem no onboarding). `Exportar handoff para o ERP` fica **desligado**
+      a menos que a escrita já tenha sido validada. Sem a chave, a loja demo segue com o estoque do seed.
 - [ ] API acessível pela rede local: `cd backend && uv run uvicorn app.main:app --host 0.0.0.0`
       (a Evolution dentro do Docker chama `host.docker.internal:8000`; o celular do vendedor abre o painel
       por `PAINEL_URL`).
