@@ -2053,6 +2053,24 @@
         "title": "TaxasSchema",
         "type": "object"
       },
+      "TesteConexaoErpSaida": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "mensagem"
+        ],
+        "title": "TesteConexaoErpSaida",
+        "type": "object"
+      },
       "TrocaSchema-Input": {
         "properties": {
           "tabela_troca": {
@@ -2411,6 +2429,94 @@
           }
         },
         "summary": "Atualizar Conexao Erp",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/erp/sincronizar": {
+      "post": {
+        "description": "Sincroniza o estoque agora (mesmo com a conexao inativa) e devolve a conexao atualizada.\n\nFalha do ERP nao e erro HTTP: o estoque anterior fica, e `ultimo_status` = `erro` com o motivo.",
+        "operationId": "sincronizar_estoque_erp_lojas__loja_id__config_erp_sincronizar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoErpSaida"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sincronizar Estoque Erp",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/erp/testar": {
+      "post": {
+        "description": "A unidade configurada existe entre as da chave do servidor? Nao grava nada.",
+        "operationId": "testar_conexao_erp_lojas__loja_id__config_erp_testar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TesteConexaoErpSaida"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Testar Conexao Erp",
         "tags": [
           "config"
         ]

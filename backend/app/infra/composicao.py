@@ -5,6 +5,7 @@ API e worker compartilham `criar_agendador` (mesmo prefixo de chaves e mesma jan
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, timedelta, timezone
@@ -25,6 +26,7 @@ from app.adapters.outbound.canal.evolution import EvolutionAdapter
 from app.adapters.outbound.canal.evolution_api import EvolutionGateway, criar_cliente_http
 from app.adapters.outbound.canal.webchat import WebChatAdapter
 from app.adapters.outbound.db.atendimento import RepositorioAtendimentoSql
+from app.adapters.outbound.db.conexao_erp import RepositorioConexaoErpSql
 from app.adapters.outbound.db.config import (
     RepositorioConfigLojaSql,
     RepositorioEstoqueLocalSql,
@@ -43,6 +45,7 @@ from app.adapters.outbound.db.processamento import RegistroEventosSql, Repositor
 from app.adapters.outbound.db.transcricao import RepositorioTranscricaoSql
 from app.adapters.outbound.estoque.banco import FonteEstoqueLocalSql
 from app.adapters.outbound.estoque.planilha import PlanilhaAdapter
+from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.application.agendamento import TravaConversa
 from app.application.agente.ferramentas import CatalogoFerramentas
@@ -53,6 +56,7 @@ from app.application.canal import BarramentoMensagens, Canal, CanalPort
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.portas import SemIntegracaoEstoque
 from app.application.distribuir_lead import DistribuirLead
+from app.application.estoque_erp import FonteEstoqueErp, SincronizarEstoqueErp
 from app.application.estoque_resiliente import EstoqueResiliente
 from app.application.followup import EnviarFollowups, RedatorFollowupLLM
 from app.application.handoff import AoSolicitarHandoff, CasosHandoff
@@ -64,7 +68,11 @@ from app.application.painel.publicador import PublicadorPainel, PublicadorPainel
 from app.application.whatsapp import RegistroEnviadas, WhatsAppGateway
 from app.infra.fila import AgendadorArq, RelogioParede, TravaRedis
 from app.infra.llm import criar_llm
+from app.infra.mercadophone import MercadoPhoneNaoConfigurado, get_cliente_mercadophone
+from app.infra.relogio import RelogioSistema
 from app.infra.settings import Settings, get_settings
+
+log = logging.getLogger(__name__)
 
 PREFIXO_FILA = ""
 """Prefixo das chaves da fila; API e worker precisam usar o mesmo."""
@@ -403,3 +411,67 @@ def _criar_canais(
             criar_gateway_whatsapp(settings), RegistroEnviadasRedis(redis), settings
         ),
     }
+
+
+def montar_sincronizar_estoque_erp(
+    session: AsyncSession,
+    fonte: FonteEstoqueErp,
+    *,
+    agora: Callable[[], datetime] = agora_utc,
+) -> SincronizarEstoqueErp:
+    """Sincronizacao do estoque do ERP sobre uma sessao; o caso de uso commita por loja."""
+    return SincronizarEstoqueErp(
+        RepositorioConexaoErpSql(session),
+        RepositorioEstoqueLocalSql(session),
+        fonte,
+        relogio=RelogioSistema(),
+        agora=agora,
+        commit=session.commit,
+        rollback=session.rollback,
+    )
+
+
+def criar_sincronizador_erp(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    fonte: FonteEstoqueErp | None = None,
+    agora: Callable[[], datetime] = agora_utc,
+) -> Callable[[], Awaitable[int]]:
+    """`sincronizar()` do cron do worker: uma sessao nova por rodada; devolve quantas lojas rodou.
+
+    Sem `MERCADOPHONE_API_KEY` no servidor a integracao esta desligada: a rodada nao faz nada
+    (um aviso no log, so na primeira vez).
+    """
+    avisou = False
+
+    def _fonte() -> FonteEstoqueErp | None:
+        nonlocal avisou
+        if fonte is not None:
+            return fonte
+        try:
+            return FonteEstoqueMercadoPhone(get_cliente_mercadophone())
+        except MercadoPhoneNaoConfigurado:
+            if not avisou:
+                avisou = True
+                log.info("sincronizacao do ERP desligada: MERCADOPHONE_API_KEY nao configurada")
+            return None
+
+    async def sincronizar() -> int:
+        origem = _fonte()
+        if origem is None:
+            return 0
+        async with factory() as session:
+            try:
+                resultados = await montar_sincronizar_estoque_erp(
+                    session, origem, agora=agora
+                ).sincronizar_vencidas()
+            except BaseException:
+                await session.rollback()
+                raise
+        for r in resultados:
+            log.info(
+                "estoque do ERP: loja %s %s (%s)", r.loja_id, r.status, r.relatorio.get("erro", "")
+            )
+        return len(resultados)
+
+    return sincronizar

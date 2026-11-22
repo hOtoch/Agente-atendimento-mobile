@@ -8,7 +8,7 @@ from app.infra import worker
 
 
 def test_cron_do_follow_up_esta_registrado_a_cada_5_minutos() -> None:
-    (job,) = worker.WorkerSettings.cron_jobs
+    (job,) = [j for j in worker.WorkerSettings.cron_jobs if j.name == "followup_automatico"]
     assert job.coroutine is worker.followup_cron
     assert job.name == "followup_automatico"
     assert job.minute == set(range(0, 60, 5))

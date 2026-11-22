@@ -65,6 +65,8 @@ class LinhaEstoqueLocal:
     preco_pix: Dinheiro
     quantidade: int
     bateria_pct: int | None
+    erp_produto_id: int | None = None
+    """Id do produto no ERP (so nas linhas sincronizadas; planilha e painel deixam vazio)."""
 
 
 @dataclass(frozen=True, slots=True)

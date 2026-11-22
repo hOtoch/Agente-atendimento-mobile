@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.outbound.db.models import (
@@ -277,11 +277,17 @@ class RepositorioEstoqueLocalSql:
                 preco_pix=Dinheiro(r.preco_pix),
                 quantidade=r.quantidade,
                 bateria_pct=r.bateria_pct,
+                erp_produto_id=r.erp_produto_id,
             )
             for r in rows
         ]
 
     async def substituir(self, loja_id: uuid.UUID, linhas: Sequence[LinhaEstoqueLocal]) -> None:
+        # serializa trocas concorrentes do estoque da loja (cron x "sincronizar agora" x planilha):
+        # a segunda espera o commit da primeira em vez de bater na constraint loja_sku
+        await self._s.execute(
+            select(func.pg_advisory_xact_lock(func.hashtextextended(f"estoque_local:{loja_id}", 0)))
+        )
         await self._s.execute(delete(EstoqueLocalRow).where(EstoqueLocalRow.loja_id == loja_id))
         self._s.add_all(
             EstoqueLocalRow(
@@ -296,6 +302,7 @@ class RepositorioEstoqueLocalSql:
                 preco_pix=x.preco_pix.valor,
                 quantidade=x.quantidade,
                 bateria_pct=x.bateria_pct,
+                erp_produto_id=x.erp_produto_id,
             )
             for i, x in enumerate(linhas)
         )

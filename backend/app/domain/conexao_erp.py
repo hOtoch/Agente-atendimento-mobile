@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -16,6 +16,8 @@ PROVEDOR_MERCADOPHONE = "mercadophone"
 INTERVALO_MIN_PADRAO = 15
 INTERVALO_MIN_MINIMO = 5
 INTERVALO_MIN_MAXIMO = 1440
+TOLERANCIA_CRON_S = 60
+"""Folga na conta do vencimento: o cron roda de 5 em 5 min e a rodada anterior demora segundos."""
 
 
 class ConexaoErpInvalida(ValueError):
@@ -54,3 +56,17 @@ class ConexaoErp:
             )
         filtro = (self.filtro_loja or "").strip() or None
         object.__setattr__(self, "filtro_loja", filtro)
+
+
+def sincronizacao_vencida(
+    conexao: ConexaoErp, agora: datetime, tolerancia_s: int = TOLERANCIA_CRON_S
+) -> bool:
+    """Passou o intervalo desde a ultima sincronizacao (ou ela nunca aconteceu)?
+
+    A tolerancia evita que a deriva da rodada (segundos de leitura) faca o proximo tick do cron
+    cair antes do vencimento e adiar a sincronizacao por mais 5 minutos.
+    """
+    ultima = conexao.ultima_sincronizacao_em
+    if ultima is None:
+        return True
+    return agora - ultima >= timedelta(minutes=conexao.intervalo_min, seconds=-tolerancia_s)
