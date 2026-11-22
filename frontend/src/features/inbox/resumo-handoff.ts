@@ -15,6 +15,10 @@ export type ResumoHandoff = {
   pagamento: string
   /** Proposta já apresentada ao cliente (só vem no resumo da API). */
   proposta: string | null
+  /** Valores da proposta (aparelho, troca, desconto), só no resumo da API. */
+  valores: string | null
+  /** Data prevista da compra (dd/mm/aaaa), só no resumo da API. */
+  dataPrevista: string | null
   /** 2–3 frases da IA (objeções, clima, próximo passo); null se ela falhou ou não houve. */
   observacoes: string | null
   pendencias: string[]
@@ -26,7 +30,7 @@ const AUTORES: Record<MensagemLead["autor"], string> = { cliente: "Cliente", ia:
 const LIMITE_MENSAGENS = 3
 /** Motivos gravados pelo sistema (não pela IA), que chegam como código. */
 const MOTIVOS_DO_SISTEMA: Record<string, string> = {
-  falha_llm: "A IA ficou indisponível e passou a conversa para o vendedor",
+  falha_llm: "A IA teve uma falha técnica e passou o atendimento para você",
 }
 
 function textoDaMensagem(m: MensagemLead): string {
@@ -48,16 +52,60 @@ function comValor(texto: string | null, valor: string | null, prefixo: string): 
   return dinheiro ? `${texto} (${prefixo} ${dinheiro})` : texto
 }
 
+type ResumoApi = NonNullable<DetalheLead["resumo_handoff"]>
+
+function aparelhoDoResumo(r: ResumoApi): string {
+  if (!r.aparelho_desejado) return NAO_INFORMADO
+  const base = [r.aparelho_desejado, r.cor].filter(Boolean).join(", ")
+  return r.sku ? `${base} (SKU ${r.sku})` : base
+}
+
+function trocaDoResumo(r: ResumoApi): string {
+  if (!r.troca) return NAO_INFORMADO
+  const base = r.troca_condicao ? `${r.troca} (${r.troca_condicao})` : r.troca
+  const valor = formatarMoeda(r.valor_troca)
+  if (valor) return `${base} · avaliada em ${valor}`
+  return r.troca_status === "avaliacao_na_loja" ? `${base} · avaliação na loja` : base
+}
+
+function propostaDoResumo(r: ResumoApi): string | null {
+  const base = comValor(r.proposta, r.valor_proposta, "total")
+  if (base === null) return null
+  const parcela = formatarMoeda(r.valor_parcela)
+  return r.parcelas && parcela ? `${base} · ${r.parcelas}x de ${parcela}` : base
+}
+
+function valoresDoResumo(r: ResumoApi): string | null {
+  if (!r.valor_aparelho) return null
+  const itens = [
+    ["aparelho", r.valor_aparelho],
+    ["troca", r.valor_troca],
+    ["desconto", r.desconto],
+  ] as const
+  const partes = itens.flatMap(([rotulo, valor]) => {
+    const dinheiro = formatarMoeda(valor)
+    return dinheiro ? [`${rotulo} ${dinheiro}`] : []
+  })
+  return partes.length ? partes.join(", ") : null
+}
+
+function dataDoResumo(r: ResumoApi): string | null {
+  const [ano, mes, dia] = (r.data_prevista ?? "").split("-")
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : null
+}
+
 function doResumoDaApi(
-  r: NonNullable<DetalheLead["resumo_handoff"]>,
+  r: ResumoApi,
   mensagens: MensagemLead[],
 ): ResumoHandoff {
   return {
     motivo: MOTIVOS_DO_SISTEMA[r.motivo] ?? r.motivo,
-    aparelho: r.aparelho_desejado ?? NAO_INFORMADO,
-    troca: comValor(r.troca, r.valor_troca, "avaliada em") ?? NAO_INFORMADO,
+    aparelho: aparelhoDoResumo(r),
+    troca: trocaDoResumo(r),
     pagamento: r.forma_pagamento ?? NAO_INFORMADO,
-    proposta: comValor(r.proposta, r.valor_proposta, "total"),
+    proposta: propostaDoResumo(r),
+    valores: valoresDoResumo(r),
+    dataPrevista: dataDoResumo(r),
     observacoes: r.observacoes ?? null,
     pendencias: r.pendencias,
     proximoPasso: r.pendencias[0] ?? "Fechar a venda com o cliente",
@@ -79,6 +127,8 @@ export function montarResumoHandoff(
     troca: ficha.troca,
     pagamento: ficha.pagamento,
     proposta: null,
+    valores: null,
+    dataPrevista: null,
     observacoes: null,
     pendencias,
     proximoPasso: pendencias[0] ?? "Fechar a venda com o cliente",

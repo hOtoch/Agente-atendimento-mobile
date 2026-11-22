@@ -166,7 +166,10 @@ async def test_falha_do_llm_com_banco_real_faz_handoff(db_url: str, session: Asy
             select(Evento.payload).where(Evento.lead_id == lead_id, Evento.tipo == "handoff_resumo")
         )
     ).scalar_one()
-    assert resumo["motivo"] == "A IA ficou indisponível e passou a conversa para o vendedor"
+    assert resumo["motivo"].startswith(
+        "A IA teve uma falha técnica e passou o atendimento para você."
+    )
+    assert resumo["ultimas_mensagens_cliente"] == ["oi"]
     assert resumo["observacoes"] is None
     assert resumo["pendencias"]
 

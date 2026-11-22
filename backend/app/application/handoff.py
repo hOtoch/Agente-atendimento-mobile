@@ -17,13 +17,17 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Protocol, Self
 from uuid import UUID
 
-from app.application.agente.estado import EstadoAtendimento, aparelho_desejado
+from app.application.agente.estado import (
+    EstadoAtendimento,
+    aparelho_desejado,
+    fatos_do_lead,
+)
 from app.application.agente.prompt import ROTULOS_PENDENCIA, descrever_pagamento
 from app.application.agente.repositorio import RepositorioAtendimento
 from app.application.agente.transcricao import RepositorioTranscricao
@@ -41,13 +45,15 @@ from app.application.painel.portas import (
 )
 from app.application.painel.publicador import PublicadorPainel, publicar_sem_falhar
 from app.domain.ficha import pendencias
+from app.domain.kanban import Etapa, calcular_etapa
 
 log = logging.getLogger(__name__)
 
 EVENTO_RESUMO = "handoff_resumo"
-MOTIVOS_DO_SISTEMA: dict[str, str] = {
-    "falha_llm": "A IA ficou indisponível e passou a conversa para o vendedor",
-}
+MOTIVO_FALHA_LLM = "falha_llm"
+_PENDENCIAS_NO_MOTIVO = 3
+_FALAS_DO_CLIENTE = 3
+_FALA_MAX = 140
 _MENSAGENS_PARA_RESUMO = 20
 _OBSERVACOES_MAX = 600
 _ROTULO_MIDIA = {"audio": "[áudio]", "imagem": "[imagem]"}
@@ -103,6 +109,17 @@ class ResumoHandoff:
     pendencias: list[str]
     observacoes: str | None
     gerado_em: datetime
+    # Detalhes deterministicos (todos opcionais: resumos gravados antes deles nao os tem).
+    cor: str | None = None
+    sku: str | None = None
+    troca_condicao: str | None = None
+    troca_status: str | None = None
+    """`avaliada`, `avaliacao_na_loja` ou `sem_troca` (da ultima proposta); None sem proposta."""
+    valor_aparelho: Decimal | None = None
+    desconto: Decimal | None = None
+    parcelas: int | None = None
+    valor_parcela: Decimal | None = None
+    ultimas_mensagens_cliente: list[str] = field(default_factory=list)
 
     def para_dict(self) -> dict[str, Any]:
         return {
@@ -117,6 +134,15 @@ class ResumoHandoff:
             "pendencias": list(self.pendencias),
             "observacoes": self.observacoes,
             "gerado_em": self.gerado_em.isoformat(),
+            "cor": self.cor,
+            "sku": self.sku,
+            "troca_condicao": self.troca_condicao,
+            "troca_status": self.troca_status,
+            "valor_aparelho": None if self.valor_aparelho is None else str(self.valor_aparelho),
+            "desconto": None if self.desconto is None else str(self.desconto),
+            "parcelas": self.parcelas,
+            "valor_parcela": None if self.valor_parcela is None else str(self.valor_parcela),
+            "ultimas_mensagens_cliente": list(self.ultimas_mensagens_cliente),
         }
 
     @classmethod
@@ -134,6 +160,15 @@ class ResumoHandoff:
             pendencias=list(dados.get("pendencias") or []),
             observacoes=dados.get("observacoes"),
             gerado_em=datetime.fromisoformat(dados["gerado_em"]),
+            cor=dados.get("cor"),
+            sku=dados.get("sku"),
+            troca_condicao=dados.get("troca_condicao"),
+            troca_status=dados.get("troca_status"),
+            valor_aparelho=_decimal(dados.get("valor_aparelho")),
+            desconto=_decimal(dados.get("desconto")),
+            parcelas=dados.get("parcelas"),
+            valor_parcela=_decimal(dados.get("valor_parcela")),
+            ultimas_mensagens_cliente=list(dados.get("ultimas_mensagens_cliente") or []),
         )
 
 
@@ -190,13 +225,87 @@ def _descrever_troca(estado: EstadoAtendimento) -> str | None:
     return f"{u.modelo.nome} {u.capacidade}" if u.capacidade is not None else u.modelo.nome
 
 
+def _condicao_do_usado(estado: EstadoAtendimento) -> str | None:
+    """Estado do usado em poucas palavras ("tela danificada, bateria 82%"); None sem dados."""
+    u = estado.ficha.usado
+    if estado.ficha.tem_troca is not True:
+        return None
+    defeitos = [
+        texto
+        for texto, ativo in (
+            ("tela danificada", u.tela_danificada),
+            ("traseira danificada", u.traseira_danificada),
+            ("carcaça marcada", u.carcaca_marcada),
+            ("câmera com defeito", u.camera_ok is False),
+            ("peça já trocada", u.peca_trocada),
+        )
+        if ativo
+    ]
+    defeitos.extend(u.outros_defeitos or ())
+    if u.bateria_pct is not None:
+        defeitos.append(f"bateria {u.bateria_pct}%")
+    if defeitos:
+        return ", ".join(defeitos)
+    conhecido = any(
+        v is not None
+        for v in (u.tela_danificada, u.traseira_danificada, u.carcaca_marcada, u.camera_ok)
+    )
+    return "sem avarias informadas" if conhecido else None
+
+
+def _etapa_antes_do_handoff(estado: EstadoAtendimento) -> Etapa:
+    fatos = replace(fatos_do_lead(estado), handoff_realizado=False)
+    return calcular_etapa(Etapa.NOVO_CONTATO, fatos)
+
+
+def _o_que_falta(faltas: list[str]) -> str:
+    if not faltas:
+        return "a ficha estava completa"
+    mostradas = faltas[:_PENDENCIAS_NO_MOTIVO]
+    resto = len(faltas) - len(mostradas)
+    texto = ", ".join(mostradas)
+    return f"falta: {texto} e mais {resto}" if resto else f"falta: {texto}"
+
+
+def _motivo_legivel(motivo: str, estado: EstadoAtendimento, faltas: list[str]) -> str:
+    """Traduz motivos do sistema em texto acionavel; motivo da IA (texto livre) passa direto."""
+    if motivo != MOTIVO_FALHA_LLM:
+        return motivo
+    etapa = _etapa_antes_do_handoff(estado).nome_exibicao
+    return (
+        "A IA teve uma falha técnica e passou o atendimento para você. "
+        f"O cliente estava em {etapa}; {_o_que_falta(faltas)}."
+    )
+
+
+def _falas_do_cliente(mensagens: Sequence[MensagemRegistro]) -> list[str]:
+    falas: list[str] = []
+    for m in mensagens:
+        if m.autor != AUTOR_CLIENTE:
+            continue
+        texto = " ".join(_texto_da_mensagem(m).split())
+        if not texto:
+            continue
+        falas.append(texto if len(texto) <= _FALA_MAX else texto[: _FALA_MAX - 1].rstrip() + "…")
+    return falas[-_FALAS_DO_CLIENTE:]
+
+
 def montar_resumo_estruturado(
-    estado: EstadoAtendimento, *, motivo: str, agora: datetime
+    estado: EstadoAtendimento,
+    *,
+    motivo: str,
+    agora: datetime,
+    mensagens: Sequence[MensagemRegistro] = (),
 ) -> ResumoHandoff:
-    """Parte deterministica do resumo: so le a ficha e a ultima proposta."""
+    """Parte deterministica do resumo: so le a ficha, a ultima proposta e as mensagens.
+
+    Nenhum valor e calculado aqui: tudo vem da `ultima_proposta` ja calculada pelo dominio.
+    """
     proposta = estado.ultima_proposta or {}
     forma = proposta.get("forma_escolhida") or {}
     troca = proposta.get("troca") or {}
+    aparelho = proposta.get("aparelho") or {}
+    desconto = proposta.get("desconto") or {}
     valor_troca = _decimal(troca.get("valor")) if troca.get("status") == "avaliada" else None
     valor_proposta = None
     for chave in ("total_pago", "valor_a_vista"):
@@ -204,8 +313,9 @@ def montar_resumo_estruturado(
         if valor_proposta is not None:
             break
     ficha = estado.ficha
+    faltas = [ROTULOS_PENDENCIA[p] for p in pendencias(ficha)]
     return ResumoHandoff(
-        motivo=MOTIVOS_DO_SISTEMA.get(motivo, motivo),
+        motivo=_motivo_legivel(motivo, estado, faltas),
         aparelho_desejado=aparelho_desejado(estado),
         troca=_descrever_troca(estado),
         valor_troca=valor_troca,
@@ -213,9 +323,18 @@ def montar_resumo_estruturado(
         valor_proposta=valor_proposta,
         forma_pagamento=(descrever_pagamento(ficha) if ficha.pagamento.tipo is not None else None),
         data_prevista=ficha.data_prevista_compra,
-        pendencias=[ROTULOS_PENDENCIA[p] for p in pendencias(ficha)],
+        pendencias=faltas,
         observacoes=None,
         gerado_em=agora,
+        cor=ficha.interesse.cor or aparelho.get("cor"),
+        sku=ficha.interesse.sku_estoque_confirmado or aparelho.get("sku"),
+        troca_condicao=_condicao_do_usado(estado),
+        troca_status=troca.get("status"),
+        valor_aparelho=_decimal(proposta.get("preco_aparelho")),
+        desconto=_decimal(desconto.get("total")),
+        parcelas=forma.get("parcelas"),
+        valor_parcela=_decimal(forma.get("valor_parcela")),
+        ultimas_mensagens_cliente=_falas_do_cliente(mensagens),
     )
 
 
@@ -353,9 +472,12 @@ class CasosHandoff:
                 limpar_vendedor=True,
             )
             await self._publicar_dono(loja_id, lead_id, DONO_VENDEDOR, None)
-        estruturado = montar_resumo_estruturado(estado, motivo=motivo, agora=self._agora())
-        mensagens = (await self._repo.listar_mensagens(loja_id, lead_id))[-_MENSAGENS_PARA_RESUMO:]
-        resumo = replace(estruturado, observacoes=await self._observacoes(estruturado, mensagens))
+        todas = await self._repo.listar_mensagens(loja_id, lead_id)
+        estruturado = montar_resumo_estruturado(
+            estado, motivo=motivo, agora=self._agora(), mensagens=todas
+        )
+        observacoes = await self._observacoes(estruturado, todas[-_MENSAGENS_PARA_RESUMO:])
+        resumo = replace(estruturado, observacoes=observacoes)
         await self._repo.registrar_evento(loja_id, lead_id, EVENTO_RESUMO, resumo.para_dict())
         try:
             await self._aviso.handoff_solicitado(loja_id, lead_id, resumo)

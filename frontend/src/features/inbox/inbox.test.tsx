@@ -431,5 +431,31 @@ describe("handoff pedido pela IA", () => {
     expect(within(resumo).getByText("Cliente decidido, quer parcelar e fechar ainda hoje.")).toBeInTheDocument()
     expect(within(resumo).getByText("iPhone 16 128GB")).toBeInTheDocument()
   })
+
+  it("mostra o resumo completo mesmo sem observações da IA (falha técnica)", async () => {
+    const completo = {
+      ...aguardando,
+      resumo_handoff: {
+        ...RESUMO_API,
+        motivo: "A IA teve uma falha técnica e passou o atendimento para você. O cliente estava em Interesse qualificado; falta: bandeira do cartão.",
+        observacoes: null,
+        cor: "Preto",
+        sku: "IP16-128-PT",
+        troca_condicao: "tela danificada",
+        valor_aparelho: "4830.00",
+        desconto: "130.00",
+        parcelas: 12,
+        valor_parcela: "325.00",
+      },
+    }
+    const api = montarApi({ detalhes: { [LEAD_MARIA]: completo } })
+    await abrirConversa(api)
+    const resumo = screen.getByRole("region", { name: "Resumo do handoff" })
+    expect(within(resumo).getByText(/falha técnica/)).toBeInTheDocument()
+    expect(within(resumo).getByText("iPhone 16 128GB, Preto (SKU IP16-128-PT)")).toBeInTheDocument()
+    expect(within(resumo).getByText("Valores")).toBeInTheDocument()
+    expect(within(resumo).getByText("Data prevista")).toBeInTheDocument()
+    expect(within(resumo).queryByText("Observações da IA")).not.toBeInTheDocument()
+  })
 })
 

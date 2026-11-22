@@ -37,7 +37,7 @@ describe("montarResumoHandoff", () => {
 
   it("motivo em código do sistema vira texto legível", () => {
     const r = montarResumoHandoff(detalhe({ card: CARD_MARIA, handoff_solicitado: true, motivo_handoff: "falha_llm" }))
-    expect(r.motivo).toBe("A IA ficou indisponível e passou a conversa para o vendedor")
+    expect(r.motivo).toBe("A IA teve uma falha técnica e passou o atendimento para você")
   })
 
   describe("com o resumo vindo da API", () => {
@@ -78,6 +78,50 @@ describe("montarResumoHandoff", () => {
       expect(r.proposta).toBeNull()
       expect(r.observacoes).toBeNull()
       expect(r.proximoPasso).toBe("Fechar a venda com o cliente")
+    })
+
+    it("resumo completo sem o LLM: cor, SKU, condição da troca, valores, parcelas e data", () => {
+      const r = montarResumoHandoff({
+        ...comResumo,
+        resumo_handoff: {
+          ...RESUMO_API,
+          motivo: "A IA teve uma falha técnica e passou o atendimento para você. O cliente estava em Novo contato; falta: modelo.",
+          observacoes: null,
+          cor: "Preto",
+          sku: "IP16-128-PT",
+          troca_condicao: "tela danificada, bateria 82%",
+          troca_status: "avaliada",
+          valor_aparelho: "4830.00",
+          desconto: "130.00",
+          parcelas: 12,
+          valor_parcela: "325.00",
+          ultimas_mensagens_cliente: ["quero o iphone 16"],
+        },
+      })
+      expect(r.motivo).toContain("falha técnica")
+      expect(r.aparelho).toBe("iPhone 16 128GB, Preto (SKU IP16-128-PT)")
+      expect(r.troca).toContain("iPhone 13 128GB (tela danificada, bateria 82%)")
+      expect(r.troca).toContain("avaliada em")
+      expect(r.proposta).toContain("12x de")
+      expect(r.valores).toContain("aparelho")
+      expect(r.valores).toContain("desconto")
+      expect(r.dataPrevista).toBe("25/11/2026")
+      expect(r.observacoes).toBeNull()
+    })
+
+    it("troca avaliada na loja não mostra valor", () => {
+      const r = montarResumoHandoff({
+        ...comResumo,
+        resumo_handoff: { ...RESUMO_API, valor_troca: null, troca_status: "avaliacao_na_loja" },
+      })
+      expect(r.troca).toContain("avaliação na loja")
+      expect(r.troca).not.toContain("R$")
+    })
+
+    it("resumo antigo (sem os campos novos) continua legível", () => {
+      const r = montarResumoHandoff(comResumo)
+      expect(r.aparelho).toBe("iPhone 16 128GB")
+      expect(r.valores).toBeNull()
     })
 
     it("sem resumo da API mantém o resumo local, sem observações", () => {

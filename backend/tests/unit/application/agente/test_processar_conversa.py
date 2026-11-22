@@ -327,13 +327,16 @@ async def test_chamar_vendedor_passa_a_conversa_para_aguardando_vendedor() -> No
 
 async def test_falha_do_llm_tambem_passa_para_aguardando_vendedor_com_resumo() -> None:
     c = await criar_cenario([RespostaRoteirizada(erro=LLMIndisponivel("fora"))])
+    # no banco real a entrada do cliente ja esta no historico do painel; aqui espelhamos a mao
+    c.painel_repo.adicionar_mensagem(c.lead_id, autor="cliente", texto="oi, quero um iphone")
     await c.turno("oi, quero um iphone")
 
     assert c.canal.textos == [MENSAGEM_ESPERA]
     assert c.painel_repo.leads[c.lead_id].dono == "vendedor"
     resumo = await c.handoff.resumo_do_lead(c.loja_id, c.lead_id)
     assert resumo is not None
-    assert resumo.motivo == "A IA ficou indisponível e passou a conversa para o vendedor"
+    assert resumo.motivo.startswith("A IA teve uma falha técnica e passou o atendimento para você.")
+    assert resumo.ultimas_mensagens_cliente == ["oi, quero um iphone"]
     assert resumo.observacoes is None  # o LLM tambem estava fora (roteiro esgotado)
     assert resumo.pendencias  # estrutura sempre presente
 
