@@ -149,6 +149,21 @@ class ResumoHandoffSchema(BaseModel):
     pendencias: list[str]
     observacoes: str | None = Field(description="2 a 3 frases do LLM; null se ele falhou.")
     gerado_em: datetime
+    cor: str | None = None
+    sku: str | None = None
+    troca_condicao: str | None = Field(
+        default=None, description="Estado do usado em poucas palavras (tela, bateria...)."
+    )
+    troca_status: str | None = Field(
+        default=None, description="avaliada, avaliacao_na_loja ou sem_troca (ultima proposta)."
+    )
+    valor_aparelho: Decimal | None = None
+    desconto: Decimal | None = None
+    parcelas: int | None = None
+    valor_parcela: Decimal | None = None
+    ultimas_mensagens_cliente: list[str] = Field(
+        default_factory=list, description="Ultimas falas do cliente (truncadas)."
+    )
 
     @classmethod
     def de(cls, r: ResumoHandoff) -> ResumoHandoffSchema:
@@ -164,6 +179,15 @@ class ResumoHandoffSchema(BaseModel):
             pendencias=r.pendencias,
             observacoes=r.observacoes,
             gerado_em=r.gerado_em,
+            cor=r.cor,
+            sku=r.sku,
+            troca_condicao=r.troca_condicao,
+            troca_status=r.troca_status,
+            valor_aparelho=r.valor_aparelho,
+            desconto=r.desconto,
+            parcelas=r.parcelas,
+            valor_parcela=r.valor_parcela,
+            ultimas_mensagens_cliente=list(r.ultimas_mensagens_cliente),
         )
 
 

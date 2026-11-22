@@ -34,6 +34,8 @@ function ResumoHandoff({ detalhe }: { detalhe: DetalheLead }) {
             <Linha rotulo="Troca" valor={r.troca} />
             <Linha rotulo="Pagamento" valor={r.pagamento} />
             {r.proposta ? <Linha rotulo="Proposta" valor={r.proposta} /> : null}
+            {r.valores ? <Linha rotulo="Valores" valor={r.valores} /> : null}
+            {r.dataPrevista ? <Linha rotulo="Data prevista" valor={r.dataPrevista} /> : null}
             <Linha rotulo="Próximo passo" valor={r.proximoPasso} />
           </dl>
           {r.observacoes ? (

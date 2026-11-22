@@ -1366,8 +1366,12 @@ export interface components {
         ResumoHandoffSchema: {
             /** Aparelho Desejado */
             aparelho_desejado: string | null;
+            /** Cor */
+            cor?: string | null;
             /** Data Prevista */
             data_prevista: string | null;
+            /** Desconto */
+            desconto?: string | null;
             /** Forma Pagamento */
             forma_pagamento: string | null;
             /**
@@ -1382,12 +1386,35 @@ export interface components {
              * @description 2 a 3 frases do LLM; null se ele falhou.
              */
             observacoes: string | null;
+            /** Parcelas */
+            parcelas?: number | null;
             /** Pendencias */
             pendencias: string[];
             /** Proposta */
             proposta: string | null;
+            /** Sku */
+            sku?: string | null;
             /** Troca */
             troca: string | null;
+            /**
+             * Troca Condicao
+             * @description Estado do usado em poucas palavras (tela, bateria...).
+             */
+            troca_condicao?: string | null;
+            /**
+             * Troca Status
+             * @description avaliada, avaliacao_na_loja ou sem_troca (ultima proposta).
+             */
+            troca_status?: string | null;
+            /**
+             * Ultimas Mensagens Cliente
+             * @description Ultimas falas do cliente (truncadas).
+             */
+            ultimas_mensagens_cliente?: string[];
+            /** Valor Aparelho */
+            valor_aparelho?: string | null;
+            /** Valor Parcela */
+            valor_parcela?: string | null;
             /** Valor Proposta */
             valor_proposta: string | null;
             /** Valor Troca */

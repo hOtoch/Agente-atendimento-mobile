@@ -80,24 +80,64 @@ def montar_mensagem_vendedor(
     if canal is Canal.WHATSAPP and contato:
         linhas.append(f"Contato: +{contato}")
     linhas.append(f"Motivo: {resumo.motivo}")
+    linhas.extend(_linhas_do_resumo(resumo))
+    linhas += ["", f"Abrir no painel: {url_painel.rstrip('/')}/conversas?lead={lead_id}"]
+    return "\n".join(linhas)
+
+
+def _linhas_do_resumo(resumo: ResumoHandoff) -> list[str]:
+    """Corpo do aviso (do aparelho as observacoes); so formata o que o resumo ja trouxe."""
+    linhas: list[str] = []
     if resumo.aparelho_desejado:
-        linhas.append(f"Aparelho: {resumo.aparelho_desejado}")
-    if resumo.troca:
-        extra = f" (avaliado em {formatar_brl(resumo.valor_troca)})" if resumo.valor_troca else ""
-        linhas.append(f"Troca: {resumo.troca}{extra}")
-    if resumo.proposta or resumo.valor_proposta is not None:
-        partes = [p for p in (resumo.proposta, _valor(resumo.valor_proposta)) if p]
-        linhas.append("Proposta: " + " - ".join(partes))
+        detalhes = [resumo.aparelho_desejado] + ([resumo.cor] if resumo.cor else [])
+        sku = f" (SKU {resumo.sku})" if resumo.sku else ""
+        linhas.append("Aparelho: " + ", ".join(detalhes) + sku)
+    linhas.extend(_linhas_da_troca(resumo))
+    linhas.extend(_linhas_da_proposta(resumo))
     if resumo.forma_pagamento:
         linhas.append(f"Pagamento: {resumo.forma_pagamento}")
     if resumo.data_prevista:
         linhas.append(f"Data prevista: {resumo.data_prevista:%d/%m/%Y}")
     if resumo.pendencias:
         linhas.append("Pendências: " + ", ".join(resumo.pendencias))
+    if resumo.ultimas_mensagens_cliente:
+        linhas.append("Últimas mensagens do cliente:")
+        linhas.extend(f'- "{fala}"' for fala in resumo.ultimas_mensagens_cliente)
     if resumo.observacoes:
         linhas.append(f"Observações: {resumo.observacoes}")
-    linhas += ["", f"Abrir no painel: {url_painel.rstrip('/')}/conversas?lead={lead_id}"]
-    return "\n".join(linhas)
+    return linhas
+
+
+def _linhas_da_troca(resumo: ResumoHandoff) -> list[str]:
+    if not resumo.troca:
+        return []
+    texto = resumo.troca + (f" ({resumo.troca_condicao})" if resumo.troca_condicao else "")
+    if resumo.valor_troca:
+        texto += f" - avaliada em {formatar_brl(resumo.valor_troca)}"
+    elif resumo.troca_status == "avaliacao_na_loja":
+        texto += " - avaliação na loja"
+    return [f"Troca: {texto}"]
+
+
+def _linhas_da_proposta(resumo: ResumoHandoff) -> list[str]:
+    if not (resumo.proposta or resumo.valor_proposta is not None):
+        return []
+    total = f"total {_valor(resumo.valor_proposta)}" if resumo.valor_proposta is not None else None
+    partes = [p for p in (resumo.proposta, total) if p]
+    texto = " - ".join(partes)
+    if resumo.parcelas and resumo.valor_parcela is not None:
+        texto += f" ({resumo.parcelas}x de {formatar_brl(resumo.valor_parcela)})"
+    linhas = [f"Proposta: {texto}"]
+    if resumo.valor_aparelho is not None:
+        valores = [
+            ("aparelho", resumo.valor_aparelho),
+            ("troca", resumo.valor_troca),
+            ("desconto", resumo.desconto),
+        ]
+        linhas.append(
+            "Valores: " + ", ".join(f"{r} {formatar_brl(v)}" for r, v in valores if v is not None)
+        )
+    return linhas
 
 
 def _valor(valor: Decimal | None) -> str | None:

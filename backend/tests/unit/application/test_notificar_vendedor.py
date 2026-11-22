@@ -50,6 +50,31 @@ def resumo_completo(**campos: object) -> ResumoHandoff:
     return ResumoHandoff(**base)  # type: ignore[arg-type]
 
 
+def resumo_rico(**campos: object) -> ResumoHandoff:
+    base: dict[str, object] = dict(
+        motivo=(
+            "A IA teve uma falha técnica e passou o atendimento para você. "
+            "O cliente estava em Interesse qualificado; falta: bandeira do cartão."
+        ),
+        cor="Preto",
+        sku="IP16-128-PT",
+        troca_condicao="tela danificada, bateria 82%",
+        troca_status="avaliada",
+        valor_aparelho=D("4830"),
+        desconto=D("130"),
+        parcelas=12,
+        valor_parcela=D("325"),
+        ultimas_mensagens_cliente=[
+            "quero o iphone 16",
+            "tenho um 13 pra troca",
+            "em 12x no master",
+        ],
+        observacoes=None,
+    )
+    base.update(campos)
+    return resumo_completo(**base)
+
+
 def resumo_vazio() -> ResumoHandoff:
     return ResumoHandoff(
         motivo="Cliente pediu o vendedor",
@@ -124,6 +149,59 @@ def test_mensagem_traz_lead_resumo_e_link() -> None:
     ):
         assert trecho in texto
     assert "//conversas" not in texto
+
+
+def test_mensagem_traz_o_resumo_completo_sem_o_llm() -> None:
+    texto = montar_mensagem_vendedor(
+        lead_id=uuid4(),
+        lead_nome="Marcos",
+        lead_telefone="5511999990000",
+        canal=Canal.WHATSAPP,
+        resumo=resumo_rico(),
+        url_painel=PAINEL,
+    )
+    for trecho in (
+        "Motivo: A IA teve uma falha técnica e passou o atendimento para você.",
+        "Aparelho: iPhone 16 128GB, Preto (SKU IP16-128-PT)",
+        "Troca: iPhone 13 128GB (tela danificada, bateria 82%) - avaliada em R$ 1.200,00",
+        "Proposta: Cartão de crédito em 12x - total R$ 3.900,50 (12x de R$ 325,00)",
+        "Valores: aparelho R$ 4.830,00, troca R$ 1.200,00, desconto R$ 130,00",
+        "Pagamento: Crédito 12x Mastercard",
+        "Data prevista: 25/11/2026",
+        "Pendências: bateria do usado",
+        "Últimas mensagens do cliente:",
+        '- "quero o iphone 16"',
+        '- "tenho um 13 pra troca"',
+        '- "em 12x no master"',
+    ):
+        assert trecho in texto, trecho
+    assert "Observações" not in texto
+    assert "falha_llm" not in texto
+
+
+def test_mensagem_troca_avaliada_na_loja() -> None:
+    texto = montar_mensagem_vendedor(
+        lead_id=uuid4(),
+        lead_nome=None,
+        lead_telefone="abc",
+        canal=Canal.WEBCHAT,
+        resumo=resumo_rico(troca_status="avaliacao_na_loja", valor_troca=None),
+        url_painel=PAINEL,
+    )
+    assert "Troca: iPhone 13 128GB (tela danificada, bateria 82%) - avaliação na loja" in texto
+    assert "troca R$" not in texto
+
+
+def test_mensagem_de_resumo_antigo_continua_valida() -> None:
+    texto = montar_mensagem_vendedor(
+        lead_id=uuid4(),
+        lead_nome="Ana",
+        lead_telefone="abc",
+        canal=Canal.WEBCHAT,
+        resumo=resumo_completo(),
+        url_painel=PAINEL,
+    )
+    assert "Últimas mensagens" not in texto and "Valores:" not in texto
 
 
 def test_mensagem_omite_o_que_nao_existe() -> None:

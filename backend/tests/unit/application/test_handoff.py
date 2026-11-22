@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -16,6 +16,7 @@ from app.application.agente.transcricao import (
     CursorEntrada,
     RepositorioTranscricaoEmMemoria,
 )
+from app.application.canal import TipoMensagem
 from app.application.handoff import (
     CasosHandoff,
     ConflitoDono,
@@ -26,6 +27,7 @@ from app.application.handoff import (
 from app.application.llm import BlocoTexto, ErroLLM, LLMIndisponivel, LLMRecusou
 from app.application.painel.eventos import EventoDonoMudou
 from app.application.painel.memoria import PublicadorEmMemoria, RepositorioPainelEmMemoria
+from app.application.painel.portas import MensagemRegistro
 from app.domain.aparelho import Capacidade, ModeloAparelho
 from app.domain.ficha import Ficha, TipoPagamento
 from app.domain.valores import Bandeira
@@ -279,9 +281,36 @@ async def test_resumo_estruturado_sai_mesmo_com_o_llm_falhando(
     assert resumo.valor_proposta == Decimal("3900.00")
     assert resumo.forma_pagamento is not None and "12x" in resumo.forma_pagamento
     assert resumo.data_prevista == date(2026, 11, 25)
-    assert resumo.motivo == "A IA ficou indisponível e passou a conversa para o vendedor"
+    assert resumo.motivo.startswith("A IA teve uma falha técnica e passou o atendimento para você.")
+    assert "falha_llm" not in resumo.motivo
     assert await c.casos.resumo_do_lead(c.loja, lead) == resumo
     assert len(c.aviso.chamadas) == 1
+
+
+async def test_resumo_completo_sem_o_llm_traz_aparelho_troca_proposta_e_falas_do_cliente() -> None:
+    c = Cenario(FakeLLM([RespostaRoteirizada(erro=LLMIndisponivel("sem credito"))]))
+    lead = c.lead()
+    await c.estado(lead, _estado_completo())
+    c.repo.adicionar_mensagem(lead, autor="cliente", texto="oi, quero o iphone 16")
+    c.repo.adicionar_mensagem(lead, autor="ia", texto="Qual capacidade?")
+    c.repo.adicionar_mensagem(lead, autor="cliente", texto="128, tenho um 13 pra troca")
+    c.repo.adicionar_mensagem(lead, autor="cliente", texto="pode ser em 12x no master")
+
+    resumo = await c.casos.chamar_vendedor(c.loja, lead, "falha_llm")
+
+    assert resumo.observacoes is None
+    assert resumo.aparelho_desejado == "iPhone 16 128GB"
+    assert resumo.troca == "iPhone 13 128GB"
+    assert resumo.valor_troca == Decimal("1200.00")
+    assert resumo.valor_aparelho == Decimal("4830.00")
+    assert resumo.valor_proposta == Decimal("3900.00")
+    assert resumo.ultimas_mensagens_cliente == [
+        "oi, quero o iphone 16",
+        "128, tenho um 13 pra troca",
+        "pode ser em 12x no master",
+    ]
+    gravado = await c.casos.resumo_do_lead(c.loja, lead)
+    assert gravado == resumo
 
 
 async def test_resumo_sem_llm_configurado() -> None:
@@ -330,6 +359,7 @@ def test_resumo_estruturado_da_ficha_vazia_tem_todos_os_campos() -> None:
     assert all(isinstance(p, str) and p for p in r.pendencias)
     assert r.observacoes is None
     assert r.motivo == "pediu vendedor"
+    assert r.ultimas_mensagens_cliente == []
 
 
 def test_resumo_sem_troca() -> None:
@@ -345,3 +375,158 @@ def test_resumo_dict_ida_e_volta() -> None:
     d = r.para_dict()
     assert d["valor_troca"] == "1200.00" and d["data_prevista"] == "2026-11-25"
     assert ResumoHandoff.de_dict(d) == r
+
+
+def _msg(autor: str, texto: str | None, tipo: str = "texto", n: int = 0) -> MensagemRegistro:
+    return MensagemRegistro(
+        id=uuid4(),
+        conversa_id=uuid4(),
+        direcao="entrada" if autor == "cliente" else "saida",
+        autor=autor,
+        tipo=TipoMensagem(tipo),
+        texto=texto,
+        midia_url=None,
+        criada_em=AGORA + timedelta(seconds=n),
+    )
+
+
+def _estado_rico() -> EstadoAtendimento:
+    base = _estado_completo()
+    ficha = base.ficha.com_interesse(cor="Preto", sku_estoque_confirmado="IP16-128-PT").com_usado(
+        tela_danificada=True,
+        traseira_danificada=False,
+        carcaca_marcada=False,
+        bateria_pct=82,
+        camera_ok=True,
+        outros_defeitos=(),
+        peca_trocada=False,
+    )
+    proposta = {
+        "aparelho": {"sku": "IP16-128-PT", "modelo": "iPhone 16", "cor": "Preto"},
+        "preco_aparelho": "4830.00",
+        "troca": {"status": "avaliada", "valor": "1200.00"},
+        "desconto": {"negociado": "100.00", "total": "130.00"},
+        "forma_escolhida": {
+            "rotulo": "Cartão de crédito em 12x Mastercard",
+            "parcelas": 12,
+            "valor_parcela": "325.00",
+            "total_pago": "3900.00",
+        },
+    }
+    return replace(base, ficha=ficha, ultima_proposta=proposta)
+
+
+def test_resumo_estruturado_com_ficha_completa_traz_todos_os_campos() -> None:
+    r = montar_resumo_estruturado(_estado_rico(), motivo="x", agora=AGORA)
+    assert r.aparelho_desejado == "iPhone 16 128GB"
+    assert r.cor == "Preto" and r.sku == "IP16-128-PT"
+    assert r.troca == "iPhone 13 128GB"
+    assert r.troca_condicao == "tela danificada, bateria 82%"
+    assert r.troca_status == "avaliada" and r.valor_troca == Decimal("1200.00")
+    assert r.valor_aparelho == Decimal("4830.00")
+    assert r.desconto == Decimal("130.00")
+    assert r.proposta == "Cartão de crédito em 12x Mastercard"
+    assert r.valor_proposta == Decimal("3900.00")
+    assert r.parcelas == 12 and r.valor_parcela == Decimal("325.00")
+    assert r.forma_pagamento is not None and "12x" in r.forma_pagamento
+    assert r.data_prevista == date(2026, 11, 25)
+    assert r.pendencias == [] or all(isinstance(p, str) for p in r.pendencias)
+
+
+def test_resumo_pega_cor_e_sku_da_proposta_quando_a_ficha_nao_tem() -> None:
+    estado = replace(_estado_rico(), ficha=_estado_completo().ficha)
+    r = montar_resumo_estruturado(estado, motivo="x", agora=AGORA)
+    assert r.cor == "Preto" and r.sku == "IP16-128-PT"
+
+
+def test_resumo_troca_avaliada_na_loja_nao_inventa_valor() -> None:
+    estado = replace(
+        _estado_rico(),
+        ultima_proposta={
+            "preco_aparelho": "4830.00",
+            "troca": {"status": "avaliacao_na_loja", "motivo": "aparelho muito danificado"},
+            "forma_escolhida": {"rotulo": "Pix ou dinheiro à vista", "valor_a_vista": "4830.00"},
+        },
+    )
+    r = montar_resumo_estruturado(estado, motivo="x", agora=AGORA)
+    assert r.troca_status == "avaliacao_na_loja" and r.valor_troca is None
+    assert r.valor_proposta == Decimal("4830.00")
+    assert r.parcelas is None and r.valor_parcela is None
+
+
+def test_resumo_condicao_do_usado_sem_avarias() -> None:
+    ficha = _estado_completo().ficha.com_usado(
+        tela_danificada=False, traseira_danificada=False, camera_ok=True
+    )
+    r = montar_resumo_estruturado(EstadoAtendimento(ficha=ficha), motivo="x", agora=AGORA)
+    assert r.troca_condicao == "sem avarias informadas"
+
+
+def test_resumo_so_guarda_as_ultimas_tres_falas_do_cliente_truncadas() -> None:
+    mensagens = [
+        _msg("cliente", "primeira", n=1),
+        _msg("ia", "resposta da IA", n=2),
+        _msg("cliente", "segunda", n=3),
+        _msg("cliente", None, tipo="audio", n=4),
+        _msg("vendedor", "oi", n=5),
+        _msg("cliente", "x" * 500, n=6),
+    ]
+    r = montar_resumo_estruturado(EstadoAtendimento(), motivo="x", agora=AGORA, mensagens=mensagens)
+    assert r.ultimas_mensagens_cliente[:2] == ["segunda", "[áudio]"]
+    assert len(r.ultimas_mensagens_cliente) == 3
+    ultima = r.ultimas_mensagens_cliente[2]
+    assert ultima.startswith("xxx") and ultima.endswith("…") and len(ultima) <= 160
+
+
+def test_motivo_falha_llm_e_legivel_e_acionavel() -> None:
+    estado = _estado_rico()
+    estado = replace(estado, ficha=estado.ficha.com_pagamento(bandeira=None))
+    r = montar_resumo_estruturado(estado, motivo="falha_llm", agora=AGORA)
+    assert r.motivo.startswith("A IA teve uma falha técnica e passou o atendimento para você.")
+    assert "falha_llm" not in r.motivo and "LLM" not in r.motivo
+    assert "O cliente estava em " in r.motivo
+    assert "bandeira do cartão" in r.motivo
+
+
+def test_motivo_falha_llm_com_muitas_pendencias_resume() -> None:
+    r = montar_resumo_estruturado(EstadoAtendimento(), motivo="falha_llm", agora=AGORA)
+    assert "Novo contato" in r.motivo
+    assert "e mais" in r.motivo
+    assert len(r.pendencias) > 3  # a lista completa continua no resumo
+
+
+def test_motivo_falha_llm_sem_pendencias() -> None:
+    r = montar_resumo_estruturado(_estado_rico(), motivo="falha_llm", agora=AGORA)
+    if not r.pendencias:
+        assert "ficha estava completa" in r.motivo
+
+
+def test_de_dict_aceita_resumo_antigo_sem_os_campos_novos() -> None:
+    antigo = {
+        "motivo": "A IA ficou indisponível e passou a conversa para o vendedor",
+        "aparelho_desejado": "iPhone 16 128GB",
+        "troca": "iPhone 13 128GB",
+        "valor_troca": "1200.00",
+        "proposta": None,
+        "valor_proposta": None,
+        "forma_pagamento": None,
+        "data_prevista": "2026-11-25",
+        "pendencias": ["bandeira do cartão"],
+        "observacoes": None,
+        "gerado_em": "2026-11-20T15:00:00+00:00",
+    }
+    r = ResumoHandoff.de_dict(antigo)
+    assert r.motivo.startswith("A IA ficou indisponível")
+    assert r.cor is None and r.sku is None and r.troca_condicao is None
+    assert r.valor_aparelho is None and r.desconto is None and r.parcelas is None
+    assert r.ultimas_mensagens_cliente == []
+
+
+def test_resumo_novo_dict_ida_e_volta() -> None:
+    r = montar_resumo_estruturado(
+        _estado_rico(),
+        motivo="falha_llm",
+        agora=AGORA,
+        mensagens=[_msg("cliente", "quero fechar")],
+    )
+    assert ResumoHandoff.de_dict(r.para_dict()) == r

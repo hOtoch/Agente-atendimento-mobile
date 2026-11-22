@@ -1922,6 +1922,17 @@
             ],
             "title": "Aparelho Desejado"
           },
+          "cor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cor"
+          },
           "data_prevista": {
             "anyOf": [
               {
@@ -1933,6 +1944,17 @@
               }
             ],
             "title": "Data Prevista"
+          },
+          "desconto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desconto"
           },
           "forma_pagamento": {
             "anyOf": [
@@ -1966,6 +1988,17 @@
             "description": "2 a 3 frases do LLM; null se ele falhou.",
             "title": "Observacoes"
           },
+          "parcelas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parcelas"
+          },
           "pendencias": {
             "items": {
               "type": "string"
@@ -1984,6 +2017,17 @@
             ],
             "title": "Proposta"
           },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "troca": {
             "anyOf": [
               {
@@ -1994,6 +2038,60 @@
               }
             ],
             "title": "Troca"
+          },
+          "troca_condicao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Estado do usado em poucas palavras (tela, bateria...).",
+            "title": "Troca Condicao"
+          },
+          "troca_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "avaliada, avaliacao_na_loja ou sem_troca (ultima proposta).",
+            "title": "Troca Status"
+          },
+          "ultimas_mensagens_cliente": {
+            "description": "Ultimas falas do cliente (truncadas).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Ultimas Mensagens Cliente",
+            "type": "array"
+          },
+          "valor_aparelho": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Aparelho"
+          },
+          "valor_parcela": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Parcela"
           },
           "valor_proposta": {
             "anyOf": [
