@@ -93,3 +93,5 @@ class VendedorLoja:
     telefone: str | None
     peso_percentual: Decimal
     ativo: bool
+    codigo_erp: str | None = None
+    """Id do vendedor no ERP; None = criado a mao no painel."""

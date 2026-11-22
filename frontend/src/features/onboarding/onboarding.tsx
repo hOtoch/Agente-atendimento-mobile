@@ -20,6 +20,7 @@ import {
   GRADE_VENDEDORES,
   type Cliente,
 } from "./grades"
+import { ImportarVendedoresErp } from "./importar-vendedores-erp"
 import { PassoGrade } from "./passo-grade"
 import { PassoPerfil } from "./passo-perfil"
 import { PassoPreco } from "./passo-preco"
@@ -87,6 +88,9 @@ function ConteudoDoPasso({
           lojaId={lojaId}
           aoSalvar={aoSalvar}
           mostrarSoma
+          acoes={(recarregar) => (
+            <ImportarVendedoresErp cliente={cliente} lojaId={lojaId} aoImportar={recarregar} />
+          )}
         />
       )
     case "preco":

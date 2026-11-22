@@ -138,6 +138,8 @@ class VendedorSchema(BaseModel):
     telefone: str | None
     peso_percentual: Num
     ativo: bool
+    codigo_erp: str | None = None
+    """Id no ERP (Mercado Phone); ausente = vendedor criado a mao."""
 
 
 class VendedoresSchema(BaseModel):

@@ -365,7 +365,7 @@ class LeitorVendedoresSql:
 
 
 def _vendedor_de_row(r: Vendedor) -> VendedorLoja:
-    return VendedorLoja(r.id, r.nome, r.telefone, r.peso_percentual, r.ativo)
+    return VendedorLoja(r.id, r.nome, r.telefone, r.peso_percentual, r.ativo, r.codigo_erp)
 
 
 class RepositorioVendedoresSql(LeitorVendedoresSql):
@@ -413,3 +413,32 @@ class RepositorioVendedoresSql(LeitorVendedoresSql):
                 row.ativo = False
         await self._s.flush()
         return await self.listar(loja_id)
+
+    async def criar_do_erp(self, loja_id: uuid.UUID, codigo_erp: str, nome: str) -> VendedorLoja:
+        row = Vendedor(
+            loja_id=loja_id,
+            nome=nome.strip(),
+            codigo_erp=codigo_erp,
+            peso_percentual=Decimal(0),
+            ativo=True,
+            criado_em=datetime.now(UTC),
+        )
+        self._s.add(row)
+        await self._s.flush()
+        return _vendedor_de_row(row)
+
+    async def atualizar_do_erp(
+        self, loja_id: uuid.UUID, vendedor_id: uuid.UUID, *, nome: str, ativo: bool
+    ) -> None:
+        row = (
+            await self._s.execute(
+                select(Vendedor)
+                .where(Vendedor.id == vendedor_id, Vendedor.loja_id == loja_id)
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return
+        row.nome = nome.strip()
+        row.ativo = ativo
+        await self._s.flush()

@@ -76,6 +76,16 @@ class RepositorioVendedores(LeitorVendedores, Protocol):
         """Atualiza os que vierem com id, cria os sem id e desativa os ausentes."""
         ...
 
+    async def criar_do_erp(self, loja_id: UUID, codigo_erp: str, nome: str) -> VendedorLoja:
+        """Cria um vendedor vindo do ERP: ativo, sem telefone e com peso 0."""
+        ...
+
+    async def atualizar_do_erp(
+        self, loja_id: UUID, vendedor_id: UUID, *, nome: str, ativo: bool
+    ) -> None:
+        """Muda so nome e ativo (nunca telefone, peso ou `codigo_erp`). Id de outra loja: nada."""
+        ...
+
 
 class RepositorioConexaoErp(Protocol):
     """Conexao da loja com o ERP (uma por loja). A chave de acesso nao e guardada aqui."""

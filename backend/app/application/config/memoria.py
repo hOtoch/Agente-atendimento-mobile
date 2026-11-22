@@ -113,16 +113,33 @@ class MemoriaVendedores:
         resultado: dict[UUID, VendedorLoja] = {}
         for e in entradas:
             vid = e.id if e.id is not None else uuid4()
+            codigo = atuais[vid].codigo_erp if vid in atuais else None
             resultado[vid] = VendedorLoja(
-                vid, e.nome.strip(), (e.telefone or "").strip() or None, e.peso_percentual, e.ativo
+                vid,
+                e.nome.strip(),
+                (e.telefone or "").strip() or None,
+                e.peso_percentual,
+                e.ativo,
+                codigo,
             )
         for vid, antigo in atuais.items():
             if vid not in resultado:
-                resultado[vid] = VendedorLoja(
-                    vid, antigo.nome, antigo.telefone, antigo.peso_percentual, False
-                )
+                resultado[vid] = replace(antigo, ativo=False)
         self._por_loja[loja_id] = list(resultado.values())
         return list(resultado.values())
+
+    async def criar_do_erp(self, loja_id: UUID, codigo_erp: str, nome: str) -> VendedorLoja:
+        novo = VendedorLoja(uuid4(), nome.strip(), None, Decimal(0), True, codigo_erp)
+        self._por_loja.setdefault(loja_id, []).append(novo)
+        return novo
+
+    async def atualizar_do_erp(
+        self, loja_id: UUID, vendedor_id: UUID, *, nome: str, ativo: bool
+    ) -> None:
+        lista = self._por_loja.get(loja_id, [])
+        for i, v in enumerate(lista):
+            if v.id == vendedor_id:
+                lista[i] = replace(v, nome=nome.strip(), ativo=ativo)
 
 
 class MemoriaConexaoErp:

@@ -177,6 +177,7 @@ def _vendedores_out(vendedores: list[VendedorLoja]) -> s.VendedoresSchema:
                 telefone=v.telefone,
                 peso_percentual=v.peso_percentual,
                 ativo=v.ativo,
+                codigo_erp=v.codigo_erp,
             )
             for v in vendedores
         ]

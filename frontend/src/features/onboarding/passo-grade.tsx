@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type ReactNode } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,6 +46,7 @@ export function PassoGrade({
   lojaId,
   aoSalvar,
   mostrarSoma = false,
+  acoes,
 }: {
   definicao: DefinicaoGrade
   cliente: Cliente
@@ -53,6 +54,8 @@ export function PassoGrade({
   /** Chamado depois de salvar/importar (ex.: atualizar o checklist). */
   aoSalvar: () => void
   mostrarSoma?: boolean
+  /** Ações extras do passo (ex.: importar do ERP); recebem `recarregar` para atualizar a grade. */
+  acoes?: (recarregar: () => void) => ReactNode
 }) {
   const toast = useToast()
   const [linhas, setLinhas] = useState<DataGridRow[] | null>(null)
@@ -129,6 +132,8 @@ export function PassoGrade({
             aoAplicar={recarregar}
           />
         ) : null}
+
+        {acoes ? acoes(recarregar) : null}
 
         {falhaAoCarregar ? (
           <p role="alert" className="text-sm text-danger">

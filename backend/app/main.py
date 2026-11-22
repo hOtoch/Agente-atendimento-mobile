@@ -11,6 +11,7 @@ from app.adapters.inbound.http.importacao import router as importacao_router
 from app.adapters.inbound.http.midias import router as midias_router
 from app.adapters.inbound.http.openapi import registrar_openapi
 from app.adapters.inbound.http.painel import router as painel_router
+from app.adapters.inbound.http.vendedores_erp import router as vendedores_erp_router
 from app.adapters.inbound.http.webchat import router as webchat_router
 from app.adapters.inbound.http.whatsapp import router as whatsapp_router
 from app.infra.settings import get_settings
@@ -28,6 +29,7 @@ app.include_router(health_router)
 app.include_router(config_router)
 app.include_router(followup_router)
 app.include_router(conexao_erp_router)
+app.include_router(vendedores_erp_router)
 app.include_router(importacao_router)
 app.include_router(webchat_router)
 app.include_router(painel_router)

@@ -16,12 +16,13 @@ from app.adapters.outbound.canal.enviadas import RegistroEnviadasRedis
 from app.adapters.outbound.canal.evolution import EvolutionAdapter
 from app.adapters.outbound.canal.evolution_api import EvolutionGateway
 from app.adapters.outbound.db.conexao_erp import RepositorioConexaoErpSql
-from app.adapters.outbound.db.config import RepositorioLojasSql
+from app.adapters.outbound.db.config import RepositorioLojasSql, RepositorioVendedoresSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.followup import RepositorioConfigFollowupSql
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
+from app.adapters.outbound.mercadophone.vendedores import LeitorVendedoresMercadoPhone
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
@@ -29,6 +30,11 @@ from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.conexao_erp import ConfigurarConexaoErp
 from app.application.config.portas import RepositorioLojas
+from app.application.config.vendedores_erp import (
+    ImportarVendedoresErp,
+    LeitorVendedoresErp,
+    LeitorVendedoresErpNaoConfigurado,
+)
 from app.application.estoque_erp import ErpNaoConfigurado, FonteEstoqueErp, SincronizarEstoqueErp
 from app.application.followup import ConfigurarFollowup
 from app.application.importacao.importar import ImportarPlanilha
@@ -83,6 +89,26 @@ def get_configurar_conexao_erp(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ConfigurarConexaoErp:
     return ConfigurarConexaoErp(RepositorioLojasSql(session), RepositorioConexaoErpSql(session))
+
+
+def get_leitor_vendedores_erp() -> LeitorVendedoresErp:
+    """Leitor do Mercado Phone; sem `MERCADOPHONE_API_KEY` devolve um que falha com mensagem."""
+    try:
+        return LeitorVendedoresMercadoPhone(get_cliente_mercadophone())
+    except MercadoPhoneNaoConfigurado:
+        return LeitorVendedoresErpNaoConfigurado()
+
+
+def get_importar_vendedores_erp(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    leitor: Annotated[LeitorVendedoresErp, Depends(get_leitor_vendedores_erp)],
+) -> ImportarVendedoresErp:
+    return ImportarVendedoresErp(
+        RepositorioLojasSql(session),
+        RepositorioConexaoErpSql(session),
+        RepositorioVendedoresSql(session),
+        leitor,
+    )
 
 
 def get_importador(session: Annotated[AsyncSession, Depends(get_session)]) -> ImportarPlanilha:
