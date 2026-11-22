@@ -38,6 +38,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/config/erp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter Conexao Erp */
+        get: operations["obter_conexao_erp_lojas__loja_id__config_erp_get"];
+        /** Atualizar Conexao Erp */
+        put: operations["atualizar_conexao_erp_lojas__loja_id__config_erp_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/config/estoque": {
         parameters: {
             query?: never;
@@ -552,6 +570,53 @@ export interface components {
             leads: components["schemas"]["CardLeadSchema"][];
             /** Nome */
             nome: string;
+        };
+        /** ConexaoErpEntrada */
+        ConexaoErpEntrada: {
+            /**
+             * Ativo
+             * @default false
+             */
+            ativo: boolean;
+            /**
+             * Exportar Handoff
+             * @default false
+             */
+            exportar_handoff: boolean;
+            /** Filtro Loja */
+            filtro_loja?: string | null;
+            /**
+             * Intervalo Min
+             * @default 15
+             */
+            intervalo_min: number;
+            /** System Unit Id */
+            system_unit_id: number;
+        };
+        /** ConexaoErpSaida */
+        ConexaoErpSaida: {
+            /** Ativo */
+            ativo: boolean;
+            /** Configurada */
+            configurada: boolean;
+            /** Exportar Handoff */
+            exportar_handoff: boolean;
+            /** Filtro Loja */
+            filtro_loja: string | null;
+            /** Intervalo Min */
+            intervalo_min: number;
+            /** Provedor */
+            provedor: string;
+            /** System Unit Id */
+            system_unit_id: number | null;
+            /** Ultima Sincronizacao Em */
+            ultima_sincronizacao_em: string | null;
+            /** Ultimo Relatorio */
+            ultimo_relatorio: {
+                [key: string]: unknown;
+            } | null;
+            /** Ultimo Status */
+            ultimo_status: string | null;
         };
         /** ConexaoWhatsAppSchema */
         ConexaoWhatsAppSchema: {
@@ -1351,6 +1416,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LojaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_conexao_erp_lojas__loja_id__config_erp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConexaoErpSaida"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    atualizar_conexao_erp_lojas__loja_id__config_erp_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConexaoErpEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConexaoErpSaida"];
                 };
             };
             /** @description Validation Error */

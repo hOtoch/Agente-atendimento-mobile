@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import replace
+from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.application.config.casos_de_uso import CasosDeUsoConfig
@@ -15,6 +18,7 @@ from app.application.config.modelos import (
     PerfilLoja,
     VendedorLoja,
 )
+from app.domain.conexao_erp import ConexaoErp
 from app.domain.pagamento import TabelaTaxas
 from app.domain.troca import TabelaTroca
 
@@ -119,6 +123,37 @@ class MemoriaVendedores:
                 )
         self._por_loja[loja_id] = list(resultado.values())
         return list(resultado.values())
+
+
+class MemoriaConexaoErp:
+    def __init__(self) -> None:
+        self._por_loja: dict[UUID, ConexaoErp] = {}
+
+    async def obter(self, loja_id: UUID) -> ConexaoErp | None:
+        return self._por_loja.get(loja_id)
+
+    async def salvar(self, conexao: ConexaoErp) -> None:
+        atual = self._por_loja.get(conexao.loja_id)
+        if atual is not None:  # o status da sincronizacao sobrevive a regravacao da config
+            conexao = replace(
+                conexao,
+                ultima_sincronizacao_em=atual.ultima_sincronizacao_em,
+                ultimo_status=atual.ultimo_status,
+                ultimo_relatorio=atual.ultimo_relatorio,
+            )
+        self._por_loja[conexao.loja_id] = conexao
+
+    async def registrar_sincronizacao(
+        self, loja_id: UUID, *, em: datetime, status: str, relatorio: Mapping[str, Any] | None
+    ) -> None:
+        atual = self._por_loja.get(loja_id)
+        if atual is not None:
+            self._por_loja[loja_id] = replace(
+                atual, ultima_sincronizacao_em=em, ultimo_status=status, ultimo_relatorio=relatorio
+            )
+
+    async def listar_ativas(self) -> list[ConexaoErp]:
+        return [c for c in self._por_loja.values() if c.ativo]
 
 
 class MemoriaIntegracaoEstoque:

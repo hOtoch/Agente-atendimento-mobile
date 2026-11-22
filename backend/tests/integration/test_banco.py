@@ -25,6 +25,7 @@ TABELAS = {
     "estoque_local",
     "mapeamento_sku",
     "config_followup",
+    "conexao_erp",
 }
 
 

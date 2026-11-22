@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 from app.application.config.entradas import EntradaVendedor
@@ -15,6 +16,7 @@ from app.application.config.modelos import (
     PerfilLoja,
     VendedorLoja,
 )
+from app.domain.conexao_erp import ConexaoErp
 from app.domain.pagamento import TabelaTaxas
 from app.domain.troca import TabelaTroca
 
@@ -72,6 +74,26 @@ class RepositorioVendedores(LeitorVendedores, Protocol):
         self, loja_id: UUID, entradas: Sequence[EntradaVendedor]
     ) -> list[VendedorLoja]:
         """Atualiza os que vierem com id, cria os sem id e desativa os ausentes."""
+        ...
+
+
+class RepositorioConexaoErp(Protocol):
+    """Conexao da loja com o ERP (uma por loja). A chave de acesso nao e guardada aqui."""
+
+    async def obter(self, loja_id: UUID) -> ConexaoErp | None: ...
+
+    async def salvar(self, conexao: ConexaoErp) -> None:
+        """Upsert da configuracao; NAO mexe no status da ultima sincronizacao."""
+        ...
+
+    async def registrar_sincronizacao(
+        self, loja_id: UUID, *, em: datetime, status: str, relatorio: Mapping[str, Any] | None
+    ) -> None:
+        """Grava o resultado da ultima sincronizacao. Sem conexao configurada, nao faz nada."""
+        ...
+
+    async def listar_ativas(self) -> list[ConexaoErp]:
+        """Conexoes com `ativo=True` (todas as lojas), para o agendador da sincronizacao."""
         ...
 
 

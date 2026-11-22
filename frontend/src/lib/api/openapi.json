@@ -196,6 +196,141 @@
         "title": "ColunaKanbanSchema",
         "type": "object"
       },
+      "ConexaoErpEntrada": {
+        "additionalProperties": false,
+        "properties": {
+          "ativo": {
+            "default": false,
+            "title": "Ativo",
+            "type": "boolean"
+          },
+          "exportar_handoff": {
+            "default": false,
+            "title": "Exportar Handoff",
+            "type": "boolean"
+          },
+          "filtro_loja": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filtro Loja"
+          },
+          "intervalo_min": {
+            "default": 15,
+            "title": "Intervalo Min",
+            "type": "integer"
+          },
+          "system_unit_id": {
+            "title": "System Unit Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "system_unit_id"
+        ],
+        "title": "ConexaoErpEntrada",
+        "type": "object"
+      },
+      "ConexaoErpSaida": {
+        "properties": {
+          "ativo": {
+            "title": "Ativo",
+            "type": "boolean"
+          },
+          "configurada": {
+            "title": "Configurada",
+            "type": "boolean"
+          },
+          "exportar_handoff": {
+            "title": "Exportar Handoff",
+            "type": "boolean"
+          },
+          "filtro_loja": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filtro Loja"
+          },
+          "intervalo_min": {
+            "title": "Intervalo Min",
+            "type": "integer"
+          },
+          "provedor": {
+            "title": "Provedor",
+            "type": "string"
+          },
+          "system_unit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Unit Id"
+          },
+          "ultima_sincronizacao_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultima Sincronizacao Em"
+          },
+          "ultimo_relatorio": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Relatorio"
+          },
+          "ultimo_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Status"
+          }
+        },
+        "required": [
+          "configurada",
+          "provedor",
+          "system_unit_id",
+          "filtro_loja",
+          "ativo",
+          "intervalo_min",
+          "exportar_handoff",
+          "ultima_sincronizacao_em",
+          "ultimo_status",
+          "ultimo_relatorio"
+        ],
+        "title": "ConexaoErpSaida",
+        "type": "object"
+      },
       "ConexaoWhatsAppSchema": {
         "properties": {
           "qr_base64": {
@@ -2182,6 +2317,100 @@
           }
         },
         "summary": "Criar Loja",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/config/erp": {
+      "get": {
+        "operationId": "obter_conexao_erp_lojas__loja_id__config_erp_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoErpSaida"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Conexao Erp",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "operationId": "atualizar_conexao_erp_lojas__loja_id__config_erp_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConexaoErpEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoErpSaida"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Atualizar Conexao Erp",
         "tags": [
           "config"
         ]
