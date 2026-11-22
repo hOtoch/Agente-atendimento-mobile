@@ -230,7 +230,8 @@ Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa,
 | M5 | Handoff, WhatsApp e distribuição | `milestone/m5-handoff-whatsapp` | 2026-11-22 | ✅ concluído (PR #52; correções PR #53, #54) |
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR #55) |
 | M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ✅ concluído (PR #56) |
-| M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | 2026-11-22 | ✅ concluído (PR do M8) |
+| M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | 2026-11-22 | ✅ concluído (PR #65) |
+| M9 | Fechamento pela IA | `milestone/m9-fechamento-pela-ia` | 2026-11-22 | ✅ concluído (PR do M9) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -246,6 +247,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | M6 | #36 visão, #37 STT, #38 TTS, #39 follow-up | #40 Instagram | | |
 | M7 | #41 carga k6, #42 custos | #43 README, #44 roteiro demo | | |
 | M8 | #57 cliente MCP, #58 qualidade/mapeamento, #59 conexão da loja (schema do M8) | #60 sincronização do estoque, #61 vendedores do ERP | #62 cliente + orçamento no handoff, #63 confirmação ao vivo | #64 docs, smoke e demo |
+| M9 | #70 espera entre mensagens, #71 estoque em etapas, #72 formas de pagamento e chave Pix, #73 resumo do handoff sem LLM | #74 IA fecha o acordo | | |
 
 Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa ponta a ponta no chat web.
 
@@ -318,6 +320,12 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-22 | Sincronização: leitura vazia ou sem nenhum item importável vira erro e mantém o estoque; importação de vendedores com resposta vazia (e vendedores já importados) não altera nada | Glitch do ERP ou filtro/unidade errados não podem esvaziar a loja |
 | 2026-11-22 | Conferência ao vivo só em `obter` (confirmar item e proposta), por fora do cache de 60 s; ERP fora → dado local marcado desatualizado | `buscar` segue rápido no banco; o que vira proposta é conferido |
 | 2026-11-22 | Handoff → ERP: só com `exportar_handoff`; roda depois do aviso ao vendedor, nunca desfaz o handoff; valores vêm da `ultima_proposta` do domínio, troca como forma "APARELHO"; edita o orçamento já criado | Escrita em sistema de terceiro, previsível e idempotente |
+| 2026-11-22 | Agente multimarca (#68): iPhone conhecido ou modelo que esteja no estoque da loja (`resolver_modelo`); prompt neutro e marcas do estoque no bloco da loja | Estoque do ERP tem outras marcas |
+| 2026-11-22 | Debounce de 10 s (`FILA_JANELA_S`) e resposta descartada se chegar mensagem do cliente durante a geração (até `FILA_MAX_DESCARTES`=2 seguidas; contador no Redis) | Teste real: mensagens com 3–7 s de intervalo geraram duas respostas |
+| 2026-11-22 | `consultar_estoque` em etapas: todas as capacidades (crescente) → cores da capacidade → opções/confirmação; nunca escolhe pelo cliente | Teste real: ofereceu só a menor capacidade |
+| 2026-11-22 | Formas aceitas e chave Pix na config da loja (`pagamento_loja`, migration 0008); `registrar_compra` recusa forma desligada; chave Pix fora do prompt, só devolvida por `fechar_acordo`; dinheiro fora do escopo (Pix cobre o à vista) | O código decide; a IA não inventa chave |
+| 2026-11-22 | Resumo do handoff determinístico (aparelho, troca, proposta e valores da `ultima_proposta`, pagamento, pendências, últimas falas do cliente); `falha_llm` vira motivo legível | Teste real: sem crédito na Anthropic o resumo ficou vazio |
+| 2026-11-22 | IA fecha o acordo: `fechar_acordo` (proposta apresentada, ficha completa, forma aceita, proposta ainda válida) grava o acordo e devolve endereço, horário e chave Pix; depois a IA agradece e chama o vendedor com `acordo_fechado`; o acordo é zerado se a ficha/proposta mudar | Pedido do dono do produto: a IA conduz até o fim |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -455,6 +463,13 @@ _Atualizado ao final de cada milestone._
     - O cache de 60 s da resiliência pode oferecer na busca um SKU recém-vendido; `obter` confere ao vivo e prevalece.
     - Importação de vendedores e exportação do handoff sem trava contra cliques/handoffs simultâneos (o botão fica desabilitado; o handoff é serializado pela conversa).
   - Próximo: validar a escrita no ERP real (com OK) e incluir a cena do Mercado Phone no ensaio.
+- **2026-11-22 — Pós-M8**: paginação e filtro na grade de estoque (#66, PR #67); agente multimarca (#68, PR #69).
+- **2026-11-22 — M9 Fechamento pela IA concluído** (#70–#74), a partir do feedback de um teste real.
+  - #70 debounce 10 s + descarte de resposta com mensagem nova; #71 estoque por capacidade e depois cor; #72 formas de pagamento e chave Pix no onboarding (passo novo); #73 resumo do handoff completo sem o LLM; #74 `fechar_acordo` → endereço/horário/Pix → agradecimento → handoff `acordo_fechado` com o acordo no resumo, no aviso e no painel.
+  - Achado do teste real: o handoff e o resumo ruim vieram do crédito da Anthropic esgotado (`falha_llm`), não de decisão da IA; o aviso ao vendedor falhou porque o telefone do vendedor da seed não existe no WhatsApp.
+  - Testes: backend 2069, frontend 341, eval fake 7/7 (cenário novo `fecha_acordo_pix` e controle `controle_handoff_sem_acordo`).
+  - Pontos de atenção: nada testado com a LLM real depois do M9 (sem crédito); `followup.py` ainda não usa a config de formas; corrida pequena entre a checagem de mensagem nova e o envio.
+  - Próximo: recarregar crédito e rodar um eval real curto do fluxo de fechamento; cadastrar a chave Pix e um vendedor com WhatsApp real na loja demo.
 
 ---
 
@@ -465,7 +480,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (1878 testes) e `cd ../frontend && npm ci && npm test -- --run` (314 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (2069 testes) e `cd ../frontend && npm ci && npm test -- --run` (341 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Todos os milestones (M0–M8) estão concluídos; para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Todos os milestones (M0–M9) estão concluídos; para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
