@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
+from app.application.estoque_erp import ConexaoErpNaoConfigurada, ErpNaoConfigurado
 from app.application.handoff import ConflitoDono, LeadNaoEncontrado, VendedorNaoEncontrado
 from app.application.midia import MidiaGrandeDemais, MidiaNaoEncontrada, TipoMidiaNaoSuportado
 from app.application.painel.casos_de_uso import MovimentoEtapaInvalido
@@ -93,3 +94,13 @@ def registrar_handlers(app: FastAPI) -> None:
     async def _gateway(_: Request, exc: ErroGateway) -> JSONResponse:
         erro = ErroCampo("whatsapp", "Não foi possível falar com o WhatsApp (Evolution API).")
         return JSONResponse(_corpo([erro]), status_code=502)
+
+    @app.exception_handler(ErpNaoConfigurado)
+    async def _erp_sem_chave(_: Request, exc: ErpNaoConfigurado) -> JSONResponse:
+        erro = ErroCampo("erp", "Integração com o ERP não configurada no servidor.")
+        return JSONResponse(_corpo([erro]), status_code=409)
+
+    @app.exception_handler(ConexaoErpNaoConfigurada)
+    async def _conexao_erp(_: Request, exc: ConexaoErpNaoConfigurada) -> JSONResponse:
+        erro = ErroCampo("conexao", "Configure e salve a conexão com o ERP antes de usar.")
+        return JSONResponse(_corpo([erro]), status_code=409)

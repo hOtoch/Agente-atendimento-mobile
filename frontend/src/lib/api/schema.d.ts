@@ -56,6 +56,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/config/erp/sincronizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sincronizar Estoque Erp
+         * @description Sincroniza o estoque agora (mesmo com a conexao inativa) e devolve a conexao atualizada.
+         *
+         *     Falha do ERP nao e erro HTTP: o estoque anterior fica, e `ultimo_status` = `erro` com o motivo.
+         */
+        post: operations["sincronizar_estoque_erp_lojas__loja_id__config_erp_sincronizar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lojas/{loja_id}/config/erp/testar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Testar Conexao Erp
+         * @description A unidade configurada existe entre as da chave do servidor? Nao grava nada.
+         */
+        post: operations["testar_conexao_erp_lojas__loja_id__config_erp_testar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/config/estoque": {
         parameters: {
             query?: never;
@@ -1300,6 +1342,13 @@ export interface components {
             /** Taxas */
             taxas: components["schemas"]["TaxaSchema-Output"][];
         };
+        /** TesteConexaoErpSaida */
+        TesteConexaoErpSaida: {
+            /** Mensagem */
+            mensagem: string;
+            /** Ok */
+            ok: boolean;
+        };
         /** TrocaSchema */
         "TrocaSchema-Input": {
             /** Tabela Troca */
@@ -1482,6 +1531,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConexaoErpSaida"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sincronizar_estoque_erp_lojas__loja_id__config_erp_sincronizar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConexaoErpSaida"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    testar_conexao_erp_lojas__loja_id__config_erp_testar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TesteConexaoErpSaida"];
                 };
             };
             /** @description Validation Error */

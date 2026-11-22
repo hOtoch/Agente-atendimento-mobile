@@ -6,6 +6,9 @@ testes injetam o proprio hook (ex.: com FakeLLM) em `ctx` antes do startup.
 
 `followup_cron` (a cada 5 min) manda o follow-up automatico aos leads parados via o hook
 `ctx["followup"]` (por padrao `composicao.criar_followups`, montado na primeira rodada).
+
+`sincronizar_erp_cron` (a cada 5 min) sincroniza o estoque das lojas com ERP ativo cujo intervalo
+venceu, via `ctx["sincronizar_erp"]` (por padrao `composicao.criar_sincronizador_erp`).
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from app.infra.composicao import (
     criar_aviso_handoff,
     criar_followups,
     criar_processador,
+    criar_sincronizador_erp,
 )
 from app.infra.fila import FUNCAO_PROCESSAR, RelogioParede, TravaRedis
 from app.infra.settings import get_settings
@@ -77,6 +81,21 @@ async def followup_cron(ctx: dict[str, Any]) -> int:
     return enviados
 
 
+async def sincronizar_erp_cron(ctx: dict[str, Any]) -> int:
+    """Rodada da sincronizacao do estoque do ERP. Devolve quantas lojas sincronizou."""
+    if "sincronizar_erp" not in ctx:
+        settings = get_settings()
+        if "factory" not in ctx:
+            engine = criar_engine(settings.database_url)
+            ctx["engine"] = engine
+            ctx["factory"] = criar_session_factory(engine)
+        ctx["sincronizar_erp"] = criar_sincronizador_erp(ctx["factory"])
+    sincronizadas: int = await ctx["sincronizar_erp"]()
+    if sincronizadas:
+        log.info("sincronizacao do ERP: %s loja(s) sincronizada(s)", sincronizadas)
+    return sincronizadas
+
+
 async def encerrar(ctx: dict[str, Any]) -> None:
     engine = ctx.get("engine")
     if engine is not None:
@@ -98,7 +117,16 @@ class WorkerSettings:
             unique=True,
             keep_result=0,
             timeout=300,
-        )
+        ),
+        cron(
+            sincronizar_erp_cron,
+            name="sincronizar_estoque_erp",
+            minute=set(range(0, 60, 5)),
+            run_at_startup=False,
+            unique=True,
+            keep_result=0,
+            timeout=600,
+        ),
     ]
     on_startup = iniciar
     on_shutdown = encerrar

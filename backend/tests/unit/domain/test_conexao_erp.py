@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 
-from app.domain.conexao_erp import PROVEDOR_MERCADOPHONE, ConexaoErp, ConexaoErpInvalida
+from app.domain.conexao_erp import (
+    PROVEDOR_MERCADOPHONE,
+    ConexaoErp,
+    ConexaoErpInvalida,
+    sincronizacao_vencida,
+)
 
 
 def conexao(**campos: object) -> ConexaoErp:
@@ -50,3 +56,27 @@ def test_provedor_desconhecido_e_recusado() -> None:
     with pytest.raises(ConexaoErpInvalida) as exc:
         conexao(provedor="outro")
     assert exc.value.campo == "provedor"
+
+
+AGORA = datetime(2026, 11, 22, 12, 0, tzinfo=UTC)
+
+
+def test_nunca_sincronizada_esta_vencida() -> None:
+    assert sincronizacao_vencida(conexao(ativo=True), AGORA) is True
+
+
+@pytest.mark.parametrize(
+    ("minutos_atras", "vencida"),
+    [(0, False), (3, False), (10, False), (14, True), (15, True), (400, True)],
+)
+def test_vence_quando_passou_o_intervalo_menos_a_tolerancia_do_cron(
+    minutos_atras: int, vencida: bool
+) -> None:
+    c = conexao(intervalo_min=15, ultima_sincronizacao_em=AGORA - timedelta(minutes=minutos_atras))
+    assert sincronizacao_vencida(c, AGORA) is vencida
+
+
+def test_a_tolerancia_absorve_a_deriva_do_cron_de_5_minutos() -> None:
+    # a ultima rodada terminou 14 min 50 s antes: o proximo tick (5 em 5 min) nao pode pular
+    ultima = AGORA - timedelta(minutes=14, seconds=50)
+    assert sincronizacao_vencida(conexao(ultima_sincronizacao_em=ultima), AGORA) is True

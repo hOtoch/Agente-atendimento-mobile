@@ -29,6 +29,8 @@ class MotivoDescarte(StrEnum):
     SEM_CAPACIDADE = "sem_capacidade"
     ESTADO_NAO_INFORMADO = "estado_nao_informado"
     SEM_PRECO = "sem_preco"
+    SKU_DUPLICADO = "sku_duplicado"
+    """O mesmo SKU apareceu mais de uma vez na leitura: vale o primeiro (nao e regra de oferta)."""
 
 
 def motivo_nao_ofertavel(

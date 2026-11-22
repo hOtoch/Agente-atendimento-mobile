@@ -37,3 +37,9 @@ class ConexaoErpSaida(BaseModel):
     ultima_sincronizacao_em: datetime | None
     ultimo_status: str | None
     ultimo_relatorio: dict[str, Any] | None
+
+
+class TesteConexaoErpSaida(BaseModel):
+    ok: bool
+    """True quando a unidade da conexao existe entre as da chave do servidor."""
+    mensagem: str

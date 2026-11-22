@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/toast"
 import { errosPorCampo } from "@/features/onboarding/formulario"
-import type { Cliente } from "@/features/onboarding/grades"
+import { errosDoCorpo, type Cliente } from "@/features/onboarding/grades"
 
 import {
   corpoParaForm,
   formatarData,
+  formatarRelatorio,
   formParaCorpo,
   INTERVALO_MAXIMO,
   INTERVALO_MINIMO,
@@ -25,18 +26,18 @@ import {
   type ConexaoErp,
   type ErrosErp,
   type FormErp,
+  type TesteConexaoErp,
 } from "./erp"
+
+function mensagemDaApi(error: unknown, padrao: string): string {
+  const mensagens = errosDoCorpo(error)?.map((e) => e.mensagem)
+  return mensagens && mensagens.length > 0 ? mensagens.join(" ") : padrao
+}
 
 type CampoTexto = "system_unit_id" | "filtro_loja" | "intervalo_min"
 
-function valorDoRelatorio(valor: unknown): string {
-  return typeof valor === "string" || typeof valor === "number" || typeof valor === "boolean"
-    ? String(valor)
-    : JSON.stringify(valor)
-}
-
 function StatusSincronizacao({ conexao }: { conexao: ConexaoErp }) {
-  const relatorio = Object.entries(conexao.ultimo_relatorio ?? {})
+  const { linhas, erro } = formatarRelatorio(conexao.ultimo_relatorio)
   return (
     <section aria-label="Última sincronização" className="flex flex-col gap-2 rounded-lg border p-3">
       <h3 className="text-sm font-medium">Última sincronização</h3>
@@ -50,12 +51,18 @@ function StatusSincronizacao({ conexao }: { conexao: ConexaoErp }) {
       ) : (
         <p className="text-sm text-muted-foreground">Ainda não sincronizou.</p>
       )}
-      {relatorio.length > 0 ? (
+      {erro ? (
+        <p className="text-sm text-danger">
+          {erro}
+          {conexao.ultimo_status === "erro" ? " O estoque anterior foi mantido." : null}
+        </p>
+      ) : null}
+      {linhas.length > 0 ? (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-          {relatorio.map(([chave, valor]) => (
-            <div key={chave} className="contents">
-              <dt className="text-muted-foreground">{chave}</dt>
-              <dd>{valorDoRelatorio(valor)}</dd>
+          {linhas.map((l) => (
+            <div key={`${l.nivel}-${l.rotulo}`} className="contents">
+              <dt className={l.nivel === 1 ? "pl-4 text-muted-foreground" : "text-muted-foreground"}>{l.rotulo}</dt>
+              <dd className="font-mono">{l.valor}</dd>
             </div>
           ))}
         </dl>
@@ -72,6 +79,10 @@ export function ErpConfig({ cliente, lojaId }: { cliente: Cliente; lojaId: strin
   const [gerais, setGerais] = useState<string[]>([])
   const [falha, setFalha] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [testando, setTestando] = useState(false)
+  const [sincronizando, setSincronizando] = useState(false)
+  const [teste, setTeste] = useState<TesteConexaoErp | null>(null)
+  const [erroAcao, setErroAcao] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -132,6 +143,48 @@ export function ErpConfig({ cliente, lojaId }: { cliente: Cliente; lojaId: strin
       setSalvando(false)
     }
   }
+
+  async function testar() {
+    setTestando(true)
+    setTeste(null)
+    setErroAcao(null)
+    try {
+      const { data, response, error } = await cliente.POST("/lojas/{loja_id}/config/erp/testar", {
+        params: { path: { loja_id: lojaId } },
+      })
+      if (response.ok && data) setTeste(data)
+      else setErroAcao(mensagemDaApi(error, "Não foi possível testar a conexão."))
+    } catch {
+      setErroAcao("Não foi possível testar a conexão. Verifique a rede e tente de novo.")
+    } finally {
+      setTestando(false)
+    }
+  }
+
+  async function sincronizar() {
+    setSincronizando(true)
+    setTeste(null)
+    setErroAcao(null)
+    try {
+      const { data, response, error } = await cliente.POST("/lojas/{loja_id}/config/erp/sincronizar", {
+        params: { path: { loja_id: lojaId } },
+      })
+      if (response.ok && data) {
+        setConexao(data)
+        if (data.ultimo_status === "ok") toast.sucesso("Estoque sincronizado com o ERP.")
+        else toast.erro("A sincronização falhou. O estoque anterior foi mantido.")
+      } else {
+        setErroAcao(mensagemDaApi(error, "Não foi possível sincronizar agora."))
+      }
+    } catch {
+      setErroAcao("Não foi possível sincronizar. Verifique a rede e tente de novo.")
+    } finally {
+      setSincronizando(false)
+    }
+  }
+
+  const acaoEmCurso = testando || sincronizando
+  const semConexaoSalva = conexao !== null && !conexao.configurada
 
   return (
     <Card>
@@ -219,6 +272,42 @@ export function ErpConfig({ cliente, lojaId }: { cliente: Cliente; lojaId: strin
                   setForm((atual) => (atual ? { ...atual, exportar_handoff } : atual))
                 }
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void testar()}
+                  disabled={semConexaoSalva || acaoEmCurso}
+                >
+                  {testando ? "Testando…" : "Testar conexão"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void sincronizar()}
+                  disabled={semConexaoSalva || acaoEmCurso}
+                >
+                  {sincronizando ? "Sincronizando…" : "Sincronizar agora"}
+                </Button>
+              </div>
+              {semConexaoSalva ? (
+                <p className="text-xs text-muted-foreground">
+                  Salve a conexão para poder testar e sincronizar.
+                </p>
+              ) : null}
+              {teste ? (
+                <p
+                  role={teste.ok ? "status" : "alert"}
+                  className={teste.ok ? "text-sm text-success" : "text-sm text-danger"}
+                >
+                  {teste.mensagem}
+                </p>
+              ) : null}
+              {erroAcao ? (
+                <p role="alert" className="text-sm text-danger">
+                  {erroAcao}
+                </p>
+              ) : null}
             </div>
             <StatusSincronizacao conexao={conexao} />
             {gerais.length > 0 ? (

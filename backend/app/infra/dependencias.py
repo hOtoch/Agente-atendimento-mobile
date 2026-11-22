@@ -21,6 +21,7 @@ from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.followup import RepositorioConfigFollowupSql
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
+from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
@@ -28,6 +29,7 @@ from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.conexao_erp import ConfigurarConexaoErp
 from app.application.config.portas import RepositorioLojas
+from app.application.estoque_erp import ErpNaoConfigurado, FonteEstoqueErp, SincronizarEstoqueErp
 from app.application.followup import ConfigurarFollowup
 from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
@@ -46,7 +48,9 @@ from app.infra.composicao import (
     criar_gateway_whatsapp,
     montar_casos_config,
     montar_casos_painel,
+    montar_sincronizar_estoque_erp,
 )
+from app.infra.mercadophone import MercadoPhoneNaoConfigurado, get_cliente_mercadophone
 from app.infra.settings import Settings, get_settings
 
 
@@ -201,3 +205,18 @@ def get_gerador_modelo() -> GeradorModelo:
 
 def get_receber_midia() -> ReceberMidia:
     return ReceberMidia(get_armazenamento_midia(), get_settings().midia_max_bytes)
+
+
+def get_fonte_estoque_erp() -> FonteEstoqueErp:
+    """Fonte de estoque do ERP; sem `MERCADOPHONE_API_KEY` no servidor, fica desligada."""
+    try:
+        return FonteEstoqueMercadoPhone(get_cliente_mercadophone())
+    except MercadoPhoneNaoConfigurado as exc:
+        raise ErpNaoConfigurado(str(exc)) from exc
+
+
+def get_sincronizar_estoque_erp(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    fonte: Annotated[FonteEstoqueErp, Depends(get_fonte_estoque_erp)],
+) -> SincronizarEstoqueErp:
+    return montar_sincronizar_estoque_erp(session, fonte)
