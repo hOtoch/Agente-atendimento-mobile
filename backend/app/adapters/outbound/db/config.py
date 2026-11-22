@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.outbound.db.models import (
@@ -306,6 +306,46 @@ class RepositorioEstoqueLocalSql:
             )
             for i, x in enumerate(linhas)
         )
+        await self._s.flush()
+
+    async def atualizar_linha(
+        self, loja_id: uuid.UUID, sku: str, linha: LinhaEstoqueLocal | None
+    ) -> None:
+        # mesma trava do `substituir`: nao disputa com o cron de sincronizacao da loja
+        await self._s.execute(
+            select(func.pg_advisory_xact_lock(func.hashtextextended(f"estoque_local:{loja_id}", 0)))
+        )
+        filtro = (EstoqueLocalRow.loja_id == loja_id, EstoqueLocalRow.sku == sku)
+        if linha is None:
+            await self._s.execute(delete(EstoqueLocalRow).where(*filtro))
+            await self._s.flush()
+            return
+        valores = {
+            "modelo": linha.modelo.nome,
+            "marca": linha.modelo.marca,
+            "capacidade_gb": int(linha.capacidade),
+            "cor": linha.cor,
+            "condicao": linha.condicao.value,
+            "preco_pix": linha.preco_pix.valor,
+            "quantidade": linha.quantidade,
+            "bateria_pct": linha.bateria_pct,
+            "erp_produto_id": linha.erp_produto_id,
+        }
+        atualizadas = await self._s.execute(
+            update(EstoqueLocalRow)
+            .where(*filtro)
+            .values(**valores)
+            .execution_options(synchronize_session=False)
+        )
+        if atualizadas.rowcount == 0:  # type: ignore[attr-defined]
+            proxima = (
+                await self._s.execute(
+                    select(func.coalesce(func.max(EstoqueLocalRow.posicao), -1) + 1).where(
+                        EstoqueLocalRow.loja_id == loja_id
+                    )
+                )
+            ).scalar_one()
+            self._s.add(EstoqueLocalRow(loja_id=loja_id, posicao=proxima, sku=sku, **valores))
         await self._s.flush()
 
 

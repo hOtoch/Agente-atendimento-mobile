@@ -172,7 +172,7 @@ class McpFalso:
                 }
             return self._pagina(self.marcas, args)
         if nome == "list_inventory":
-            return self._pagina(self.unidades.get(args.get("system_unit_id"), []), args)
+            return self._pagina(self._inventario(args), args)
         if nome == "list_customers":
             return self._listar_clientes(args)
         if nome == "create_customer":
@@ -209,6 +209,18 @@ class McpFalso:
                 return {"success": True}
             case _:
                 return {"id": registro["id"], "success": True}
+
+    def _inventario(self, args: dict[str, Any]) -> list[dict[str, Any]]:
+        """Como o real: `sku` e busca PARCIAL e, so nessa consulta, esconde quantidade <= 0."""
+        todos = self.unidades.get(args.get("system_unit_id"), [])  # type: ignore[arg-type]
+        sku = args.get("sku")
+        if sku is None:
+            return todos
+        return [
+            i
+            for i in todos
+            if str(sku).lower() in str(i.get("sku", "")).lower() and float(i["quantidade"]) > 0
+        ]
 
     @staticmethod
     def _pagina(todos: list[dict[str, Any]], args: dict[str, Any]) -> dict[str, Any]:
