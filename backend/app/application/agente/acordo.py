@@ -13,7 +13,6 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from app.application.agente.estado import EstadoAtendimento, descrever_troca
-from app.application.agente.proposta import FRASE_OBRIGATORIA
 from app.application.config.modelos import PagamentoLoja, PerfilLoja
 from app.domain.ficha import TipoPagamento
 
@@ -139,12 +138,16 @@ def horarios_legiveis(horarios: str | None) -> str | None:
     """
     if not horarios or not horarios.strip():
         return None
-    grupos: list[tuple[list[str], str]] = []
+    itens: list[tuple[str, str]] = []
     for item in horarios.split(";"):
         dia, sep, faixa = item.partition(":")
-        if not sep:
-            continue
-        dia, faixa = dia.strip(), faixa.strip()
+        if sep:
+            itens.append((dia.strip(), faixa.strip()))
+    # o banco pode devolver os dias fora de ordem (jsonb reordena as chaves): ordem da semana
+    fim = len(_ORDEM_DIAS)
+    itens.sort(key=lambda par: _ORDEM_DIAS.index(par[0]) if par[0] in _ORDEM_DIAS else fim)
+    grupos: list[tuple[list[str], str]] = []
+    for dia, faixa in itens:
         anterior = grupos[-1] if grupos else None
         seguido = (
             anterior is not None
@@ -184,32 +187,43 @@ def _valor_na_forma(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
 def _aparelho(acordo: Mapping[str, Any]) -> str:
     ap = acordo["aparelho"]
     texto = f"{ap['modelo']} {ap['condicao']} de {ap['capacidade']}"
-    return f"{texto}, cor {str(ap['cor']).lower()}," if ap.get("cor") else texto
+    return f"{texto}, cor {str(ap['cor']).lower()}" if ap.get("cor") else texto
 
 
-def _linha_troca(acordo: Mapping[str, Any]) -> str | None:
+def _valores(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
+    """Primeiro o que o usado vale na troca, depois o valor final (ja com a troca descontada)."""
     troca = acordo.get("troca") or {}
     usado = troca.get("aparelho_usado")
+    valor = _valor_na_forma(acordo, tipo)
     if troca.get("status") == "avaliada":
-        return f"Já com o seu {usado} na troca ({troca['valor']})."
+        return (
+            f"Seu {usado} na troca: {troca['valor']}\nValor final, já descontada a troca: {valor}"
+        )
     if troca.get("status") == "avaliacao_na_loja":
-        return f"O seu {usado} será avaliado na loja."
-    return None
+        return (
+            f"Seu {usado} será avaliado na loja; o valor abaixo não inclui a troca.\n"
+            f"Valor final: {valor}"
+        )
+    return f"Valor final: {valor}"
+
+
+OBSERVACAO_PRE_AVALIACAO = (
+    "Obs.: esta é uma pré-avaliação; o valor final é confirmado na loja com o aparelho em mãos."
+)
 
 
 def mensagem_fechamento(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
     """A mensagem que vai ao cliente quando o acordo fecha: valor, Pix, endereco e horarios.
 
     Montada pelo codigo (nada de valor ou dado da loja escrito pelo modelo), em paragrafos e com
-    poucos emojis. So usa o que esta no acordo; o que a loja nao cadastrou vira aviso.
+    poucos emojis. So usa o que esta no acordo; o que a loja nao cadastrou vira aviso. A
+    observacao de pre-avaliacao fecha a mensagem.
     """
     informado = acordo["informado"]
-    proposta = [f"Fechado! 🎉 Seu {_aparelho(acordo)} fica por {_valor_na_forma(acordo, tipo)}."]
-    troca = _linha_troca(acordo)
-    if troca:
-        proposta.append(troca)
-    proposta.append(FRASE_OBRIGATORIA[0].upper() + FRASE_OBRIGATORIA[1:] + ".")
-    paragrafos = ["\n".join(proposta)]
+    paragrafos = [
+        f"Fechado! 🎉 Resumo do seu pedido: {_aparelho(acordo)}.",
+        _valores(acordo, tipo),
+    ]
 
     if paga_via_pix(tipo):
         chave = informado["chave_pix"]
@@ -235,6 +249,7 @@ def mensagem_fechamento(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
     paragrafos.append(
         "Obrigado pela preferência! Um vendedor vai continuar o atendimento com você na loja."
     )
+    paragrafos.append(OBSERVACAO_PRE_AVALIACAO)
     return "\n\n".join(paragrafos)
 
 

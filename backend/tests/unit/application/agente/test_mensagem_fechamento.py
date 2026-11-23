@@ -13,6 +13,7 @@ HORARIOS = (
     "sex: 09:00-18:00; sab: 09:00-14:00"
 )
 PIX = {"tipo": "email", "chave": "pix@lojademo.exemplo", "favorecido": "Loja Demo Celulares"}
+OBS = "Obs.: esta é uma pré-avaliação; o valor final é confirmado na loja com o aparelho em mãos."
 
 
 def _acordo(
@@ -49,8 +50,9 @@ def _emojis(texto: str) -> int:
 def test_pix_sem_troca_em_paragrafos_com_poucos_emojis() -> None:
     texto = mensagem_fechamento(_acordo(), TipoPagamento.PIX)
     assert texto == (
-        "Fechado! 🎉 Seu iPhone 15 novo de 256GB, cor rosa, fica por R$ 3.100,00 à vista no Pix.\n"
-        "Pré-avaliação, valor final confirmado na loja com o aparelho em mãos.\n"
+        "Fechado! 🎉 Resumo do seu pedido: iPhone 15 novo de 256GB, cor rosa.\n"
+        "\n"
+        "Valor final: R$ 3.100,00 à vista no Pix\n"
         "\n"
         "Para pagar no Pix:\n"
         "Chave: pix@lojademo.exemplo\n"
@@ -59,10 +61,31 @@ def test_pix_sem_troca_em_paragrafos_com_poucos_emojis() -> None:
         f"📍 {ENDERECO}\n"
         "🕘 Segunda a sexta, das 9h às 18h; sábado, das 9h às 14h\n"
         "\n"
-        "Obrigado pela preferência! Um vendedor vai continuar o atendimento com você na loja."
+        "Obrigado pela preferência! Um vendedor vai continuar o atendimento com você na loja.\n"
+        "\n"
+        f"{OBS}"
     )
     assert _emojis(texto) <= 3
     assert "?" not in texto  # nada de pergunta no fechamento
+
+
+def test_com_troca_mostra_primeiro_o_usado_e_depois_o_valor_final_descontado() -> None:
+    texto = mensagem_fechamento(
+        _acordo(
+            forma={"rotulo": "Pix ou dinheiro à vista", "valor_a_vista": "R$ 1.350,00"},
+            troca={
+                "status": "avaliada",
+                "valor": "R$ 2.950,00",
+                "aparelho_usado": "iPhone 15 256GB",
+            },
+        ),
+        TipoPagamento.PIX,
+    )
+    assert (
+        "\n\nSeu iPhone 15 256GB na troca: R$ 2.950,00\n"
+        "Valor final, já descontada a troca: R$ 1.350,00 à vista no Pix\n\n"
+    ) in texto
+    assert texto.endswith(OBS)
 
 
 def test_credito_com_troca_avaliada_diz_parcelas_e_o_usado() -> None:
@@ -86,9 +109,11 @@ def test_credito_com_troca_avaliada_diz_parcelas_e_o_usado() -> None:
         ),
         TipoPagamento.CREDITO,
     )
-    primeira = texto.split("\n")[0]
-    assert "12x de R$ 250,00 no cartão Mastercard (total R$ 3.000,00)" in primeira
-    assert "Já com o seu iPhone 13 128GB na troca (R$ 900,00)." in texto
+    assert (
+        "Seu iPhone 13 128GB na troca: R$ 900,00\n"
+        "Valor final, já descontada a troca: 12x de R$ 250,00 no cartão Mastercard "
+        "(total R$ 3.000,00)"
+    ) in texto
     assert "Pix" not in texto
 
 
@@ -131,15 +156,18 @@ def test_debito() -> None:
         ),
         TipoPagamento.DEBITO,
     )
-    assert "fica por R$ 3.150,00 no débito Visa." in texto
+    assert "Valor final: R$ 3.150,00 no débito Visa\n" in texto
 
 
-def test_troca_avaliada_na_loja_avisa_sem_valor() -> None:
+def test_troca_avaliada_na_loja_avisa_que_o_valor_nao_inclui_a_troca() -> None:
     texto = mensagem_fechamento(
         _acordo(troca={"status": "avaliacao_na_loja", "aparelho_usado": "Galaxy S21"}),
         TipoPagamento.PIX,
     )
-    assert "O seu Galaxy S21 será avaliado na loja." in texto
+    assert (
+        "Seu Galaxy S21 será avaliado na loja; o valor abaixo não inclui a troca.\n"
+        "Valor final: R$ 3.100,00 à vista no Pix"
+    ) in texto
 
 
 def test_sem_chave_sem_endereco_e_sem_horario_nao_inventa() -> None:
@@ -156,6 +184,17 @@ def test_horarios_legiveis_agrupa_dias_seguidos_e_respeita_o_que_nao_entende() -
     )
     assert horarios_legiveis("sab: 9 às 13") == "Sábado, 9 às 13"
     assert horarios_legiveis("") is None and horarios_legiveis(None) is None
+
+
+def test_horarios_fora_de_ordem_saem_na_ordem_da_semana() -> None:
+    """O banco devolve os dias fora de ordem (o jsonb reordena as chaves)."""
+    fora_de_ordem = (
+        "qua: 09:00-18:00; qui: 09:00-18:00; sab: 09:00-14:00; seg: 09:00-18:00; "
+        "sex: 09:00-18:00; ter: 09:00-18:00"
+    )
+    assert horarios_legiveis(fora_de_ordem) == (
+        "Segunda a sexta, das 9h às 18h; sábado, das 9h às 14h"
+    )
 
 
 def test_conteudo_para_ia_traz_a_mensagem_pronta_para_o_cliente() -> None:
