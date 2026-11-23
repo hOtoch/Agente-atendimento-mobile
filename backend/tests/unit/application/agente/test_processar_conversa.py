@@ -153,6 +153,13 @@ async def test_preco_antecipado_e_bloqueado_e_nenhum_valor_sai_pelo_canal() -> N
     assert len(c.canal.enviadas) == 1
 
 
+async def test_resposta_repetida_pelo_modelo_sai_uma_vez_so() -> None:
+    frase = "Você não vai dar aparelho usado na troca. Quando pretende fazer a compra?"
+    c = await criar_cenario([texto(f"{frase}\n{frase}")])
+    await c.turno("nao")
+    assert c.canal.textos == [frase]
+
+
 async def test_dono_vendedor_ia_nao_responde_e_marca_como_consumidas() -> None:
     c = await criar_cenario([texto("nao deveria")], dono="vendedor")
     await c.turno("oi")

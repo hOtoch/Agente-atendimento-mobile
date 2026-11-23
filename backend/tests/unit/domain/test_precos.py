@@ -20,6 +20,9 @@ def test_tabela_tem_os_modelos_da_openai_sem_custo_de_escrita_de_cache() -> None
     assert PRECOS["gpt-4o-mini"] == Preco(
         Decimal("0.15"), Decimal("0.60"), Decimal("0.075"), Decimal(0)
     )
+    assert PRECOS["gpt-5.4-mini"] == Preco(
+        Decimal("0.75"), Decimal("4.50"), Decimal("0.075"), Decimal(0)
+    )
 
 
 def test_custo_soma_as_quatro_parcelas() -> None:
