@@ -30,7 +30,7 @@ from app.application.agente.ferramentas import CatalogoFerramentas
 from app.application.agente.imagem import anexar_imagens
 from app.application.agente.prompt import marcas_do_estoque, mensagem_estado, montar_sistema
 from app.application.agente.repositorio import RepositorioAtendimento
-from app.application.agente.texto_resposta import sem_repeticao
+from app.application.agente.texto_resposta import sem_repeticao, uma_pergunta
 from app.application.agente.transcricao import CursorEntrada, RepositorioTranscricao
 from app.application.audio_entrada import FalhaTranscricao, TranscreverAudio
 from app.application.audio_saida import ResponderEmAudio, deve_responder_em_audio
@@ -273,7 +273,9 @@ class _Turno:
             self._uso = self._uso + resposta.uso
             if not resposta.chamadas:
                 pronta = self._mensagem_pronta
-                final = pronta or sem_repeticao(resposta.texto.strip()) or MENSAGEM_LIMITE
+                final = (
+                    pronta or uma_pergunta(sem_repeticao(resposta.texto.strip())) or MENSAGEM_LIMITE
+                )
                 if await self._descartar_se_chegou_mensagem(ate, final):
                     await self._registrar_uso()
                     return

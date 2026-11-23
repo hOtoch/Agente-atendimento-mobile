@@ -1007,3 +1007,14 @@ async def test_chamar_vendedor_repetido_mantem_o_primeiro_motivo() -> None:
         ("chamar_vendedor", {"motivo": "segundo"}),
     )
     assert estado.motivo_handoff == "primeiro"
+
+
+async def test_registrar_interesse_que_manda_consultar_o_estoque_nao_sugere_pergunta() -> None:
+    """A pergunta vem do consultar_estoque; duas fontes fazem o modelo perguntar duas vezes."""
+    amb = await criar_ambiente()
+    r = await amb.rodar(
+        "registrar_interesse", {"modelo": "iPhone 16", "capacidade": None, "cor": None}, VAZIO
+    )
+    assert "consultar_estoque" in r.conteudo["proximo_passo"]
+    assert "proxima_pergunta" not in r.conteudo
+    assert r.conteudo["faltam"]  # as pendencias continuam

@@ -160,6 +160,13 @@ async def test_resposta_repetida_pelo_modelo_sai_uma_vez_so() -> None:
     assert c.canal.textos == [frase]
 
 
+async def test_pergunta_reescrita_pelo_modelo_vai_ao_cliente_uma_vez_so() -> None:
+    primeira = "Temos 128GB, 256GB e 512GB. Qual dessas capacidades você prefere?"
+    c = await criar_cenario([texto(f"{primeira}\nQual capacidade você prefere: 128GB ou 256GB?")])
+    await c.turno("quero um iphone 15 pro")
+    assert c.canal.textos == [primeira]
+
+
 async def test_dono_vendedor_ia_nao_responde_e_marca_como_consumidas() -> None:
     c = await criar_cenario([texto("nao deveria")], dono="vendedor")
     await c.turno("oi")

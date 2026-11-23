@@ -38,3 +38,20 @@ def sem_repeticao(texto: str) -> str:
     limpo = "\n".join(linhas).strip()
     unica = _metade_repetida(limpo)
     return limpo if unica is None else unica
+
+
+def uma_pergunta(texto: str) -> str:
+    """Uma pergunta por mensagem: depois da primeira linha com pergunta, linhas com `?` saem.
+
+    O modelo as vezes reescreve a mesma pergunta numa segunda linha (ou emenda outra pergunta).
+    O que vem antes da primeira pergunta e as linhas sem pergunta depois dela ficam.
+    """
+    linhas = texto.split("\n")
+    primeira = next((i for i, linha in enumerate(linhas) if "?" in linha), None)
+    if primeira is None:
+        return texto
+    resto = [linha for linha in linhas[primeira + 1 :] if "?" not in linha]
+    if len(resto) == len(linhas) - primeira - 1:
+        return texto
+    limpo = "\n".join([*linhas[: primeira + 1], *resto])
+    return re.sub(r"\n{3,}", "\n\n", limpo).strip()

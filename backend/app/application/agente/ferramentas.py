@@ -347,6 +347,8 @@ async def _registrar_interesse(
     conteudo: dict[str, Any] = {"status": "ok", **_situacao(ficha)}
     if novo.ficha.interesse.sku_estoque_confirmado is None:
         conteudo["proximo_passo"] = "Chame consultar_estoque para ver as opções disponíveis."
+        # a pergunta ao cliente vem do consultar_estoque: duas fontes = pergunta duplicada
+        conteudo.pop("proxima_pergunta", None)
     return _Saida(conteudo, novo)
 
 
