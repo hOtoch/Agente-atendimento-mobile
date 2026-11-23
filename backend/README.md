@@ -152,3 +152,15 @@ provisoria, imprime uma vez e encerra as sessoes abertas do usuario. Nenhuma sen
 O seed (`uv run python -m app.infra.seed`) cria o login `demo@atendimento.local` com a senha de
 `SEED_SENHA_DEMO` (valor de dev no `.env.example`); sem a variavel ele pula o usuario e avisa.
 Idempotente: se o usuario ja existe, nao recria nem troca a senha.
+
+Para entrar no painel no dev: e-mail `demo@atendimento.local` e a senha de `SEED_SENHA_DEMO`.
+Sessao: cookie `sessao` (HttpOnly, SameSite=Lax) guardada no Redis, validade `SESSAO_TTL_HORAS`
+(renovada a cada uso); `COOKIE_SECURE=true` em producao (HTTPS). Login errado repetido e limitado
+(`LOGIN_MAX_FALHAS_EMAIL`, `LOGIN_MAX_FALHAS_IP`, `LOGIN_JANELA_MIN`; resposta 429 com
+`Retry-After`); atras de proxy, `CONFIAR_PROXY=true` usa o ultimo IP do `X-Forwarded-For`.
+
+Rotas: publicas `/auth/login`, `/webchat/{loja}/...`, webhooks, `/health` e midias; todas as
+`/lojas/{loja_id}/...` exigem a sessao da propria loja (401 sem sessao, 403 de outra loja).
+`backend/tests/integration/test_isolamento_lojas.py` cobre o isolamento ponta a ponta com duas
+lojas criadas pelo mesmo caso de uso do `criar_loja` (leads, config, metricas, SSE e webchat).
+No dev, `CORS_ORIGINS` deve conter `http://localhost:3000` (cookies com credenciais).
