@@ -13,6 +13,15 @@ def test_tabela_oficial_do_projeto() -> None:
     assert haiku == Preco(Decimal("0.10"), Decimal("0.50"), Decimal("0.01"), Decimal("0.125"))
 
 
+def test_tabela_tem_os_modelos_da_openai_sem_custo_de_escrita_de_cache() -> None:
+    assert PRECOS["gpt-4.1-mini"] == Preco(
+        Decimal("0.40"), Decimal("1.60"), Decimal("0.10"), Decimal(0)
+    )
+    assert PRECOS["gpt-4o-mini"] == Preco(
+        Decimal("0.15"), Decimal("0.60"), Decimal("0.075"), Decimal(0)
+    )
+
+
 def test_custo_soma_as_quatro_parcelas() -> None:
     # 2,00 + 1,00 + 0,20 + 1,00
     custo = custo_usd("claude-sonnet-5-5", 1_000_000, 100_000, 2_000_000, 400_000)

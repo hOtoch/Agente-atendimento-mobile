@@ -33,7 +33,7 @@ from app.infra.settings import get_settings  # noqa: E402
 from evals.ambiente import montar_ambiente  # noqa: E402
 
 MENSAGEM_SEM_CHAVE = (
-    "ANTHROPIC_API_KEY nao configurada. Defina a chave no .env (raiz do repo) ou no ambiente "
+    "{variavel} nao configurada. Defina a chave no .env (raiz do repo) ou no ambiente "
     "para conversar com o agente real, ou use --fake para testar o fio com um LLM eco.\n"
     "Aviso: o LLM real e pago."
 )
@@ -92,8 +92,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     settings = get_settings()
     if args.fake:
         llm: LLMPort = EcoLLM()
-    elif not settings.anthropic_api_key:
-        print(MENSAGEM_SEM_CHAVE, file=sys.stderr)
+    elif settings.llm_provider == "openai" and not settings.openai_api_key:
+        print(MENSAGEM_SEM_CHAVE.format(variavel="OPENAI_API_KEY"), file=sys.stderr)
+        return 2
+    elif settings.llm_provider == "anthropic" and not settings.anthropic_api_key:
+        print(MENSAGEM_SEM_CHAVE.format(variavel="ANTHROPIC_API_KEY"), file=sys.stderr)
         return 2
     else:
         llm = criar_llm(settings)

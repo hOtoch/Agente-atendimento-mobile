@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,6 +22,8 @@ class Settings(BaseSettings):
     """Quantas respostas seguidas de uma conversa podem ser descartadas porque o cliente escreveu
     durante a geracao; passado o limite a resposta sai mesmo assim."""
     fila_trava_ttl_s: float = 120.0  # a trava de conversa expira se o worker morrer
+    llm_provider: Literal["anthropic", "openai"] = "anthropic"
+    """Quem atende a conversa. `openai` usa `OPENAI_API_KEY` e modelos `gpt-*` em `LLM_MODEL`."""
     llm_model: str = "claude-sonnet-5-5"
     llm_fallback_model: str = "claude-haiku-5-5"
     llm_effort: str = "low"

@@ -147,7 +147,7 @@ Conflitos esperados ao integrar issues paralelas: `pyproject.toml`/`uv.lock` qua
 - **Erros de domínio**: exceções/resultados tipados (ex.: `AvaliacaoNaLoja(motivo)`), nunca strings mágicas.
 - **Config da loja** é lida a cada turno da conversa (mudança no painel vale na próxima mensagem).
 - **Testes**: `tests/unit` (domínio/aplicação, sem IO), `tests/integration` (Postgres/Redis, marcados `@pytest.mark.integration`, banco isolado por execução), `tests/contract` (mesma suíte para todos os adaptadores de uma porta). Frontend: testes de componente com Testing Library, por comportamento.
-- **LLM**: Anthropic SDK oficial. Modelo por env (`LLM_MODEL`, `LLM_FALLBACK_MODEL`). Prompt caching no prefixo estável (tools + system). Sem prefill. Thinking/effort baixos para chat.
+- **LLM**: provedor por env (`LLM_PROVIDER=anthropic|openai`), modelo por env (`LLM_MODEL`, `LLM_FALLBACK_MODEL`). Anthropic pelo SDK oficial; OpenAI pela Chat Completions via `httpx` (sem SDK). Todo provedor novo é um adaptador do `LLMPort` com testes de HTTP simulado. Prompt caching no prefixo estável (tools + system). Sem prefill. Thinking/effort baixos para chat.
 - **Segredos** só em `.env` (nunca commitado); `.env.example` sempre atualizado.
 
 ## 7. Ao final de cada milestone
