@@ -117,11 +117,13 @@ Não altere código. Responda com o veredito e o resumo.
 | Custo por conversa | `cd backend && uv run python scripts/custos.py --relatorios evals/relatorios/2026-11-21-real-claude-*.json --saida ../docs/custos.md` (ou `--banco` para as conversas reais) |
 | Teste de carga (k6, sem custo) | `bash infra/k6/rodar_carga.sh` (pilha isolada; `WORKERS=2`, `RATE_POR_MIN`, `DURACAO_S`; ver `infra/k6/README.md`) |
 | Smoke do Mercado Phone (só leitura, chave no `.env`) | `cd backend && uv run python scripts/mercadophone_smoke.py [--unidade N] [--filtro-loja "Loja A"]... [--conferir N]` (sem chave: exit 2; ver `docs/mercadophone.md`) |
-| Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo) |
+| Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo; com `SEED_SENHA_DEMO` no `.env` cria o login `demo@atendimento.local`) |
+| Criar loja + login | `cd backend && uv run python scripts/criar_loja.py --nome "Loja X" --email dono@loja.com` (imprime a senha provisória uma vez; não há cadastro público) |
+| Redefinir senha | `cd backend && uv run python scripts/redefinir_senha.py --email dono@loja.com` (nova senha provisória e derruba as sessões) |
 | Dados de demonstração do painel de desempenho | `cd backend && uv run python scripts/popular_metricas_demo.py --loja <uuid> --dias 30 [--seed N]` (`--remover` apaga só o que ele criou; recusa o banco de teste; ver `docs/desempenho.md`) |
 | Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
-| Subir painel | `cd frontend && npm run dev` (http://localhost:3000; API em `NEXT_PUBLIC_API_URL`) |
+| Subir painel | `cd frontend && npm run dev` (http://localhost:3000; API em `NEXT_PUBLIC_API_URL`; exige login — `CORS_ORIGINS` precisa da origem do painel) |
 | Exportar OpenAPI + gerar cliente TS | `cd backend && uv run python scripts/exportar_openapi.py && cd ../frontend && npm run gerar:api` (o teste `test_openapi.py` quebra se ficar defasado) |
 | Backend — deps | `cd backend && uv sync` |
 | Backend — testes rápidos | `cd backend && uv run pytest -m "not integration"` |
@@ -147,6 +149,7 @@ Conflitos esperados ao integrar issues paralelas: `pyproject.toml`/`uv.lock` qua
 - **Dinheiro**: sempre `Decimal` em centavos/2 casas, arredondamento `ROUND_HALF_UP`; nunca `float`.
 - **Erros de domínio**: exceções/resultados tipados (ex.: `AvaliacaoNaLoja(motivo)`), nunca strings mágicas.
 - **Config da loja** é lida a cada turno da conversa (mudança no painel vale na próxima mensagem).
+- **Autorização**: router novo com `/lojas/{loja_id}` declara `dependencies=[Depends(loja_autorizada)]` no `APIRouter` (o teste de varredura `tests/unit/test_rotas_protegidas.py` quebra se uma rota de loja ficar aberta). Nos testes, a fixture autouse libera `loja_autorizada`; quem testa a autorização de verdade marca `autenticacao_real`.
 - **Testes**: `tests/unit` (domínio/aplicação, sem IO), `tests/integration` (Postgres/Redis, marcados `@pytest.mark.integration`, banco isolado por execução), `tests/contract` (mesma suíte para todos os adaptadores de uma porta). Frontend: testes de componente com Testing Library, por comportamento.
 - **LLM**: provedor por env (`LLM_PROVIDER=anthropic|openai`), modelo por env (`LLM_MODEL`, `LLM_FALLBACK_MODEL`). Anthropic pelo SDK oficial; OpenAI pela Chat Completions via `httpx` (sem SDK). Todo provedor novo é um adaptador do `LLMPort` com testes de HTTP simulado. Prompt caching no prefixo estável (tools + system). Sem prefill. Thinking/effort baixos para chat.
 - **Segredos** só em `.env` (nunca commitado); `.env.example` sempre atualizado.

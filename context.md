@@ -233,7 +233,7 @@ Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa,
 | M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | 2026-11-22 | ✅ concluído (PR #65) |
 | M9 | Fechamento pela IA | `milestone/m9-fechamento-pela-ia` | 2026-11-22 | ✅ concluído (PR #75) |
 | M10 | Painel de desempenho da IA | `milestone/m10-painel-desempenho` | 2026-11-23 | ✅ concluído (PR do M10) |
-| M11 | Login e isolamento por loja | `milestone/m11-login` | — | 🔜 planejado (#83–#88) |
+| M11 | Login e isolamento por loja | `milestone/m11-login` | 2026-11-23 | ✅ concluído (PR do M11) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -342,6 +342,9 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-23 | Condição desejada (novo/seminovo) na ficha; `registrar_interesse` e `consultar_estoque` aceitam `condicao`, a consulta filtra por ela e lembra nas próximas; novos iguais (mesma capacidade e cor) são confirmados sem perguntar | Cliente pediu novo várias vezes e a IA seguiu oferecendo seminovo |
 | 2026-11-23 | Depois de `calcular_proposta` (pagamento já escolhido) a IA fecha o acordo na hora: valor na forma escolhida + endereço/horários/Pix, sem oferecer desconto nem alternativas (`proximo_passo` da ferramenta, fora da `ultima_proposta`) | A IA perguntava se o cliente queria desconto em vez de enviar o endereço |
 | 2026-11-23 | Login (M11): um login por loja, criado por script (sem cadastro público); sessão em cookie `httpOnly` com token opaco no Redis (revogável); argon2id; toda rota `/lojas/{id}` exige a sessão da própria loja; `/webchat`, webhooks e `/midias` seguem públicos; na VPS painel e API no mesmo domínio (Caddy, `/api`) | Pré-requisito para subir numa VPS pública: hoje qualquer um lê e altera qualquer loja |
+| 2026-11-23 | `HasherSenha` é async e o argon2 roda em thread (`anyio.to_thread`); o hash falso do e-mail inexistente é gerado uma vez por tipo de hasher | Argon2 no event loop congelava a API e o SSE a cada login; recriar o hash falso por request deixava o e-mail inexistente 2x mais lento (revelava que não existe) |
+| 2026-11-23 | Limite de login: 5 falhas/15 min por e-mail ou 20 por IP; atrás do Caddy (`CONFIAR_PROXY=true`) vale o **último** IP do `X-Forwarded-For` | O primeiro valor do header é forjável pelo cliente |
+| 2026-11-23 | Testes de rota não logam: fixture autouse libera `loja_autorizada`; a autorização real é coberta pela varredura de rotas (401/403 em toda rota `/lojas/{id}`) e pelos testes `autenticacao_real` | Evita reescrever centenas de testes existentes sem perder a garantia de que nenhuma rota de loja fica aberta |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -493,6 +496,14 @@ _Atualizado ao final de cada milestone._
   - Testes: backend 2166, frontend 394, eval fake 7/7.
   - Pontos de atenção: shell do painel não colapsa a sidebar em telas estreitas (rolagem horizontal em 375 px); itens inativos da sidebar quase invisíveis no tema escuro (`--sidebar-foreground` não redeclarado no `.dark`); latência só existe para conversas depois do M10.
   - Próximo: testar a memória da máquina; corrigir o shell responsivo e o tema escuro da sidebar.
+- **2026-11-23 — M11 Login e isolamento por loja concluído** (#83–#88), pré-requisito para subir numa VPS.
+  - #83 usuários (migration 0009), argon2id, sessão em cookie `httpOnly` com token opaco no Redis, `/auth/login|logout|eu|senha`; #84 toda rota `/lojas/{id}` exige a sessão da própria loja (401/403), `POST /lojas` removido, CORS com credenciais, teste de varredura das rotas; #85 limite de tentativas (429 + `Retry-After`); #86 `scripts/criar_loja.py`, `scripts/redefinir_senha.py` e login da loja demo no seed (`SEED_SENHA_DEMO`); #87 painel com `/login`, `/conta/senha`, guarda de sessão, loja vinda de `/auth/eu` (saiu `NEXT_PUBLIC_LOJA_ID`), Sair; #88 docs, `docs/deploy-vps.md` e teste de isolamento entre duas lojas.
+  - Correções do orquestrador: argon2 fora do event loop e hash falso único (no commit da #83); barra lateral sticky para o Sair ficar visível em páginas longas (fix da #87). Antes do M11, no `main`: SSE com `Cache-Control: no-transform` (proxy com gzip segurava o stream).
+  - Verificado no navegador (dev): redirecionamento para `/login?volta=`, erro genérico, login, kanban em tempo real com cookie (SSE), Sair (sessão morre no servidor), `/chat/{loja}` público. Banco de dev migrado para 0009 e login demo criado.
+  - Testes: backend 2429, frontend 434, eval fake 7/7.
+  - Fora do escopo: recuperação de senha por e-mail, vários usuários por loja (o schema aceita), cadastro público. O seletor "Atendendo como" do inbox continua.
+  - Pontos de atenção: `sessao_atual` não consulta o banco (desativar usuário só derruba o acesso quando a sessão expira, salvo `redefinir_senha.py`); aviso de dev do Next 16 ("instant navigation") em `/kanban`, sem efeito no build; guia de VPS não foi executado numa VPS real.
+  - Próximo: subir na VPS seguindo `docs/deploy-vps.md`.
 
 ---
 
@@ -502,8 +513,8 @@ _Atualizado ao final de cada milestone._
 2. `git clone https://github.com/hOtoch/Agente-atendimento-mobile.git && cd Agente-atendimento-mobile`
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
-5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (2166 testes) e `cd ../frontend && npm ci && npm test -- --run` (394 testes).
+5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed` (com `SEED_SENHA_DEMO` no `.env` o seed cria o login `demo@atendimento.local`).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (2429 testes) e `cd ../frontend && npm ci && npm test -- --run` (434 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Todos os milestones (M0–M10) estão concluídos; para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Todos os milestones (M0–M11) estão concluídos; o painel exige login (loja nova: `scripts/criar_loja.py`; deploy: `docs/deploy-vps.md`); para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
