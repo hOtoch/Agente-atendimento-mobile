@@ -17,6 +17,7 @@ from app.application.canal import Canal, MensagemSaida, TipoMensagem
 from app.infra.dependencias import get_agendar, get_barramento, get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -65,8 +66,7 @@ async def amb(db_url: str) -> AsyncIterator[Ambiente]:
 
 
 async def _loja(c: httpx.AsyncClient) -> str:
-    r = await c.post("/lojas", json={"nome": "Loja Web"})
-    return str(r.json()["id"])
+    return await criar_loja_no_banco("Loja Web")
 
 
 async def _sessao_web(c: httpx.AsyncClient, loja: str) -> str:

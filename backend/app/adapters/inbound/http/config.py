@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.inbound.http import schemas_config as s
@@ -38,9 +38,9 @@ from app.domain.pagamento import (
 )
 from app.domain.troca import SEM, DescontoTroca, LinhaTroca, TabelaTroca
 from app.domain.valores import Dinheiro
-from app.infra.dependencias import get_casos_config, get_session
+from app.infra.dependencias import get_casos_config, get_session, loja_autorizada
 
-router = APIRouter(tags=["config"])
+router = APIRouter(tags=["config"], dependencies=[Depends(loja_autorizada)])
 
 Casos = Annotated[CasosDeUsoConfig, Depends(get_casos_config)]
 Sessao = Annotated[AsyncSession, Depends(get_session)]
@@ -200,13 +200,6 @@ def _vendedores_out(vendedores: list[VendedorLoja]) -> s.VendedoresSchema:
 
 
 # --- rotas ------------------------------------------------------------------------------------
-
-
-@router.post("/lojas", status_code=status.HTTP_201_CREATED, response_model=s.LojaOut)
-async def criar_loja(corpo: s.LojaIn, casos: Casos, sessao: Sessao) -> s.LojaOut:
-    loja_id = await casos.criar_loja(corpo.nome)
-    await sessao.commit()
-    return s.LojaOut(id=loja_id, nome=corpo.nome.strip())
 
 
 @router.get("/lojas/{loja_id}/config/perfil", response_model=s.PerfilSchema | None)

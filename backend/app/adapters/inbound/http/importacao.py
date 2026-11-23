@@ -16,9 +16,12 @@ from app.application.importacao.importar import (
     TipoImportacao,
 )
 from app.application.importacao.portas import GeradorModelo
-from app.infra.dependencias import get_gerador_modelo, get_importador
+from app.infra.dependencias import get_gerador_modelo, get_importador, loja_autorizada
 
 router = APIRouter(tags=["importacao"])
+"""Publico: o modelo de planilha em branco."""
+router_loja = APIRouter(tags=["importacao"], dependencies=[Depends(loja_autorizada)])
+"""Importacao em nome de uma loja: exige a sessao dela."""
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 TAMANHO_MAXIMO = 10 * 1024 * 1024
@@ -46,7 +49,7 @@ def _schema(r: RelatorioImportacao) -> RelatorioSchema:
     )
 
 
-@router.post(
+@router_loja.post(
     "/lojas/{loja_id}/importar/{tipo}",
     response_model=RelatorioSchema,
     responses={422: {"model": RelatorioSchema}},

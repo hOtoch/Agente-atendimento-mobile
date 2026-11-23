@@ -15,9 +15,16 @@ from app.application.canal import BarramentoMensagens
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.config.portas import RepositorioLojas
 from app.application.painel.casos_de_uso import CasosPainel
-from app.infra.dependencias import get_barramento, get_casos_painel, get_lojas
+from app.infra.dependencias import (
+    get_barramento,
+    get_casos_painel,
+    get_lojas,
+    loja_autorizada,
+)
 
-router = APIRouter(prefix="/lojas/{loja_id}", tags=["painel"])
+router = APIRouter(
+    prefix="/lojas/{loja_id}", tags=["painel"], dependencies=[Depends(loja_autorizada)]
+)
 
 Casos = Annotated[CasosPainel, Depends(get_casos_painel)]
 Lojas = Annotated[RepositorioLojas, Depends(get_lojas)]

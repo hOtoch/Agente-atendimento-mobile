@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, Query
 
 from app.adapters.inbound.http.schemas_metricas import MetricasSchema, metricas_para_schema
 from app.application.metricas import MetricasAgente
-from app.infra.dependencias import get_metricas_agente
+from app.infra.dependencias import get_metricas_agente, loja_autorizada
 
-router = APIRouter(tags=["metricas"])
+router = APIRouter(tags=["metricas"], dependencies=[Depends(loja_autorizada)])
 
 Casos = Annotated[MetricasAgente, Depends(get_metricas_agente)]
 

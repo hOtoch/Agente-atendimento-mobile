@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.infra.dependencias import get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -37,9 +38,7 @@ async def client(db_url: str) -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def criar_loja(client: httpx.AsyncClient) -> str:
-    r = await client.post("/lojas", json={"nome": "Loja API"})
-    assert r.status_code == 201
-    return str(r.json()["id"])
+    return await criar_loja_no_banco("Loja API")
 
 
 PRECO: dict[str, Any] = {
@@ -71,12 +70,6 @@ LINHA_TROCA: dict[str, Any] = {
     "desconto_bateria_sem": False,
     "limite_bateria_pct": 80,
 }
-
-
-async def test_criar_loja_valida_nome(client: httpx.AsyncClient) -> None:
-    r = await client.post("/lojas", json={"nome": " "})
-    assert r.status_code == 422
-    assert r.json()["erros"][0]["caminho"] == "nome"
 
 
 async def test_loja_inexistente_404(client: httpx.AsyncClient) -> None:

@@ -12,8 +12,23 @@ from fastapi.openapi.utils import get_openapi
 from pydantic import TypeAdapter
 
 from app.adapters.inbound.http.schemas_painel import EventoPainelSchema
+from app.infra.dependencias import COOKIE_SESSAO
 
 _REF = "#/components/schemas/{model}"
+
+
+def _declarar_sessao(esquema: dict[str, Any]) -> None:
+    """Cookie de sessao como security scheme; as rotas `/lojas/{loja_id}/...` o exigem."""
+    esquema["components"].setdefault("securitySchemes", {})["sessao"] = {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": COOKIE_SESSAO,
+    }
+    for caminho, operacoes in esquema["paths"].items():
+        if not caminho.startswith("/lojas/{loja_id}"):
+            continue
+        for operacao in operacoes.values():
+            operacao["security"] = [{"sessao": []}]
 
 
 def gerar_openapi(app: FastAPI) -> dict[str, Any]:
@@ -26,6 +41,7 @@ def gerar_openapi(app: FastAPI) -> dict[str, Any]:
     componentes = esquema.setdefault("components", {}).setdefault("schemas", {})
     componentes.update(evento.pop("$defs", {}))
     componentes["EventoPainel"] = evento
+    _declarar_sessao(esquema)
     app.openapi_schema = esquema
     return esquema
 

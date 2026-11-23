@@ -24,12 +24,16 @@ from app.infra.dependencias import (
     get_lojas,
     get_processar_whatsapp,
     get_whatsapp_gateway,
+    loja_autorizada,
 )
 from app.infra.settings import Settings, get_settings
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["whatsapp"])
+"""Webhooks (token proprio)."""
+router_loja = APIRouter(tags=["whatsapp"], dependencies=[Depends(loja_autorizada)])
+"""Conectar/status do numero da loja: exige a sessao dela."""
 
 
 class StatusWhatsAppSchema(BaseModel):
@@ -51,7 +55,7 @@ async def _exigir_loja(lojas: RepositorioLojas, loja_id: UUID) -> None:
         raise LojaNaoEncontrada(loja_id)
 
 
-@router.get(
+@router_loja.get(
     "/lojas/{loja_id}/whatsapp/status",
     response_model=StatusWhatsAppSchema,
     summary="Estado da conexao do WhatsApp da loja",
@@ -69,7 +73,7 @@ async def status_whatsapp(
     return StatusWhatsAppSchema(status=await gateway.status_conexao(loja_id))
 
 
-@router.post(
+@router_loja.post(
     "/lojas/{loja_id}/whatsapp/conectar",
     response_model=ConexaoWhatsAppSchema,
     summary="Cria a instancia (se preciso) e devolve o QR para conectar o numero",

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.infra.dependencias import get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 from tests.unit.importacao.planilhas import estoque_xlsx, troca_xlsx
 
 pytestmark = pytest.mark.integration
@@ -40,8 +41,7 @@ async def client(db_url: str) -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def _loja(client: httpx.AsyncClient) -> str:
-    r = await client.post("/lojas", json={"nome": "Loja API"})
-    return str(r.json()["id"])
+    return await criar_loja_no_banco("Loja API")
 
 
 def _arq(conteudo: bytes) -> dict[str, tuple[str, bytes, str]]:

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.infra.dependencias import get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -45,8 +46,7 @@ async def client(db_url: str) -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def _loja(client: httpx.AsyncClient) -> str:
-    r = await client.post("/lojas", json={"nome": "Loja"})
-    return str(r.json()["id"])
+    return await criar_loja_no_banco("Loja")
 
 
 async def test_loja_sem_conexao_responde_config_vazia_e_nao_404(client: httpx.AsyncClient) -> None:

@@ -89,23 +89,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lojas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Criar Loja */
-        post: operations["criar_loja_lojas_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/lojas/{loja_id}/config/erp": {
         parameters: {
             query?: never;
@@ -1397,21 +1380,6 @@ export interface components {
             /** Senha */
             senha: string;
         };
-        /** LojaIn */
-        LojaIn: {
-            /** Nome */
-            nome: string;
-        };
-        /** LojaOut */
-        LojaOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Nome */
-            nome: string;
-        };
         /** MapeamentoSchema */
         MapeamentoSchema: {
             /** Mapeamento Sku */
@@ -2099,39 +2067,6 @@ export interface operations {
             };
         };
     };
-    criar_loja_lojas_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LojaIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LojaOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     obter_conexao_erp_lojas__loja_id__config_erp_get: {
         parameters: {
             query?: never;
@@ -2139,7 +2074,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2170,7 +2107,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2205,7 +2144,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2236,7 +2177,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2267,7 +2210,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2298,7 +2243,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2333,7 +2280,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2364,7 +2313,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2399,7 +2350,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2430,7 +2383,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2465,7 +2420,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2496,7 +2453,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2531,7 +2490,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2562,7 +2523,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2597,7 +2560,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2628,7 +2593,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2663,7 +2630,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2694,7 +2663,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2729,7 +2700,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2760,7 +2733,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2795,7 +2770,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2826,7 +2803,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2861,7 +2840,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2893,7 +2874,9 @@ export interface operations {
                 loja_id: string;
                 tipo: "troca" | "taxas" | "estoque";
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -2928,7 +2911,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -2969,7 +2954,9 @@ export interface operations {
                 loja_id: string;
                 lead_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -3010,7 +2997,9 @@ export interface operations {
                 loja_id: string;
                 lead_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -3064,7 +3053,9 @@ export interface operations {
                 loja_id: string;
                 lead_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -3114,7 +3105,9 @@ export interface operations {
                 loja_id: string;
                 lead_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -3168,7 +3161,9 @@ export interface operations {
                 loja_id: string;
                 lead_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -3226,7 +3221,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -3257,7 +3254,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -3288,7 +3287,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -3319,7 +3320,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -3364,7 +3367,9 @@ export interface operations {
             path: {
                 loja_id: string;
             };
-            cookie?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
         };
         requestBody?: never;
         responses: {

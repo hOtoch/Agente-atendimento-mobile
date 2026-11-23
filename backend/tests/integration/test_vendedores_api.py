@@ -13,6 +13,7 @@ from app.adapters.outbound.db.models import Lead, Vendedor
 from app.infra.dependencias import get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -39,9 +40,7 @@ async def ctx(db_url: str) -> AsyncIterator[tuple[httpx.AsyncClient, async_sessi
 
 
 async def criar_loja(client: httpx.AsyncClient) -> str:
-    r = await client.post("/lojas", json={"nome": "Loja V"})
-    assert r.status_code == 201
-    return str(r.json()["id"])
+    return await criar_loja_no_banco("Loja V")
 
 
 def corpo(*itens: dict[str, Any]) -> dict[str, Any]:

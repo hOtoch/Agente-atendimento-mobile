@@ -38,6 +38,7 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "integration: testes que precisam de Postgres/Redis (excluir com -m 'not integration')",
     "erp: testes contra o ERP simulado real em localhost:8090 (pulam se estiver fora)",
+    "autenticacao_real: nao substitui a dependencia loja_autorizada (testa a autorizacao de verdade)",
 ]
 
 [tool.ruff]

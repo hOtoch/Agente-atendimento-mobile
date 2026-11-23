@@ -27,6 +27,7 @@ from app.domain.ficha import Ficha as FichaDominio
 from app.infra.dependencias import get_agendar, get_barramento, get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -43,8 +44,7 @@ class Ambiente:
         self.factory = factory
 
     async def loja(self) -> str:
-        r = await self.client.post("/lojas", json={"nome": "Loja Painel"})
-        return str(r.json()["id"])
+        return await criar_loja_no_banco("Loja Painel")
 
     async def vendedor(self, loja: str, nome: str = "Carla") -> UUID:
         async with self.factory() as s:
