@@ -233,6 +233,7 @@ Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa,
 | M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | 2026-11-22 | ✅ concluído (PR #65) |
 | M9 | Fechamento pela IA | `milestone/m9-fechamento-pela-ia` | 2026-11-22 | ✅ concluído (PR #75) |
 | M10 | Painel de desempenho da IA | `milestone/m10-painel-desempenho` | 2026-11-23 | ✅ concluído (PR do M10) |
+| M11 | Login e isolamento por loja | `milestone/m11-login` | — | 🔜 planejado (#83–#88) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -250,6 +251,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | M8 | #57 cliente MCP, #58 qualidade/mapeamento, #59 conexão da loja (schema do M8) | #60 sincronização do estoque, #61 vendedores do ERP | #62 cliente + orçamento no handoff, #63 confirmação ao vivo | #64 docs, smoke e demo |
 | M9 | #70 espera entre mensagens, #71 estoque em etapas, #72 formas de pagamento e chave Pix, #73 resumo do handoff sem LLM | #74 IA fecha o acordo | | |
 | M10 | #76 telemetria (latência e erros), #77 métricas e API | #78 tela `/desempenho`, #79 dados de demonstração | | |
+| M11 | #83 autenticação (usuários, senha, sessão) | #84 rotas exigem a sessão da loja, #85 limite de tentativas, #86 script de loja + seed, #87 login no painel | #88 docs, deploy VPS e teste de isolamento | |
 
 Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa ponta a ponta no chat web.
 
@@ -339,6 +341,7 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-23 | `sem_repeticao` limpa o texto do modelo antes do envio (texto dobrado, linhas iguais seguidas); modelo da conversa `gpt-5.4-mini` com `gpt-4.1-mini` de reserva | `gpt-4.1-mini` mandou a mesma frase duas vezes na mesma resposta |
 | 2026-11-23 | Condição desejada (novo/seminovo) na ficha; `registrar_interesse` e `consultar_estoque` aceitam `condicao`, a consulta filtra por ela e lembra nas próximas; novos iguais (mesma capacidade e cor) são confirmados sem perguntar | Cliente pediu novo várias vezes e a IA seguiu oferecendo seminovo |
 | 2026-11-23 | Depois de `calcular_proposta` (pagamento já escolhido) a IA fecha o acordo na hora: valor na forma escolhida + endereço/horários/Pix, sem oferecer desconto nem alternativas (`proximo_passo` da ferramenta, fora da `ultima_proposta`) | A IA perguntava se o cliente queria desconto em vez de enviar o endereço |
+| 2026-11-23 | Login (M11): um login por loja, criado por script (sem cadastro público); sessão em cookie `httpOnly` com token opaco no Redis (revogável); argon2id; toda rota `/lojas/{id}` exige a sessão da própria loja; `/webchat`, webhooks e `/midias` seguem públicos; na VPS painel e API no mesmo domínio (Caddy, `/api`) | Pré-requisito para subir numa VPS pública: hoje qualquer um lê e altera qualquer loja |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
