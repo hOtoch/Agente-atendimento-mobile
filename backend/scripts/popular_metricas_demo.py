@@ -16,8 +16,8 @@ presas a esses leads. `--remover` apaga so isso (eventos pela marca, leads pelo 
 CASCADE leva conversas e mensagens) e nao toca no resto da loja.
 
 Idempotente e deterministico: rodar de novo remove o que o script criou e recria; o mesmo
-`--seed` (padrao 2026) gera sempre os mesmos dados. Para o painel mostrar tambem a comparacao
-com o periodo anterior, use `--dias 60`.
+`--seed` (padrao 2026) gera sempre o mesmo conteudo (so os ids sao novos a cada vez). Para o
+painel mostrar tambem a comparacao com o periodo anterior, use `--dias 60`.
 
 Seguranca: exige `--loja`; usa o banco das settings (`DATABASE_URL`) ou `--database-url`; recusa
 qualquer banco com cara de teste (porta 5433 ou nome `teste*`) fora de `--permitir-banco-de-teste`
@@ -42,7 +42,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import delete, func, select  # noqa: E402
+from sqlalchemy import delete, func, select, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -270,7 +270,10 @@ class _Gerador:
     # --- utilitarios ---
 
     def _id(self) -> uuid.UUID:
-        return uuid.UUID(int=self.rng.getrandbits(128), version=4)
+        # Nunca derivado do seed: o seed fixa o CONTEUDO (volumes, textos, valores), mas dois ids
+        # iguais entre execucoes (mesma loja e seed rodando juntas, ou uma execucao que sobrou)
+        # bateriam na chave primaria.
+        return uuid.uuid4()
 
     def _escolher(self, opcoes: Sequence[Any], pesos: Sequence[float]) -> Any:
         return self.rng.choices(opcoes, weights=pesos, k=1)[0]
@@ -648,6 +651,18 @@ class _Gerador:
 # --- banco ------------------------------------------------------------------------------------
 
 
+async def _travar_loja(s: AsyncSession, loja_id: uuid.UUID) -> None:
+    """Serializa as execucoes do script na mesma loja (lock ate o fim da transacao).
+
+    Sem isso, duas execucoes juntas nao enxergam as linhas nao confirmadas uma da outra:
+    ambas "removem" o que nao viram e as duas inserem, duplicando a demonstracao.
+    """
+    await s.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:chave, 0))"),
+        {"chave": f"popular_metricas_demo:{loja_id}"},
+    )
+
+
 async def _remover_na_sessao(s: AsyncSession, loja_id: uuid.UUID) -> Resumo:
     """Apaga os eventos marcados e os leads `demo:` (CASCADE leva conversas e mensagens)."""
     do_lead = Lead.loja_id == loja_id, Lead.telefone.startswith(PREFIXO_TELEFONE)
@@ -683,6 +698,7 @@ async def remover(database_url: str, loja_id: uuid.UUID, *, permitir_teste: bool
     try:
         async with criar_session_factory(engine)() as s:
             try:
+                await _travar_loja(s, loja_id)
                 resumo = await _remover_na_sessao(s, loja_id)
                 await s.commit()
             except BaseException:
@@ -713,6 +729,7 @@ async def popular(
             try:
                 if await s.get(Loja, loja_id) is None:
                     raise LojaNaoEncontrada(loja_id)
+                await _travar_loja(s, loja_id)
                 await _remover_na_sessao(s, loja_id)
                 vendedores = (
                     (

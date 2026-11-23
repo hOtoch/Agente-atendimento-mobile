@@ -331,3 +331,57 @@ async def test_usa_vendedores_da_propria_loja(banco) -> None:  # type: ignore[no
 
 def test_data_de_referencia_do_teste() -> None:
     assert date(2026, 11, 22) == HOJE and HOJE.weekday() == 6  # domingo
+
+
+async def test_duas_execucoes_ao_mesmo_tempo_na_mesma_loja_nao_colidem(banco) -> None:  # type: ignore[no-untyped-def]
+    """Duas pessoas rodando o script na mesma loja: uma espera a outra, sem duplicar nem falhar."""
+    import asyncio
+
+    url, factory = banco
+    loja = await _loja(factory)
+    resultados = await asyncio.gather(
+        *(demo.popular(url, loja, 10, seed=21, agora=AGORA, permitir_teste=True) for _ in range(3))
+    )
+    assert resultados[0] == resultados[1] == resultados[2]
+    contagens = await _contagens(factory, loja)
+    assert contagens["leads"] == resultados[0].leads
+    assert contagens["mensagens"] == resultados[0].mensagens
+    assert contagens["eventos"] == resultados[0].eventos
+
+
+async def test_remover_e_popular_ao_mesmo_tempo_deixam_um_conjunto_so(banco) -> None:  # type: ignore[no-untyped-def]
+    import asyncio
+
+    url, factory = banco
+    loja = await _loja(factory)
+    criado = await demo.popular(url, loja, 10, seed=22, agora=AGORA, permitir_teste=True)
+    await asyncio.gather(
+        demo.remover(url, loja, permitir_teste=True),
+        demo.popular(url, loja, 10, seed=22, agora=AGORA, permitir_teste=True),
+    )
+    contagens = await _contagens(factory, loja)
+    assert contagens["leads"] in (0, criado.leads)
+    assert contagens["eventos"] in (0, criado.eventos)
+
+
+async def test_ids_nao_se_repetem_entre_execucoes_do_mesmo_seed(banco) -> None:  # type: ignore[no-untyped-def]
+    """Os ids nao sao derivados do seed: uma execucao nunca reaproveita ids de outra."""
+    url, factory = banco
+    a, b = await _loja(factory), await _loja(factory)
+    await demo.popular(url, a, 3, seed=5, agora=AGORA, permitir_teste=True)
+    async with factory() as s:
+        ids_a = set(
+            (await s.execute(text("SELECT id FROM eventos WHERE loja_id = :l"), {"l": a})).scalars()
+        )
+    # mesma semente, outra loja, e a mesma loja de novo: nenhum id reaparece
+    await demo.popular(url, b, 3, seed=5, agora=AGORA, permitir_teste=True)
+    await demo.popular(url, a, 3, seed=5, agora=AGORA, permitir_teste=True)
+    async with factory() as s:
+        ids_b = set(
+            (await s.execute(text("SELECT id FROM eventos WHERE loja_id = :l"), {"l": b})).scalars()
+        )
+        ids_a2 = set(
+            (await s.execute(text("SELECT id FROM eventos WHERE loja_id = :l"), {"l": a})).scalars()
+        )
+    assert ids_a and ids_b and ids_a2
+    assert not (ids_a & ids_b) and not (ids_a & ids_a2)
