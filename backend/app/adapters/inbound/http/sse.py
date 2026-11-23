@@ -11,7 +11,8 @@ import anyio
 
 HEARTBEAT_S = 15.0
 
-SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+# no-transform: proxies com gzip (o rewrite /api do Next, tuneis) seguram o stream inteiro.
+SSE_HEADERS = {"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"}
 
 
 async def eventos_sse(

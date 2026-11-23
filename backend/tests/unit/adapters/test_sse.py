@@ -6,7 +6,15 @@ from collections.abc import AsyncIterator
 import anyio
 import pytest
 
+from app.adapters.inbound.http.sse import SSE_HEADERS
 from app.adapters.inbound.http.webchat import eventos_sse
+
+
+def test_headers_impedem_proxy_de_comprimir_ou_segurar_o_stream() -> None:
+    """Proxy com gzip (o rewrite /api do Next, tuneis) segura o SSE ate o fim sem no-transform."""
+    diretivas = {d.strip() for d in SSE_HEADERS["Cache-Control"].split(",")}
+    assert {"no-cache", "no-transform"} <= diretivas
+    assert SSE_HEADERS["X-Accel-Buffering"] == "no"
 
 
 async def _lento() -> AsyncIterator[dict[str, object]]:
