@@ -19,6 +19,7 @@ from app.adapters.outbound.db.conexao_erp import RepositorioConexaoErpSql
 from app.adapters.outbound.db.config import RepositorioLojasSql, RepositorioVendedoresSql
 from app.adapters.outbound.db.conversas import RepositorioConversasSql
 from app.adapters.outbound.db.followup import RepositorioConfigFollowupSql
+from app.adapters.outbound.db.metricas import LeitorMetricasSql
 from app.adapters.outbound.db.painel import RepositorioPainelSql
 from app.adapters.outbound.db.session import criar_engine, criar_session_factory
 from app.adapters.outbound.mercadophone.fonte import FonteEstoqueMercadoPhone
@@ -39,6 +40,7 @@ from app.application.estoque_erp import ErpNaoConfigurado, FonteEstoqueErp, Sinc
 from app.application.followup import ConfigurarFollowup
 from app.application.importacao.importar import ImportarPlanilha
 from app.application.importacao.portas import GeradorModelo
+from app.application.metricas import MetricasAgente
 from app.application.midia import ArmazenamentoMidia, ReceberMidia
 from app.application.painel.casos_de_uso import CasosPainel
 from app.application.painel.pausar_ia import PausarIAProvisorio
@@ -83,6 +85,12 @@ def get_configurar_followup(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ConfigurarFollowup:
     return ConfigurarFollowup(RepositorioLojasSql(session), RepositorioConfigFollowupSql(session))
+
+
+def get_metricas_agente(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MetricasAgente:
+    return MetricasAgente(RepositorioLojasSql(session), LeitorMetricasSql(session))
 
 
 def get_configurar_conexao_erp(
