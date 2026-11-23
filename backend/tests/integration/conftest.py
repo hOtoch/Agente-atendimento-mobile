@@ -79,9 +79,15 @@ async def db_url() -> AsyncIterator[str]:
     try:
         yield admin_url.set(database=nome).render_as_string(hide_password=False)
     finally:
-        async with admin.connect() as conn:
-            await conn.execute(text(f'DROP DATABASE IF EXISTS "{nome}" WITH (FORCE)'))
+        # A conexao do CREATE ficou parada durante o teste (que pode levar um minuto): o DROP usa
+        # uma conexao nova, para nao depender de uma conexao ociosa que o ambiente fechou.
         await admin.dispose()
+        limpeza = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+        try:
+            async with limpeza.connect() as conn:
+                await conn.execute(text(f'DROP DATABASE IF EXISTS "{nome}" WITH (FORCE)'))
+        finally:
+            await limpeza.dispose()
 
 
 @pytest.fixture
