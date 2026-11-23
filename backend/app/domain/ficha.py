@@ -15,6 +15,7 @@ from decimal import Decimal
 from enum import Enum, StrEnum
 from typing import Any, Self
 
+from app.domain.estoque import Condicao
 from app.domain.valores import Bandeira, Capacidade, Dinheiro, ModeloAparelho
 
 
@@ -25,12 +26,13 @@ def _atualizar[T](objeto: T, campos: dict[str, Any]) -> T:
 
 @dataclass(frozen=True, slots=True)
 class InteresseInformado:
-    """Aparelho desejado. `cor` e opcional e nunca gera pendencia."""
+    """Aparelho desejado. `cor` e `condicao` (novo/seminovo) sao opcionais, sem pendencia."""
 
     modelo: ModeloAparelho | None = None
     capacidade: Capacidade | None = None
     cor: str | None = None
     sku_estoque_confirmado: str | None = None
+    condicao: Condicao | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +147,7 @@ class Ficha:
                 "capacidade": None if i.capacidade is None else int(i.capacidade),
                 "cor": i.cor,
                 "sku_estoque_confirmado": i.sku_estoque_confirmado,
+                "condicao": None if i.condicao is None else i.condicao.value,
             },
             "tem_troca": self.tem_troca,
             "usado": {
@@ -184,6 +187,7 @@ class Ficha:
                 capacidade=_capacidade(i.get("capacidade")),
                 cor=i.get("cor"),
                 sku_estoque_confirmado=i.get("sku_estoque_confirmado"),
+                condicao=None if i.get("condicao") is None else Condicao(i["condicao"]),
             ),
             tem_troca=dados.get("tem_troca"),
             usado=UsadoInformado(

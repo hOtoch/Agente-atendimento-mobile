@@ -87,7 +87,9 @@ async def test_exemplo_oficial_ponta_a_ponta_com_repositorio_em_memoria() -> Non
         "total": "R$ 0,00",
         "observacao": proposta["desconto"]["observacao"],
     }
-    assert estado.ultima_proposta == proposta
+    # o proximo passo (fechar o acordo) vai so para o LLM; a proposta guardada e a mesma
+    assert "fechar_acordo" in proposta["proximo_passo"]
+    assert estado.ultima_proposta == {k: v for k, v in proposta.items() if k != "proximo_passo"}
 
     # alternativas: 2 ou 3, sem repetir a forma escolhida
     alternativas = proposta["alternativas"]

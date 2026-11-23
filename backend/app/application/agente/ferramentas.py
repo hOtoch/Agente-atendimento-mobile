@@ -144,6 +144,18 @@ def _texto_opcional(entrada: dict[str, Any], campo: str) -> str | None:
     return valor.strip() or None
 
 
+def _condicao_opcional(entrada: dict[str, Any]) -> Condicao | None:
+    texto = _texto_opcional(entrada, "condicao")
+    if texto is None:
+        return None
+    try:
+        return Condicao(texto.lower())
+    except ValueError:
+        raise ErroFerramenta(
+            f"Condição inválida: {texto!r}. Use 'novo', 'seminovo' ou null."
+        ) from None
+
+
 def _bool_opcional(entrada: dict[str, Any], campo: str) -> bool | None:
     valor = entrada.get(campo)
     if valor is None or isinstance(valor, bool):
@@ -291,15 +303,30 @@ def _opcao(item: ItemEstoque) -> dict[str, Any]:
 
 
 def _aplicar_interesse(
-    ficha: Ficha, modelo: ModeloAparelho, capacidade: Capacidade | None, cor: str | None
+    ficha: Ficha,
+    modelo: ModeloAparelho,
+    capacidade: Capacidade | None,
+    cor: str | None,
+    condicao: Condicao | None = None,
 ) -> tuple[Ficha, bool]:
     """Atualiza o interesse; se algo mudou, a confirmacao do item cai. Devolve (ficha, mudou)."""
     atual = ficha.interesse
     mesmo_modelo = atual.modelo == modelo
     nova_cap = capacidade or (atual.capacidade if mesmo_modelo else None)
     nova_cor = cor or (atual.cor if mesmo_modelo else None)
-    mudou = (modelo, nova_cap, nova_cor) != (atual.modelo, atual.capacidade, atual.cor)
-    campos: dict[str, Any] = {"modelo": modelo, "capacidade": nova_cap, "cor": nova_cor}
+    nova_cond = condicao or (atual.condicao if mesmo_modelo else None)
+    mudou = (modelo, nova_cap, nova_cor, nova_cond) != (
+        atual.modelo,
+        atual.capacidade,
+        atual.cor,
+        atual.condicao,
+    )
+    campos: dict[str, Any] = {
+        "modelo": modelo,
+        "capacidade": nova_cap,
+        "cor": nova_cor,
+        "condicao": nova_cond,
+    }
     if mudou:
         campos["sku_estoque_confirmado"] = None
     return ficha.com_interesse(**campos), mudou
@@ -314,7 +341,8 @@ async def _registrar_interesse(
     modelo = await _modelo_da_loja(_texto_obrigatorio(entrada, "modelo"), ctx)
     capacidade = _capacidade_opcional(entrada)
     cor = _texto_opcional(entrada, "cor")
-    ficha, mudou = _aplicar_interesse(estado.ficha, modelo, capacidade, cor)
+    condicao = _condicao_opcional(entrada)
+    ficha, mudou = _aplicar_interesse(estado.ficha, modelo, capacidade, cor, condicao)
     novo = replace(estado, ficha=ficha, estoque_consultado=estado.estoque_consultado and not mudou)
     conteudo: dict[str, Any] = {"status": "ok", **_situacao(ficha)}
     if novo.ficha.interesse.sku_estoque_confirmado is None:
@@ -395,15 +423,30 @@ async def _consultar_estoque(
     modelo = await _modelo_da_loja(_texto_obrigatorio(entrada, "modelo"), ctx)
     capacidade = _capacidade_opcional(entrada)
     cor = _texto_opcional(entrada, "cor")
+    condicao = _condicao_opcional(entrada)
     atual = estado.ficha.interesse
     if atual.modelo == modelo:
         capacidade = capacidade or atual.capacidade
         cor = cor or atual.cor
+        condicao = condicao or atual.condicao
 
     todos = await ctx.estoque.buscar(ctx.loja_id, modelo)
-    itens = filtrar(todos, modelo, capacidade, cor)
+    aviso_condicao = ""
+    if condicao is not None and not any(
+        i.condicao is condicao and (capacidade is None or i.capacidade == capacidade)
+        for i in filtrar(todos, modelo)
+    ):
+        # o cliente quer novo/seminovo e nao ha: avisa e mostra o que existe
+        da_cap = f" {capacidade}" if capacidade else ""
+        aviso_condicao = f"Não há {condicao.value}{da_cap} deste modelo. "
+        condicao, capacidade, cor = None, None, None
+    itens = [i for i in filtrar(todos, modelo, capacidade, cor) if condicao in (None, i.condicao)]
 
-    ficha, _ = _aplicar_interesse(estado.ficha, modelo, capacidade, cor)
+    ficha, _ = _aplicar_interesse(estado.ficha, modelo, capacidade, cor, condicao)
+    if aviso_condicao:
+        ficha = ficha.com_interesse(
+            capacidade=None, cor=None, condicao=None, sku_estoque_confirmado=None
+        )
     confirmado = ficha.interesse.sku_estoque_confirmado
     if confirmado is not None and confirmado not in {i.sku for i in itens}:
         ficha = ficha.com_interesse(sku_estoque_confirmado=None)
@@ -411,6 +454,8 @@ async def _consultar_estoque(
     etapa: dict[str, Any]
     if not todos:
         etapa = {"mensagem": "Não há unidades disponíveis com esses critérios."}
+    elif aviso_condicao:
+        etapa = _etapa_capacidades(filtrar(todos, modelo), aviso_condicao)
     elif capacidade is not None and not any(i.capacidade == capacidade for i in todos):
         # a capacidade pedida nao existe: diz quais existem e nao grava a escolha
         ficha = ficha.com_interesse(capacidade=None, cor=None, sku_estoque_confirmado=None)
@@ -418,10 +463,12 @@ async def _consultar_estoque(
     elif not itens:
         # a capacidade existe, mas nao nessa cor
         ficha = ficha.com_interesse(cor=None, sku_estoque_confirmado=None)
-        da_capacidade = [i for i in todos if i.capacidade == capacidade]
+        da_capacidade = [
+            i for i in todos if i.capacidade == capacidade and condicao in (None, i.condicao)
+        ]
         assert capacidade is not None  # sem filtro nenhum, `itens` nunca fica vazio
         etapa = _etapa_cores(da_capacidade, capacidade, f"Não há a cor {cor} nessa capacidade. ")
-    elif len(itens) == 1:
+    elif len(itens) == 1 or _novos_iguais(itens):
         i = itens[0]
         ficha = ficha.com_interesse(
             capacidade=i.capacidade, cor=i.cor, sku_estoque_confirmado=i.sku
@@ -446,6 +493,13 @@ async def _consultar_estoque(
     if "etapa" not in conteudo:
         conteudo["opcoes"] = [_opcao(i) for i in itens[:_MAX_OPCOES]]
     return _Saida(conteudo, replace(estado, ficha=ficha, estoque_consultado=True))
+
+
+def _novos_iguais(itens: list[ItemEstoque]) -> bool:
+    """Todos novos, mesma capacidade e cor: sao a mesma opcao para o cliente (sem bateria)."""
+    return all(i.condicao is Condicao.NOVO for i in itens) and (
+        len({(i.capacidade, _chave_cor(i)) for i in itens}) == 1
+    )
 
 
 def _etapa_apos_filtros(
@@ -757,13 +811,23 @@ async def _registrar_compra(
     return _Saida({"status": "ok", **_situacao(ficha)}, replace(estado, ficha=ficha))
 
 
+_FECHAR_APOS_PROPOSTA = (
+    "O cliente já escolheu a forma de pagamento: chame fechar_acordo agora, antes de responder. "
+    "Na mesma mensagem, apresente o valor final só na forma escolhida (com a frase obrigatória) "
+    "e envie o endereço, os horários e, no Pix, a chave que fechar_acordo devolver. Não ofereça "
+    "desconto nem as alternativas de pagamento; só fale delas se o cliente pedir."
+)
+
+
 async def _calcular_proposta(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
     if pendencias(estado.ficha):
         return _Saida(_bloqueio(estado.ficha), estado)
-    conteudo = await montar_proposta(ctx, estado)
-    return _Saida(conteudo, replace(estado, proposta_apresentada=True, ultima_proposta=conteudo))
+    proposta = await montar_proposta(ctx, estado)
+    # o passo vai so para o LLM: `ultima_proposta` e comparada no fechamento do acordo
+    conteudo = {**proposta, "proximo_passo": _FECHAR_APOS_PROPOSTA}
+    return _Saida(conteudo, replace(estado, proposta_apresentada=True, ultima_proposta=proposta))
 
 
 async def _liberar_desconto(
@@ -897,6 +961,15 @@ def _bool(descricao: str, nulo: bool = True) -> dict[str, Any]:
 
 _TIPOS_PAGAMENTO = [t.value for t in TipoPagamento]
 
+
+def _condicao_esquema() -> dict[str, Any]:
+    # Enum anulavel vai em anyOf: a API recusa `enum` com `type` em lista.
+    return {
+        "anyOf": [{"type": "string", "enum": [c.value for c in Condicao]}, {"type": "null"}],
+        "description": "Condição que o cliente quer: novo ou seminovo; null se ele não disse.",
+    }
+
+
 _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
     DefinicaoFerramenta(
         nome="registrar_interesse",
@@ -914,6 +987,7 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                 ),
                 "capacidade": _txt("Capacidade, ex.: '128GB'; null se não informada."),
                 "cor": _txt("Cor desejada; null se não informada."),
+                "condicao": _condicao_esquema(),
             }
         ),
         estrita=False,
@@ -926,6 +1000,8 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
             "prefere. Com capacidade e sem cor: devolve as cores dessa capacidade; pergunte a cor. "
             "Com capacidade e cor: devolve os itens (sku, condição e bateria do seminovo) para ele "
             "escolher com confirmar_item. Só existindo um item compatível ele já é confirmado. "
+            "Se o cliente disse que quer novo ou seminovo, passe condicao: a consulta traz só "
+            "essa condição (e lembra dela nas próximas). "
             "NUNCA devolve valores: para falar de dinheiro use calcular_proposta. Nunca ofereça "
             "só uma opção quando a ferramenta devolveu outras. Se o estoque estiver fora do ar, "
             "avise o cliente e tente de novo depois."
@@ -938,6 +1014,7 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                     "capacidades do modelo."
                 ),
                 "cor": _txt("Cor que o cliente escolheu; null para listar as cores."),
+                "condicao": _condicao_esquema(),
             }
         ),
         estrita=False,

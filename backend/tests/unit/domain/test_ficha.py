@@ -393,3 +393,12 @@ def test_pendencias_vem_em_ordem_sem_repeticao_e_preco_segue_a_trava(ficha: Fich
 @given(ficha=_fichas)
 def test_ida_e_volta_do_dict_sem_perda(ficha: Ficha) -> None:
     assert Ficha.de_dict(json.loads(json.dumps(ficha.para_dict()))) == ficha
+
+
+def test_condicao_desejada_e_opcional_e_sobrevive_ao_json() -> None:
+    from app.domain.estoque import Condicao
+
+    ficha = ficha_completa().com_interesse(condicao=Condicao.NOVO)
+    assert pode_passar_preco(ficha) is True
+    assert Ficha.de_dict(json.loads(json.dumps(ficha.para_dict()))) == ficha
+    assert Ficha.de_dict({"interesse": {}}).interesse.condicao is None

@@ -311,15 +311,95 @@ async def test_consultar_modelo_desconhecido_e_erro() -> None:
 # --- consultar_estoque em etapas: capacidades, depois cores -----------------------------------
 
 
-async def _consulta_16(
-    cap: str | None, cor: str | None = None, estado: EstadoAtendimento = VAZIO
+async def _consulta_16_bruto(
+    cap: str | None,
+    cor: str | None = None,
+    estado: EstadoAtendimento = VAZIO,
+    condicao: str | None = None,
 ) -> tuple[Ambiente, ResultadoFerramenta]:
     amb = await criar_ambiente(ITENS_16_VARIOS)
-    r = await amb.rodar(
-        "consultar_estoque", {"modelo": "iPhone 16", "capacidade": cap, "cor": cor}, estado
-    )
+    entrada = {"modelo": "iPhone 16", "capacidade": cap, "cor": cor, "condicao": condicao}
+    return amb, await amb.rodar("consultar_estoque", entrada, estado)
+
+
+async def _consulta_16(
+    cap: str | None,
+    cor: str | None = None,
+    estado: EstadoAtendimento = VAZIO,
+    condicao: str | None = None,
+) -> tuple[Ambiente, ResultadoFerramenta]:
+    amb, r = await _consulta_16_bruto(cap, cor, estado, condicao)
     assert not r.erro, r.conteudo
     return amb, r
+
+
+async def test_cliente_pede_novo_e_a_consulta_traz_so_novos() -> None:
+    _, r = await _consulta_16("128GB", condicao="novo")
+    cores = r.conteudo["cores"]
+    assert {c["condicao"] for c in cores} == {"novo"}
+    assert {c["cor"] for c in cores} == {"Preto", "Branco"}
+    assert r.estado.ficha.interesse.condicao is Condicao.NOVO
+
+
+async def test_novo_na_cor_escolhida_confirma_o_item_novo() -> None:
+    _, r = await _consulta_16("128GB", "Preto", condicao="novo")
+    assert r.conteudo["confirmado"] is True
+    assert r.estado.ficha.interesse.sku_estoque_confirmado == "IP16-128-PRETO"
+
+
+async def test_condicao_registrada_vale_nas_consultas_seguintes() -> None:
+    amb = await criar_ambiente(ITENS_16_VARIOS)
+    estado, (_, r) = await amb.seq(
+        VAZIO,
+        ("registrar_interesse", {"modelo": "iPhone 16", "capacidade": "128GB", "condicao": "novo"}),
+        ("consultar_estoque", {"modelo": "iPhone 16", "capacidade": None, "cor": "Preto"}),
+    )
+    assert estado.ficha.interesse.sku_estoque_confirmado == "IP16-128-PRETO"
+    assert all(o["condicao"] == "novo" for o in r.conteudo.get("opcoes", []))
+
+
+async def test_condicao_sem_estoque_avisa_e_mostra_o_que_existe() -> None:
+    _, r = await _consulta_16("256GB", condicao="seminovo")
+    assert r.conteudo["etapa"] == "capacidades"
+    assert "seminovo" in r.conteudo["mensagem"]
+    assert r.estado.ficha.interesse.condicao is None
+
+
+async def test_mudar_a_condicao_desfaz_a_confirmacao_do_item() -> None:
+    amb = await criar_ambiente(ITENS_16_VARIOS)
+    estado, _ = await amb.seq(
+        VAZIO,
+        (
+            "consultar_estoque",
+            {"modelo": "iPhone 16", "capacidade": "128GB", "cor": "Preto", "condicao": "novo"},
+        ),
+        ("registrar_interesse", {"modelo": "iPhone 16", "condicao": "seminovo"}),
+    )
+    assert estado.ficha.interesse.sku_estoque_confirmado is None
+    assert estado.ficha.interesse.condicao is Condicao.SEMINOVO
+
+
+async def test_novos_iguais_em_skus_diferentes_confirma_sem_perguntar() -> None:
+    itens = [
+        item("A-1", "iPhone 16", 128, "Branco", 4830, qtd=1),
+        item("A-2", "iPhone 16", 128, "Branco", 4830, qtd=1),
+        item(
+            "A-3", "iPhone 16", 128, "Branco", 4130, qtd=1, condicao=Condicao.SEMINOVO, bateria=88
+        ),
+    ]
+    amb = await criar_ambiente(itens)
+    r = await amb.rodar(
+        "consultar_estoque",
+        {"modelo": "iPhone 16", "capacidade": "128GB", "cor": "Branco", "condicao": "novo"},
+        VAZIO,
+    )
+    assert r.conteudo["confirmado"] is True
+    assert r.estado.ficha.interesse.sku_estoque_confirmado == "A-1"
+
+
+async def test_condicao_invalida_e_erro_amigavel() -> None:
+    _, r = await _consulta_16_bruto("128GB", condicao="usado")
+    assert r.erro
 
 
 async def test_sem_capacidade_lista_todas_em_ordem_crescente() -> None:
@@ -820,6 +900,16 @@ async def _com_proposta(amb):  # type: ignore[no-untyped-def]
         ("calcular_proposta", {}),
     )
     return estado
+
+
+async def test_proposta_com_pagamento_escolhido_manda_fechar_e_enviar_o_endereco() -> None:
+    amb = await criar_ambiente()
+    estado = await _com_proposta(amb)
+    r = await amb.rodar("calcular_proposta", {}, estado)
+    passo = r.conteudo["proximo_passo"]
+    assert "fechar_acordo" in passo
+    assert "endereço" in passo
+    assert "desconto" in passo  # diz para NAO oferecer desconto
 
 
 async def test_liberar_desconto_antes_da_proposta_e_bloqueado() -> None:

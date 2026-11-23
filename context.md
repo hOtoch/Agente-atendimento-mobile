@@ -337,6 +337,8 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-23 | Resposta a áudio do cliente sai só em voz (texto só se o TTS ou o envio falhar); voz padrão `cedar` (masculina) | Pedido do dono após teste real: texto + voz duplicava a resposta |
 | 2026-11-23 | Avaliação do usado com só tela, vidro traseiro, carcaça e bateria; `registrar_usado` confere a tabela de troca ao receber o modelo e, se não houver valor, marca `avaliacao_na_loja` e pula as perguntas de estado | Avaliação longa demais; o iPhone XR (fora da tabela) passava por 9 perguntas para no fim ir para a loja |
 | 2026-11-23 | `sem_repeticao` limpa o texto do modelo antes do envio (texto dobrado, linhas iguais seguidas); modelo da conversa `gpt-5.4-mini` com `gpt-4.1-mini` de reserva | `gpt-4.1-mini` mandou a mesma frase duas vezes na mesma resposta |
+| 2026-11-23 | Condição desejada (novo/seminovo) na ficha; `registrar_interesse` e `consultar_estoque` aceitam `condicao`, a consulta filtra por ela e lembra nas próximas; novos iguais (mesma capacidade e cor) são confirmados sem perguntar | Cliente pediu novo várias vezes e a IA seguiu oferecendo seminovo |
+| 2026-11-23 | Depois de `calcular_proposta` (pagamento já escolhido) a IA fecha o acordo na hora: valor na forma escolhida + endereço/horários/Pix, sem oferecer desconto nem alternativas (`proximo_passo` da ferramenta, fora da `ultima_proposta`) | A IA perguntava se o cliente queria desconto em vez de enviar o endereço |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
