@@ -7,11 +7,13 @@ repassa o que `conteudo_para_ia` devolve; nunca inventa nada disso.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from datetime import UTC, date, datetime
 from typing import Any
 
 from app.application.agente.estado import EstadoAtendimento, descrever_troca
+from app.application.agente.proposta import FRASE_OBRIGATORIA
 from app.application.config.modelos import PagamentoLoja, PerfilLoja
 from app.domain.ficha import TipoPagamento
 
@@ -96,8 +98,148 @@ def _data_br(iso: str | None) -> str | None:
     return None if iso is None else date.fromisoformat(iso).strftime("%d/%m/%Y")
 
 
+_DIAS = {
+    "seg": "segunda",
+    "ter": "terça",
+    "qua": "quarta",
+    "qui": "quinta",
+    "sex": "sexta",
+    "sab": "sábado",
+    "dom": "domingo",
+}
+_ORDEM_DIAS = list(_DIAS)
+_FAIXA = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
+
+
+def _hora(h: str, m: str) -> str:
+    return f"{int(h)}h" if m == "00" else f"{int(h)}h{m}"
+
+
+def _faixa_legivel(faixa: str) -> str:
+    casou = _FAIXA.match(faixa.strip())
+    if casou is None:
+        return faixa.strip()
+    h1, m1, h2, m2 = casou.groups()
+    return f"das {_hora(h1, m1)} às {_hora(h2, m2)}"
+
+
+def _dias_legiveis(dias: list[str]) -> str:
+    nomes = [_DIAS.get(d, d) for d in dias]
+    if len(nomes) == 1:
+        return nomes[0]
+    if len(nomes) == 2:
+        return f"{nomes[0]} e {nomes[1]}"
+    return f"{nomes[0]} a {nomes[-1]}"
+
+
+def horarios_legiveis(horarios: str | None) -> str | None:
+    """`seg: 09:00-18:00; ...; sab: 09:00-14:00` -> `Segunda a sexta, das 9h às 18h; sábado, ...`.
+
+    Junta dias seguidos com a mesma faixa. O que nao estiver no formato padrao sai como veio.
+    """
+    if not horarios or not horarios.strip():
+        return None
+    grupos: list[tuple[list[str], str]] = []
+    for item in horarios.split(";"):
+        dia, sep, faixa = item.partition(":")
+        if not sep:
+            continue
+        dia, faixa = dia.strip(), faixa.strip()
+        anterior = grupos[-1] if grupos else None
+        seguido = (
+            anterior is not None
+            and anterior[1] == faixa
+            and dia in _ORDEM_DIAS
+            and anterior[0][-1] in _ORDEM_DIAS
+            and _ORDEM_DIAS.index(dia) == _ORDEM_DIAS.index(anterior[0][-1]) + 1
+        )
+        if anterior is not None and seguido:
+            anterior[0].append(dia)
+        else:
+            grupos.append(([dia], faixa))
+    if not grupos:
+        return None
+    texto = "; ".join(f"{_dias_legiveis(d)}, {_faixa_legivel(f)}" for d, f in grupos)
+    return texto[0].upper() + texto[1:]
+
+
+def _bandeira(acordo: Mapping[str, Any]) -> str:
+    bandeira = (acordo.get("pagamento") or {}).get("bandeira")
+    return f" {str(bandeira).title()}" if bandeira else ""
+
+
+def _valor_na_forma(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
+    forma = acordo["forma_escolhida"]
+    bandeira = _bandeira(acordo)
+    if tipo is TipoPagamento.PIX:
+        return f"{forma['valor_a_vista']} à vista no Pix"
+    if tipo is TipoPagamento.DEBITO:
+        return f"{forma['total_pago']} no débito{bandeira}"
+    parcelado = f"{forma['parcelas']}x de {forma['valor_parcela']} no cartão{bandeira}"
+    if tipo is TipoPagamento.ENTRADA_MAIS_CREDITO:
+        parcelado = f"entrada de {forma['entrada']} + {parcelado}"
+    return f"{parcelado} (total {forma['total_pago']})"
+
+
+def _aparelho(acordo: Mapping[str, Any]) -> str:
+    ap = acordo["aparelho"]
+    texto = f"{ap['modelo']} {ap['condicao']} de {ap['capacidade']}"
+    return f"{texto}, cor {str(ap['cor']).lower()}," if ap.get("cor") else texto
+
+
+def _linha_troca(acordo: Mapping[str, Any]) -> str | None:
+    troca = acordo.get("troca") or {}
+    usado = troca.get("aparelho_usado")
+    if troca.get("status") == "avaliada":
+        return f"Já com o seu {usado} na troca ({troca['valor']})."
+    if troca.get("status") == "avaliacao_na_loja":
+        return f"O seu {usado} será avaliado na loja."
+    return None
+
+
+def mensagem_fechamento(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
+    """A mensagem que vai ao cliente quando o acordo fecha: valor, Pix, endereco e horarios.
+
+    Montada pelo codigo (nada de valor ou dado da loja escrito pelo modelo), em paragrafos e com
+    poucos emojis. So usa o que esta no acordo; o que a loja nao cadastrou vira aviso.
+    """
+    informado = acordo["informado"]
+    proposta = [f"Fechado! 🎉 Seu {_aparelho(acordo)} fica por {_valor_na_forma(acordo, tipo)}."]
+    troca = _linha_troca(acordo)
+    if troca:
+        proposta.append(troca)
+    proposta.append(FRASE_OBRIGATORIA[0].upper() + FRASE_OBRIGATORIA[1:] + ".")
+    paragrafos = ["\n".join(proposta)]
+
+    if paga_via_pix(tipo):
+        chave = informado["chave_pix"]
+        if chave is None:
+            paragrafos.append("O vendedor passa os dados do Pix na loja.")
+        else:
+            alvo = "a entrada " if tipo is TipoPagamento.ENTRADA_MAIS_CREDITO else ""
+            paragrafos.append(
+                f"Para pagar {alvo}no Pix:\nChave: {chave['chave']}\n"
+                f"Favorecido: {chave['favorecido']}"
+            )
+
+    loja: list[str] = []
+    if informado["endereco"]:
+        loja.append(f"📍 {informado['endereco']}")
+    else:
+        loja.append("O vendedor te passa o endereço da loja em seguida.")
+    horarios = horarios_legiveis(informado["horarios"])
+    if horarios:
+        loja.append(f"🕘 {horarios}")
+    paragrafos.append("\n".join(loja))
+
+    paragrafos.append(
+        "Obrigado pela preferência! Um vendedor vai continuar o atendimento com você na loja."
+    )
+    return "\n\n".join(paragrafos)
+
+
 def conteudo_para_ia(acordo: Mapping[str, Any], tipo: TipoPagamento) -> dict[str, Any]:
-    """O retorno da ferramenta: o que a IA deve dizer ao cliente (sem inventar nada)."""
+    """O retorno da ferramenta: os dados do acordo e a mensagem pronta que o sistema envia."""
     informado = acordo["informado"]
     chave = informado["chave_pix"]
     envio = "o endereço e os horários da loja"
@@ -119,10 +261,10 @@ def conteudo_para_ia(acordo: Mapping[str, Any], tipo: TipoPagamento) -> dict[str
             envio += f", mais a chave Pix e o favorecido {alvo}"
         else:
             conteudo["instrucao_pix"] = _PIX_NA_LOJA
+    conteudo["mensagem_ao_cliente"] = mensagem_fechamento(acordo, tipo)
     conteudo["mensagem"] = (
-        f"Acordo fechado. Envie ao cliente, nesta mesma resposta, {envio}, exatamente como "
-        "devolvidos aqui. Depois agradeça a preferência e chame chamar_vendedor com motivo "
-        f"'{MOTIVO_ACORDO_FECHADO}' (avise, em uma frase, que um vendedor conclui o atendimento "
-        "na loja)."
+        f"Acordo fechado. O sistema envia ao cliente a mensagem_ao_cliente ({envio}, o valor "
+        "final e o agradecimento) como a resposta deste turno: não reescreva esses dados. Agora "
+        f"chame chamar_vendedor com motivo '{MOTIVO_ACORDO_FECHADO}'."
     )
     return conteudo

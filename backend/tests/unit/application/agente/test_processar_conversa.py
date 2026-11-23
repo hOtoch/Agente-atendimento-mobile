@@ -375,8 +375,10 @@ async def test_acordo_fechado_pela_ia_envia_endereco_agradece_e_passa_ao_vendedo
 
     assert len(c.canal.textos) == 2
     resposta = c.canal.textos[1]
-    assert "Rua das Palmeiras, 123" in resposta
-    assert "seg: 09:00-18:00" in resposta
+    # o codigo manda a mensagem de fechamento pronta, nao o texto do modelo
+    assert not resposta.startswith("Fechado! Te esperamos")
+    assert "\n\n📍 Rua das Palmeiras, 123" in resposta
+    assert "🕘 Segunda a sexta, das 9h às 18h" in resposta
     assert "preferência" in resposta
     estado = await c.atendimento.obter(c.loja_id, c.lead_id)
     assert estado.acordo is not None and estado.handoff_solicitado

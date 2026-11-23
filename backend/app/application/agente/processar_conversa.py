@@ -191,6 +191,8 @@ class _Turno:
         self._inicio_rodada: float | None = None
         self._primeira_entrada_em: datetime | None = None
         self._latencia_llm_s = 0.0
+        self._mensagem_pronta: str | None = None
+        """Texto que o codigo ja montou para o cliente (ex.: fechamento do acordo)."""
 
     async def _evento(self, tipo: str, payload: dict[str, Any]) -> None:
         await self._c._eventos.registrar(
@@ -270,11 +272,18 @@ class _Turno:
             self._chamadas_llm += 1
             self._uso = self._uso + resposta.uso
             if not resposta.chamadas:
-                final = sem_repeticao(resposta.texto.strip()) or MENSAGEM_LIMITE
+                pronta = self._mensagem_pronta
+                final = pronta or sem_repeticao(resposta.texto.strip()) or MENSAGEM_LIMITE
                 if await self._descartar_se_chegou_mensagem(ate, final):
                     await self._registrar_uso()
                     return
-                await self._acrescentar([resposta.mensagem_assistente])
+                # mensagem pronta (fechamento do acordo): o texto do modelo da lugar a ela
+                registro = (
+                    MensagemLLM("assistant", [BlocoTexto(pronta)])
+                    if pronta
+                    else resposta.mensagem_assistente
+                )
+                await self._acrescentar([registro])
                 await self._responder(final)
                 return
             resultados: list[ResultadoFerramenta] = []
@@ -441,6 +450,9 @@ class _Turno:
                 self._conversa.loja_id, self._conversa.lead_id, self._estado
             )
         await self._recalcular_etapa()
+        pronta = res.conteudo.get("mensagem_ao_cliente") if not res.erro else None
+        if isinstance(pronta, str) and pronta.strip():
+            self._mensagem_pronta = pronta
         return ResultadoFerramenta(id_, json.dumps(res.conteudo, ensure_ascii=False), res.erro)
 
     async def _recalcular_etapa(self) -> None:

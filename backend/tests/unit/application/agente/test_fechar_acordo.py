@@ -137,7 +137,7 @@ async def test_fecha_o_acordo_no_cartao_e_devolve_endereco_e_horarios() -> None:
     assert "pix" not in r.conteudo  # cartao: sem chave Pix
     assert r.conteudo["data_prevista"] == "20/11/2026"
     assert "acordo_fechado" in r.conteudo["mensagem"]  # motivo do chamar_vendedor
-    assert "agradeça" in r.conteudo["mensagem"].lower()
+    assert "preferência" in r.conteudo["mensagem_ao_cliente"]  # o agradecimento vem pronto
 
     a = r.estado.acordo
     assert a is not None

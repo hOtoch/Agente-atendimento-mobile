@@ -1163,10 +1163,11 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
         descricao=(
             "Fecha o acordo com o cliente. Chame quando ele aceitar a proposta apresentada e a "
             "forma de pagamento estiver definida. O sistema só fecha com proposta apresentada, "
-            "ficha completa e forma aceita pela loja (senão devolve o que falta). Devolve o "
-            "endereço, os horários e, no Pix, a chave e o favorecido: envie ao cliente "
-            "exatamente isso, agradeça a preferência e depois chame chamar_vendedor com motivo "
-            f"'{MOTIVO_ACORDO_FECHADO}'. Nunca invente endereço, horário ou chave Pix. Se o "
+            "ficha completa e forma aceita pela loja (senão devolve o que falta). Devolve a "
+            "mensagem_ao_cliente pronta (valor final, endereço, horários e, no Pix, a chave e o "
+            "favorecido), que o sistema envia como a resposta do turno; depois chame "
+            f"chamar_vendedor com motivo '{MOTIVO_ACORDO_FECHADO}'. Nunca invente endereço, "
+            "horário ou chave Pix. Se o "
             "cliente mudar algo depois, refaça a proposta e feche de novo."
         ),
         esquema_json=_objeto({}),
