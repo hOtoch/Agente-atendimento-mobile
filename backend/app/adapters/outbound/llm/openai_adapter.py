@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 _ROTA = "/v1/chat/completions"
 _STATUS_TRANSITORIOS = frozenset({408, 409, 429}) | frozenset(range(500, 600))
 _PREFIXOS_RACIOCINIO = ("gpt-6", "gpt-5", "o1", "o3", "o4")
+_PREFIXOS_SEM_EFFORT_COM_FERRAMENTAS = ("gpt-6",)
 _MOTIVOS = {"stop": "end_turn", "tool_calls": "tool_use", "length": "max_tokens"}
 
 # Os modelos da OpenAI tendem a responder so em texto e a seguir a "PROXIMA PERGUNTA" do estado,
@@ -226,7 +227,11 @@ class OpenAIAdapter:
     async def _chamar(self, modelo: str, base: dict[str, Any]) -> dict[str, Any]:
         corpo = {"model": modelo, **base}
         if modelo.startswith(_PREFIXOS_RACIOCINIO):
-            corpo["reasoning_effort"] = self._effort
+            # gpt-6 na Chat Completions recusa (400) effort com ferramentas, salvo "none"
+            sem_raciocinio = modelo.startswith(_PREFIXOS_SEM_EFFORT_COM_FERRAMENTAS)
+            corpo["reasoning_effort"] = (
+                "none" if sem_raciocinio and base.get("tools") else self._effort
+            )
         try:
             resposta = await self._cliente.post(
                 _ROTA, headers={"Authorization": f"Bearer {self._api_key}"}, json=corpo
