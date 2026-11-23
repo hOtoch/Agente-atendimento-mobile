@@ -117,6 +117,7 @@ Não altere código. Responda com o veredito e o resumo.
 | Teste de carga (k6, sem custo) | `bash infra/k6/rodar_carga.sh` (pilha isolada; `WORKERS=2`, `RATE_POR_MIN`, `DURACAO_S`; ver `infra/k6/README.md`) |
 | Smoke do Mercado Phone (só leitura, chave no `.env`) | `cd backend && uv run python scripts/mercadophone_smoke.py [--unidade N] [--filtro-loja "Loja A"]... [--conferir N]` (sem chave: exit 2; ver `docs/mercadophone.md`) |
 | Seed da loja demo | `cd backend && uv run python -m app.infra.seed` (idempotente; `LOJA_DEMO_ID` fixo) |
+| Dados de demonstração do painel de desempenho | `cd backend && uv run python scripts/popular_metricas_demo.py --loja <uuid> --dias 30 [--seed N]` (`--remover` apaga só o que ele criou; recusa o banco de teste; ver `docs/desempenho.md`) |
 | Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
 | Subir painel | `cd frontend && npm run dev` (http://localhost:3000; API em `NEXT_PUBLIC_API_URL`) |
