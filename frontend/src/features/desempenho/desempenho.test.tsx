@@ -130,7 +130,8 @@ describe("Desempenho: período", () => {
     expect(mocks.GET).toHaveBeenLastCalledWith("/lojas/{loja_id}/metricas", {
       params: { path: { loja_id: LOJA }, query: { de: "2026-08-25", ate: "2026-11-22" } },
     })
-  })
+    // Renderiza a tela inteira (com gráficos) três vezes no jsdom: passa de 5 s em máquina lenta.
+  }, 15_000)
 
   it("enquanto recarrega mantém o conteúdo anterior na tela (sem voltar ao esqueleto)", async () => {
     const user = userEvent.setup()
