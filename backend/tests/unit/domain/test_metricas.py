@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
 
 from app.domain.metricas import (
+    FUSO,
+    FUSO_NOME,
     MotivoHandoff,
     Periodo,
     classificar_motivo_handoff,
@@ -36,6 +38,14 @@ def test_limites_em_sao_paulo_convertidos_para_utc() -> None:
     p = Periodo(date(2026, 11, 9), date(2026, 11, 9))  # UTC-3 (sem horario de verao)
     assert p.inicio.astimezone(UTC) == datetime(2026, 11, 9, 3, 0, tzinfo=UTC)
     assert p.fim_exclusivo.astimezone(UTC) == datetime(2026, 11, 10, 3, 0, tzinfo=UTC)
+
+
+def test_fuso_e_utc_menos_3_fixo_sem_depender_do_tzdata() -> None:
+    # ZoneInfo exige a base de fusos do sistema (ou o pacote tzdata): no Windows a API nem sobe.
+    # Sao Paulo nao tem horario de verao desde 2019, entao o deslocamento fixo e equivalente.
+    assert type(FUSO) is timezone
+    assert FUSO.utcoffset(None) == timedelta(hours=-3)
+    assert FUSO_NOME == "America/Sao_Paulo"  # o nome segue indo para o Postgres e para a API
 
 
 def test_periodo_invertido_e_recusado() -> None:
