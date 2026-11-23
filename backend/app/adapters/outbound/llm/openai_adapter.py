@@ -86,7 +86,8 @@ def _mensagens_para_api(m: MensagemLLM) -> list[dict[str, Any]]:
     if m.papel == "assistant":
         texto = "".join(b.texto for b in m.blocos if isinstance(b, BlocoTexto))
         chamadas = [b for b in m.blocos if isinstance(b, ChamadaFerramenta)]
-        msg: dict[str, Any] = {"role": "assistant", "content": texto or None}
+        # `null` so com tool_calls: sem eles a API recusa (400) e a conversa travaria de vez
+        msg: dict[str, Any] = {"role": "assistant", "content": texto or (None if chamadas else "")}
         if chamadas:
             msg["tool_calls"] = [
                 {
