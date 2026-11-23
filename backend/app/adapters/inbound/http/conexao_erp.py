@@ -20,9 +20,10 @@ from app.infra.dependencias import (
     get_configurar_conexao_erp,
     get_session,
     get_sincronizar_estoque_erp,
+    loja_autorizada,
 )
 
-router = APIRouter(tags=["config"])
+router = APIRouter(tags=["config"], dependencies=[Depends(loja_autorizada)])
 
 Casos = Annotated[ConfigurarConexaoErp, Depends(get_configurar_conexao_erp)]
 Sessao = Annotated[AsyncSession, Depends(get_session)]

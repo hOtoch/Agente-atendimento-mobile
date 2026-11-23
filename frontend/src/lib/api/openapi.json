@@ -1889,38 +1889,6 @@
         "title": "LoginEntrada",
         "type": "object"
       },
-      "LojaIn": {
-        "properties": {
-          "nome": {
-            "title": "Nome",
-            "type": "string"
-          }
-        },
-        "required": [
-          "nome"
-        ],
-        "title": "LojaIn",
-        "type": "object"
-      },
-      "LojaOut": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "nome": {
-            "title": "Nome",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "nome"
-        ],
-        "title": "LojaOut",
-        "type": "object"
-      },
       "MapeamentoSchema": {
         "properties": {
           "mapeamento_sku": {
@@ -3409,6 +3377,13 @@
         "title": "VendedoresSchema",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "sessao": {
+        "in": "cookie",
+        "name": "sessao",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
@@ -3623,47 +3598,6 @@
         "summary": "Health"
       }
     },
-    "/lojas": {
-      "post": {
-        "operationId": "criar_loja_lojas_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LojaIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LojaOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Criar Loja",
-        "tags": [
-          "config"
-        ]
-      }
-    },
     "/lojas/{loja_id}/config/erp": {
       "get": {
         "operationId": "obter_conexao_erp_lojas__loja_id__config_erp_get",
@@ -3676,6 +3610,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3701,6 +3651,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Conexao Erp",
         "tags": [
           "config"
@@ -3717,6 +3672,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3752,6 +3723,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Conexao Erp",
         "tags": [
           "config"
@@ -3771,6 +3747,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3796,6 +3788,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Sincronizar Estoque Erp",
         "tags": [
           "config"
@@ -3815,6 +3812,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3840,6 +3853,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Testar Conexao Erp",
         "tags": [
           "config"
@@ -3858,6 +3876,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3883,6 +3917,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Estoque",
         "tags": [
           "config"
@@ -3899,6 +3938,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3934,6 +3989,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Estoque",
         "tags": [
           "config"
@@ -3952,6 +4012,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -3977,6 +4053,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Followup",
         "tags": [
           "config"
@@ -3993,6 +4074,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4028,6 +4125,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Followup",
         "tags": [
           "config"
@@ -4046,6 +4148,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4071,6 +4189,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Mapeamento",
         "tags": [
           "config"
@@ -4087,6 +4210,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4122,6 +4261,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Mapeamento",
         "tags": [
           "config"
@@ -4140,6 +4284,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4165,6 +4325,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Pagamento",
         "tags": [
           "config"
@@ -4181,6 +4346,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4216,6 +4397,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Pagamento",
         "tags": [
           "config"
@@ -4234,6 +4420,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4267,6 +4469,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Perfil",
         "tags": [
           "config"
@@ -4283,6 +4490,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4318,6 +4541,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Perfil",
         "tags": [
           "config"
@@ -4336,6 +4564,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4369,6 +4613,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Preco",
         "tags": [
           "config"
@@ -4385,6 +4634,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4420,6 +4685,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Preco",
         "tags": [
           "config"
@@ -4438,6 +4708,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4463,6 +4749,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Taxas",
         "tags": [
           "config"
@@ -4479,6 +4770,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4514,6 +4821,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Taxas",
         "tags": [
           "config"
@@ -4532,6 +4844,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4557,6 +4885,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Troca",
         "tags": [
           "config"
@@ -4573,6 +4906,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4608,6 +4957,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Troca",
         "tags": [
           "config"
@@ -4626,6 +4980,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4651,6 +5021,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Vendedores",
         "tags": [
           "config"
@@ -4667,6 +5042,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4702,6 +5093,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Atualizar Vendedores",
         "tags": [
           "config"
@@ -4722,6 +5118,22 @@
               "title": "Loja Id",
               "type": "string"
             }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
           }
         ],
         "responses": {
@@ -4739,6 +5151,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Stream SSE de eventos da loja (EtapaMudou, MensagemNova, DonoMudou)",
         "tags": [
           "painel"
@@ -4787,6 +5204,22 @@
               "title": "Modo",
               "type": "string"
             }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
           }
         ],
         "requestBody": {
@@ -4821,6 +5254,11 @@
             "description": "Unprocessable Entity"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Importar",
         "tags": [
           "importacao"
@@ -4839,6 +5277,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4874,6 +5328,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Leads agrupados por etapa",
         "tags": [
           "painel"
@@ -4902,6 +5361,22 @@
               "format": "uuid",
               "title": "Lead Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -4937,6 +5412,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Detalhe do lead",
         "tags": [
           "painel"
@@ -4965,6 +5445,22 @@
               "format": "uuid",
               "title": "Lead Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5020,6 +5516,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Vendedor assume a conversa (a IA fica em silencio)",
         "tags": [
           "painel"
@@ -5048,6 +5549,22 @@
               "format": "uuid",
               "title": "Lead Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5093,6 +5610,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Devolve a conversa para a IA",
         "tags": [
           "painel"
@@ -5121,6 +5643,22 @@
               "format": "uuid",
               "title": "Lead Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5176,6 +5714,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Mover o lead de etapa (manual, pelo vendedor)",
         "tags": [
           "painel"
@@ -5204,6 +5747,22 @@
               "format": "uuid",
               "title": "Lead Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5259,6 +5818,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Envia uma mensagem como vendedor (exige ter assumido a conversa)",
         "tags": [
           "painel"
@@ -5317,6 +5881,22 @@
               "description": "Ultimo dia, inclusive (AAAA-MM-DD). Padrao: hoje.",
               "title": "Ate"
             }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
           }
         ],
         "responses": {
@@ -5341,6 +5921,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Obter Metricas",
         "tags": [
           "metricas"
@@ -5359,6 +5944,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5384,6 +5985,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Checklist",
         "tags": [
           "config"
@@ -5402,6 +6008,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5427,6 +6049,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Importar Vendedores Erp",
         "tags": [
           "config"
@@ -5445,6 +6072,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5476,6 +6119,11 @@
             "description": "Evolution fora."
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Cria a instancia (se preciso) e devolve o QR para conectar o numero",
         "tags": [
           "whatsapp"
@@ -5494,6 +6142,22 @@
               "format": "uuid",
               "title": "Loja Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
             }
           }
         ],
@@ -5525,6 +6189,11 @@
             "description": "Evolution fora."
           }
         },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
         "summary": "Estado da conexao do WhatsApp da loja",
         "tags": [
           "whatsapp"

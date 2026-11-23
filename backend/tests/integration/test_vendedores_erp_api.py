@@ -20,6 +20,7 @@ from app.infra.dependencias import get_leitor_vendedores_erp, get_session
 from app.infra.mercadophone import MercadoPhoneNaoConfigurado
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -59,7 +60,7 @@ async def ctx(db_url: str) -> AsyncIterator[tuple[httpx.AsyncClient, LeitorFalso
 
 
 async def _loja(client: httpx.AsyncClient, *, conectar: bool = True) -> str:
-    loja = str((await client.post("/lojas", json={"nome": "Loja"})).json()["id"])
+    loja = await criar_loja_no_banco("Loja")
     if conectar:
         r = await client.put(f"/lojas/{loja}/config/erp", json={"system_unit_id": 12})
         assert r.status_code == 200, r.text

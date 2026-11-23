@@ -18,6 +18,7 @@ from app.infra.dependencias import get_fonte_estoque_erp, get_session
 from app.infra.mercadophone import MercadoPhoneNaoConfigurado
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 from tests.mercadophone_falso import CHAVE, URL, McpFalso, item
 
 pytestmark = pytest.mark.integration
@@ -60,7 +61,7 @@ async def client(db_url: str, mcp: McpFalso) -> AsyncIterator[httpx.AsyncClient]
 
 
 async def _loja(client: httpx.AsyncClient, *, conexao: dict[str, Any] | None = CORPO) -> str:
-    loja = str((await client.post("/lojas", json={"nome": "Loja"})).json()["id"])
+    loja = await criar_loja_no_banco("Loja")
     if conexao is not None:
         r = await client.put(f"/lojas/{loja}/config/erp", json=conexao)
         assert r.status_code == 200, r.text

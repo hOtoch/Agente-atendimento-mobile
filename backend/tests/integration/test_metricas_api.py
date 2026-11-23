@@ -14,6 +14,7 @@ from app.adapters.outbound.db.models import Conversa, Evento, Lead, Mensagem
 from app.infra.dependencias import get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -43,9 +44,7 @@ async def client(
 
 
 async def _loja(client: httpx.AsyncClient) -> str:
-    r = await client.post("/lojas", json={"nome": "Loja API"})
-    assert r.status_code == 201
-    return str(r.json()["id"])
+    return await criar_loja_no_banco("Loja API")
 
 
 async def test_padrao_sao_os_ultimos_30_dias_e_loja_vazia_devolve_zeros(client) -> None:  # type: ignore[no-untyped-def]

@@ -37,6 +37,7 @@ from app.infra.dependencias import (
 from app.infra.settings import Settings, get_settings
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -94,8 +95,7 @@ class Ambiente:
         self.agendadas: list[UUID] = []
 
     async def loja(self) -> UUID:
-        r = await self.client.post("/lojas", json={"nome": "Loja Zap"})
-        return UUID(r.json()["id"])
+        return UUID(await criar_loja_no_banco("Loja Zap"))
 
     def payload(self, fixture: str, loja: UUID) -> dict[str, Any]:
         dados: dict[str, Any] = json.loads((FIXTURES / f"{fixture}.json").read_text("utf-8"))

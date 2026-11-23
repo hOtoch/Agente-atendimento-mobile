@@ -13,6 +13,7 @@ from app.application.midia import ReceberMidia
 from app.infra.dependencias import get_armazenamento_midia, get_receber_midia, get_session
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
+from tests.integration.lojas import criar_loja_no_banco
 
 pytestmark = pytest.mark.integration
 
@@ -42,7 +43,7 @@ async def client(db_url: str, tmp_path: Path) -> AsyncIterator[httpx.AsyncClient
 
 
 async def _loja(c: httpx.AsyncClient) -> str:
-    return str((await c.post("/lojas", json={"nome": "Loja Midia"})).json()["id"])
+    return await criar_loja_no_banco("Loja Midia")
 
 
 def _arquivo(conteudo: bytes, tipo: str) -> dict[str, tuple[str, bytes, str]]:

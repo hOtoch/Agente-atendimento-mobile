@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.application.auth.modelos import (
     CredenciaisInvalidas,
+    LojaNaoAutorizada,
     SessaoInvalida,
     TrocaSenhaInvalida,
 )
@@ -75,6 +76,10 @@ def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(SessaoInvalida)
     async def _sessao(_: Request, exc: SessaoInvalida) -> JSONResponse:
         return JSONResponse(_corpo([ErroCampo("sessao", str(exc))]), status_code=401)
+
+    @app.exception_handler(LojaNaoAutorizada)
+    async def _loja_nao_autorizada(_: Request, exc: LojaNaoAutorizada) -> JSONResponse:
+        return JSONResponse(_corpo([ErroCampo("loja_id", str(exc))]), status_code=403)
 
     @app.exception_handler(TrocaSenhaInvalida)
     async def _troca_senha(_: Request, exc: TrocaSenhaInvalida) -> JSONResponse:

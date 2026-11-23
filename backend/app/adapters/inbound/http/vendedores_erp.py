@@ -10,9 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.config.vendedores_erp import ImportarVendedoresErp
-from app.infra.dependencias import get_importar_vendedores_erp, get_session
+from app.infra.dependencias import get_importar_vendedores_erp, get_session, loja_autorizada
 
-router = APIRouter(tags=["config"])
+router = APIRouter(tags=["config"], dependencies=[Depends(loja_autorizada)])
 
 Importar = Annotated[ImportarVendedoresErp, Depends(get_importar_vendedores_erp)]
 Sessao = Annotated[AsyncSession, Depends(get_session)]

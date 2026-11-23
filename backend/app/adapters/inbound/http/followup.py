@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.inbound.http.schemas_followup import FollowupSchema
 from app.application.followup import ConfigurarFollowup, EntradaFollowup
 from app.domain.followup import ConfigFollowup
-from app.infra.dependencias import get_configurar_followup, get_session
+from app.infra.dependencias import get_configurar_followup, get_session, loja_autorizada
 
-router = APIRouter(tags=["config"])
+router = APIRouter(tags=["config"], dependencies=[Depends(loja_autorizada)])
 
 Casos = Annotated[ConfigurarFollowup, Depends(get_configurar_followup)]
 Sessao = Annotated[AsyncSession, Depends(get_session)]

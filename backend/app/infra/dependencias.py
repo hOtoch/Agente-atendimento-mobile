@@ -30,7 +30,7 @@ from app.adapters.outbound.mercadophone.vendedores import LeitorVendedoresMercad
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
-from app.application.auth.modelos import SessaoAtual, SessaoInvalida
+from app.application.auth.modelos import LojaNaoAutorizada, SessaoAtual, SessaoInvalida
 from app.application.auth.portas import HasherSenha, RepositorioUsuarios, Sessoes
 from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
@@ -292,3 +292,13 @@ async def sessao_atual(
         raise SessaoInvalida
     await sessoes.renovar(sessao)
     return SessaoAtual(usuario_id=dados.usuario_id, loja_id=dados.loja_id, token=sessao)
+
+
+async def loja_autorizada(
+    loja_id: UUID,
+    sessao: Annotated[SessaoAtual, Depends(sessao_atual)],
+) -> SessaoAtual:
+    """Exige que a loja da URL seja a loja da sessao (sem sessao 401; de outra loja 403)."""
+    if sessao.loja_id != loja_id:
+        raise LojaNaoAutorizada
+    return sessao

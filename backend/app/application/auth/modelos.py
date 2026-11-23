@@ -60,6 +60,13 @@ class CredenciaisInvalidas(Exception):
         super().__init__("E-mail ou senha inválidos.")
 
 
+class LojaNaoAutorizada(Exception):
+    """A sessao e valida, mas a loja pedida na URL nao e a loja da sessao."""
+
+    def __init__(self) -> None:
+        super().__init__("Esta sessão não tem acesso a essa loja.")
+
+
 class SessaoInvalida(Exception):
     """Sem sessao, sessao expirada ou usuario que deixou de existir/ficou inativo."""
 
