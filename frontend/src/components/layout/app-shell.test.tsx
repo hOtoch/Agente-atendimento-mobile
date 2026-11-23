@@ -28,11 +28,12 @@ describe("AppShell", () => {
       "Conversas",
       "Onboarding",
       "Simulador",
+      "Desempenho",
       "Configurações",
     ]) {
       expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument()
     }
-    expect(NAV_ITEMS).toHaveLength(5)
+    expect(NAV_ITEMS).toHaveLength(6)
     expect(screen.getByText("conteúdo")).toBeInTheDocument()
   })
 
@@ -50,6 +51,11 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Kanban" })).not.toHaveAttribute(
       "aria-current",
     )
+  })
+
+  it("o item Desempenho leva para /desempenho", () => {
+    render(<AppShell>x</AppShell>)
+    expect(screen.getByRole("link", { name: "Desempenho" })).toHaveAttribute("href", "/desempenho")
   })
 
   it("nas rotas públicas /chat renderiza só o conteúdo, sem navegação do painel", () => {

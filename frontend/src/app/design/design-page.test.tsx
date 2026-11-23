@@ -20,6 +20,7 @@ describe("/design (vitrine)", () => {
       "DataGrid",
       "Toast",
       "Skeleton",
+      "Gráficos",
       "EmptyState",
     ]) {
       expect(screen.getByRole("heading", { name: nome })).toBeInTheDocument()

@@ -1,4 +1,5 @@
 import {
+  ChartNoAxesCombined,
   Columns3,
   MessageSquare,
   MessagesSquare,
@@ -18,5 +19,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Conversas", href: "/conversas", icon: MessageSquare },
   { label: "Onboarding", href: "/onboarding", icon: Rocket },
   { label: "Simulador", href: "/simulador", icon: MessagesSquare },
+  { label: "Desempenho", href: "/desempenho", icon: ChartNoAxesCombined },
   { label: "Configurações", href: "/configuracoes", icon: Settings },
 ]
