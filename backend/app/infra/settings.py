@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     """Janela (minutos, a partir da primeira falha) do limite de tentativas de login."""
     confiar_proxy: bool = False
     """Usa o IP de `X-Forwarded-For` (acrescentado pelo proxy, ex. Caddy). So atras de proxy."""
+    seed_senha_demo: str | None = None
+    """Senha do login `demo@atendimento.local` do seed. Sem valor, o seed pula o usuario."""
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 
