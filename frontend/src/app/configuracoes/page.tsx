@@ -1,12 +1,15 @@
+"use client"
+
 import { PageHeader } from "@/components/ui/page-header"
 import { Configuracoes } from "@/features/configuracoes/configuracoes"
-import { LOJA_ID } from "@/lib/loja"
+import { useSessao } from "@/lib/sessao"
 
 export default function Page() {
+  const { lojaId } = useSessao()
   return (
     <section>
       <PageHeader title="Configurações" description="Preferências e regras da loja." />
-      <Configuracoes lojaId={LOJA_ID} />
+      <Configuracoes lojaId={lojaId} />
     </section>
   )
 }

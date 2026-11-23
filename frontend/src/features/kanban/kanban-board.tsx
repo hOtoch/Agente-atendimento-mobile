@@ -21,7 +21,6 @@ import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ETAPAS, rotuloDaEtapa, type Etapa } from "@/lib/etapas"
-import { LOJA_ID } from "@/lib/loja"
 
 import { ConteudoCard } from "./card-lead"
 import { ColunaDoKanban, type EstadoAlvo } from "./coluna-kanban"
@@ -63,7 +62,7 @@ function Carregando() {
   )
 }
 
-export function KanbanBoard({ lojaId = LOJA_ID }: { lojaId?: string }) {
+export function KanbanBoard({ lojaId }: { lojaId: string }) {
   const { colunas, status, tempoRealOk, mover, recarregar } = useKanban(lojaId)
   const agora = useAgora()
   const [filtro, setFiltro] = useState<FiltroVendedor>("todos")

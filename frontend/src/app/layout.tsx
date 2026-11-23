@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 
 import { AppShell } from "@/components/layout/app-shell"
 import { Toaster } from "@/components/ui/toast"
+import { SessaoProvider } from "@/lib/sessao"
 
 import "./globals.css"
 
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <AppShell>{children}</AppShell>
+        <SessaoProvider>
+          <AppShell>{children}</AppShell>
+        </SessaoProvider>
         <Toaster />
       </body>
     </html>

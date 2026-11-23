@@ -1,10 +1,16 @@
 import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AppShell } from "./app-shell"
 import { NAV_ITEMS } from "./nav-items"
 
-const rota = vi.hoisted(() => ({ atual: "/conversas" }))
+const rota = vi.hoisted(() => ({ atual: "/conversas", sair: vi.fn() }))
+
+vi.mock("@/lib/sessao", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/sessao")>()),
+  useSessao: () => ({ lojaNome: "Loja Demo", email: "dono@loja.com", sair: rota.sair }),
+}))
 
 vi.mock("next/navigation", () => ({
   usePathname: () => rota.atual,
@@ -12,6 +18,7 @@ vi.mock("next/navigation", () => ({
 
 beforeEach(() => {
   rota.atual = "/conversas"
+  rota.sair.mockReset()
 })
 
 describe("AppShell", () => {
@@ -75,5 +82,21 @@ describe("AppShell", () => {
     rota.atual = "/chatx"
     render(<AppShell>x</AppShell>)
     expect(screen.getByRole("navigation", { name: /principal/i })).toBeInTheDocument()
+  })
+
+  it("mostra o nome da loja da sessão, o item Trocar senha e o botão Sair", async () => {
+    render(<AppShell>x</AppShell>)
+    expect(screen.getByText("Loja Demo")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Trocar senha" })).toHaveAttribute("href", "/conta/senha")
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }))
+    expect(rota.sair).toHaveBeenCalledTimes(1)
+  })
+
+  it("na tela de login renderiza só o conteúdo, sem barra lateral", () => {
+    rota.atual = "/login"
+    render(<AppShell>entrar</AppShell>)
+    expect(screen.getByText("entrar")).toBeInTheDocument()
+    expect(screen.queryByRole("navigation")).toBeNull()
+    expect(screen.queryByRole("button", { name: "Sair" })).toBeNull()
   })
 })
