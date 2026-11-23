@@ -8,6 +8,7 @@ from app.adapters.inbound.http.config import router as config_router
 from app.adapters.inbound.http.erros import registrar_handlers
 from app.adapters.inbound.http.followup import router as followup_router
 from app.adapters.inbound.http.importacao import router as importacao_router
+from app.adapters.inbound.http.metricas import router as metricas_router
 from app.adapters.inbound.http.midias import router as midias_router
 from app.adapters.inbound.http.openapi import registrar_openapi
 from app.adapters.inbound.http.painel import router as painel_router
@@ -33,5 +34,6 @@ app.include_router(vendedores_erp_router)
 app.include_router(importacao_router)
 app.include_router(webchat_router)
 app.include_router(painel_router)
+app.include_router(metricas_router)
 app.include_router(midias_router)
 app.include_router(whatsapp_router)

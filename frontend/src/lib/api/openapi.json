@@ -258,6 +258,29 @@
         "title": "CardLeadSchema",
         "type": "object"
       },
+      "CelulaHorarioSchema": {
+        "properties": {
+          "dia_semana": {
+            "title": "Dia Semana",
+            "type": "integer"
+          },
+          "hora": {
+            "title": "Hora",
+            "type": "integer"
+          },
+          "mensagens": {
+            "title": "Mensagens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dia_semana",
+          "hora",
+          "mensagens"
+        ],
+        "title": "CelulaHorarioSchema",
+        "type": "object"
+      },
       "ChecklistSchema": {
         "properties": {
           "itens": {
@@ -458,6 +481,90 @@
         "title": "ConexaoWhatsAppSchema",
         "type": "object"
       },
+      "CustoModeloSchema": {
+        "properties": {
+          "cache_escrita": {
+            "title": "Cache Escrita",
+            "type": "integer"
+          },
+          "cache_leitura": {
+            "title": "Cache Leitura",
+            "type": "integer"
+          },
+          "chamadas": {
+            "title": "Chamadas",
+            "type": "integer"
+          },
+          "custo_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custo Usd"
+          },
+          "entrada": {
+            "title": "Entrada",
+            "type": "integer"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          },
+          "saida": {
+            "title": "Saida",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "modelo",
+          "custo_usd",
+          "entrada",
+          "saida",
+          "cache_leitura",
+          "cache_escrita",
+          "chamadas"
+        ],
+        "title": "CustoModeloSchema",
+        "type": "object"
+      },
+      "CustoSchema": {
+        "properties": {
+          "completo": {
+            "title": "Completo",
+            "type": "boolean"
+          },
+          "modelos_sem_preco": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Modelos Sem Preco",
+            "type": "array"
+          },
+          "por_modelo": {
+            "items": {
+              "$ref": "#/components/schemas/CustoModeloSchema"
+            },
+            "title": "Por Modelo",
+            "type": "array"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total_usd",
+          "completo",
+          "modelos_sem_preco",
+          "por_modelo"
+        ],
+        "title": "CustoSchema",
+        "type": "object"
+      },
       "DetalheLeadSchema": {
         "properties": {
           "card": {
@@ -580,6 +687,24 @@
         "title": "ErroCampoSchema",
         "type": "object"
       },
+      "ErroPorTipoSchema": {
+        "properties": {
+          "quantidade": {
+            "title": "Quantidade",
+            "type": "integer"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "quantidade"
+        ],
+        "title": "ErroPorTipoSchema",
+        "type": "object"
+      },
       "ErroSchema": {
         "properties": {
           "caminho": {
@@ -596,6 +721,47 @@
           "mensagem"
         ],
         "title": "ErroSchema",
+        "type": "object"
+      },
+      "ErrosAgenteSchema": {
+        "properties": {
+          "ferramentas": {
+            "title": "Ferramentas",
+            "type": "integer"
+          },
+          "limite_iteracoes": {
+            "title": "Limite Iteracoes",
+            "type": "integer"
+          },
+          "llm": {
+            "title": "Llm",
+            "type": "integer"
+          },
+          "llm_por_tipo": {
+            "items": {
+              "$ref": "#/components/schemas/ErroPorTipoSchema"
+            },
+            "title": "Llm Por Tipo",
+            "type": "array"
+          },
+          "respostas_descartadas": {
+            "title": "Respostas Descartadas",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "llm",
+          "ferramentas",
+          "limite_iteracoes",
+          "respostas_descartadas",
+          "llm_por_tipo"
+        ],
+        "title": "ErrosAgenteSchema",
         "type": "object"
       },
       "ErrosSchema": {
@@ -668,6 +834,34 @@
         ],
         "title": "Etapa",
         "type": "string"
+      },
+      "EtapaFunilSchema": {
+        "properties": {
+          "etapa": {
+            "title": "Etapa",
+            "type": "string"
+          },
+          "leads": {
+            "title": "Leads",
+            "type": "integer"
+          },
+          "leads_anterior": {
+            "title": "Leads Anterior",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "etapa",
+          "nome",
+          "leads",
+          "leads_anterior"
+        ],
+        "title": "EtapaFunilSchema",
+        "type": "object"
       },
       "EventoDonoMudouSchema": {
         "properties": {
@@ -899,6 +1093,29 @@
           }
         ]
       },
+      "FerramentaSchema": {
+        "properties": {
+          "erros": {
+            "title": "Erros",
+            "type": "integer"
+          },
+          "execucoes": {
+            "title": "Execucoes",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "execucoes",
+          "erros"
+        ],
+        "title": "FerramentaSchema",
+        "type": "object"
+      },
       "FollowupSchema-Input": {
         "properties": {
           "hora_fim": {
@@ -1004,6 +1221,117 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HandoffsSchema": {
+        "properties": {
+          "por_motivo": {
+            "items": {
+              "$ref": "#/components/schemas/MotivoHandoffSchema"
+            },
+            "title": "Por Motivo",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "por_motivo"
+        ],
+        "title": "HandoffsSchema",
+        "type": "object"
+      },
+      "IndicadorSchema": {
+        "description": "Um numero do periodo, o mesmo numero no periodo anterior e a variacao %.",
+        "properties": {
+          "anterior": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anterior"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "variacao_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao Pct"
+          }
+        },
+        "required": [
+          "valor",
+          "anterior",
+          "variacao_pct"
+        ],
+        "title": "IndicadorSchema",
+        "type": "object"
+      },
+      "IndicadorUsdSchema": {
+        "description": "Como `IndicadorSchema`, para US$ (valores `Decimal` como texto, ate 6 casas).",
+        "properties": {
+          "anterior": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anterior"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "variacao_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao Pct"
+          }
+        },
+        "required": [
+          "valor",
+          "anterior",
+          "variacao_pct"
+        ],
+        "title": "IndicadorUsdSchema",
+        "type": "object"
+      },
       "ItemChecklistSchema": {
         "properties": {
           "chave": {
@@ -1046,6 +1374,94 @@
           "etapas"
         ],
         "title": "KanbanSchema",
+        "type": "object"
+      },
+      "KpisSchema": {
+        "properties": {
+          "acordos_fechados": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "conversas_ativas": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "conversas_novas": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "custo_por_acordo_usd": {
+            "$ref": "#/components/schemas/IndicadorUsdSchema"
+          },
+          "custo_por_conversa_usd": {
+            "$ref": "#/components/schemas/IndicadorUsdSchema"
+          },
+          "custo_total_usd": {
+            "$ref": "#/components/schemas/IndicadorUsdSchema"
+          },
+          "erros": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "handoffs": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "latencia_llm_media_ms": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "latencia_llm_p95_ms": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "mensagens_enviadas": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "mensagens_por_conversa": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "mensagens_recebidas": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "respostas_descartadas": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "taxa_cache": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "taxa_conversao": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "taxa_handoff": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "tempo_resposta_media_ms": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "tempo_resposta_p95_ms": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          },
+          "tokens_total": {
+            "$ref": "#/components/schemas/IndicadorSchema"
+          }
+        },
+        "required": [
+          "conversas_novas",
+          "conversas_ativas",
+          "mensagens_recebidas",
+          "mensagens_enviadas",
+          "mensagens_por_conversa",
+          "handoffs",
+          "taxa_handoff",
+          "acordos_fechados",
+          "taxa_conversao",
+          "tokens_total",
+          "taxa_cache",
+          "custo_total_usd",
+          "custo_por_conversa_usd",
+          "custo_por_acordo_usd",
+          "latencia_llm_media_ms",
+          "latencia_llm_p95_ms",
+          "tempo_resposta_media_ms",
+          "tempo_resposta_p95_ms",
+          "erros",
+          "respostas_descartadas"
+        ],
+        "title": "KpisSchema",
         "type": "object"
       },
       "LinhaEstoqueSchema-Input": {
@@ -1625,6 +2041,79 @@
         "title": "MensagemVendedorIn",
         "type": "object"
       },
+      "MetricasSchema": {
+        "properties": {
+          "custo": {
+            "$ref": "#/components/schemas/CustoSchema"
+          },
+          "erros": {
+            "$ref": "#/components/schemas/ErrosAgenteSchema"
+          },
+          "ferramentas": {
+            "items": {
+              "$ref": "#/components/schemas/FerramentaSchema"
+            },
+            "title": "Ferramentas",
+            "type": "array"
+          },
+          "funil": {
+            "items": {
+              "$ref": "#/components/schemas/EtapaFunilSchema"
+            },
+            "title": "Funil",
+            "type": "array"
+          },
+          "handoffs": {
+            "$ref": "#/components/schemas/HandoffsSchema"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KpisSchema"
+          },
+          "mapa_horario": {
+            "items": {
+              "$ref": "#/components/schemas/CelulaHorarioSchema"
+            },
+            "title": "Mapa Horario",
+            "type": "array"
+          },
+          "modelos_procurados": {
+            "items": {
+              "$ref": "#/components/schemas/ModeloProcuradoSchema"
+            },
+            "title": "Modelos Procurados",
+            "type": "array"
+          },
+          "periodo": {
+            "$ref": "#/components/schemas/PeriodoSchema"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDiarioSchema"
+            },
+            "minItems": 1,
+            "title": "Series",
+            "type": "array"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/TokensSchema"
+          }
+        },
+        "required": [
+          "periodo",
+          "kpis",
+          "funil",
+          "handoffs",
+          "tokens",
+          "custo",
+          "erros",
+          "ferramentas",
+          "modelos_procurados",
+          "mapa_horario",
+          "series"
+        ],
+        "title": "MetricasSchema",
+        "type": "object"
+      },
       "MidiaSchema": {
         "properties": {
           "midia_url": {
@@ -1636,6 +2125,52 @@
           "midia_url"
         ],
         "title": "MidiaSchema",
+        "type": "object"
+      },
+      "ModeloProcuradoSchema": {
+        "properties": {
+          "leads": {
+            "title": "Leads",
+            "type": "integer"
+          },
+          "modelo": {
+            "title": "Modelo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "modelo",
+          "leads"
+        ],
+        "title": "ModeloProcuradoSchema",
+        "type": "object"
+      },
+      "MotivoHandoffSchema": {
+        "properties": {
+          "anterior": {
+            "title": "Anterior",
+            "type": "integer"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "quantidade": {
+            "title": "Quantidade",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "motivo",
+          "nome",
+          "quantidade",
+          "anterior"
+        ],
+        "title": "MotivoHandoffSchema",
         "type": "object"
       },
       "MoverEtapaIn": {
@@ -1801,6 +2336,140 @@
           "nome_exibicao"
         ],
         "title": "PerfilSchema",
+        "type": "object"
+      },
+      "PeriodoSchema": {
+        "properties": {
+          "anterior_ate": {
+            "format": "date",
+            "title": "Anterior Ate",
+            "type": "string"
+          },
+          "anterior_de": {
+            "format": "date",
+            "title": "Anterior De",
+            "type": "string"
+          },
+          "ate": {
+            "format": "date",
+            "title": "Ate",
+            "type": "string"
+          },
+          "de": {
+            "format": "date",
+            "title": "De",
+            "type": "string"
+          },
+          "dias": {
+            "title": "Dias",
+            "type": "integer"
+          },
+          "fuso": {
+            "title": "Fuso",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "ate",
+          "dias",
+          "fuso",
+          "anterior_de",
+          "anterior_ate"
+        ],
+        "title": "PeriodoSchema",
+        "type": "object"
+      },
+      "PontoDiarioSchema": {
+        "properties": {
+          "conversas_ativas": {
+            "title": "Conversas Ativas",
+            "type": "integer"
+          },
+          "conversas_novas": {
+            "title": "Conversas Novas",
+            "type": "integer"
+          },
+          "custo_usd": {
+            "title": "Custo Usd",
+            "type": "string"
+          },
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "erros": {
+            "title": "Erros",
+            "type": "integer"
+          },
+          "latencia_llm_media_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latencia Llm Media Ms"
+          },
+          "latencia_llm_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latencia Llm P95 Ms"
+          },
+          "mensagens_recebidas": {
+            "title": "Mensagens Recebidas",
+            "type": "integer"
+          },
+          "tempo_resposta_media_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Resposta Media Ms"
+          },
+          "tempo_resposta_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Resposta P95 Ms"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dia",
+          "conversas_novas",
+          "conversas_ativas",
+          "mensagens_recebidas",
+          "tokens",
+          "custo_usd",
+          "latencia_llm_media_ms",
+          "latencia_llm_p95_ms",
+          "tempo_resposta_media_ms",
+          "tempo_resposta_p95_ms",
+          "erros"
+        ],
+        "title": "PontoDiarioSchema",
         "type": "object"
       },
       "PrecoSchema-Input": {
@@ -2422,6 +3091,44 @@
           "mensagem"
         ],
         "title": "TesteConexaoErpSaida",
+        "type": "object"
+      },
+      "TokensSchema": {
+        "properties": {
+          "cache_escrita": {
+            "title": "Cache Escrita",
+            "type": "integer"
+          },
+          "cache_leitura": {
+            "title": "Cache Leitura",
+            "type": "integer"
+          },
+          "chamadas": {
+            "title": "Chamadas",
+            "type": "integer"
+          },
+          "entrada": {
+            "title": "Entrada",
+            "type": "integer"
+          },
+          "saida": {
+            "title": "Saida",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entrada",
+          "saida",
+          "cache_leitura",
+          "cache_escrita",
+          "total",
+          "chamadas"
+        ],
+        "title": "TokensSchema",
         "type": "object"
       },
       "TrocaSchema-Input": {
@@ -4302,6 +5009,88 @@
         "summary": "Envia uma mensagem como vendedor (exige ter assumido a conversa)",
         "tags": [
           "painel"
+        ]
+      }
+    },
+    "/lojas/{loja_id}/metricas": {
+      "get": {
+        "description": "Desempenho da IA no periodo (padrao: ultimos 30 dias), com comparacao ao periodo anterior.\n\nO periodo anterior tem o mesmo tamanho e termina na vespera de `de`. Maximo de 366 dias.",
+        "operationId": "obter_metricas_lojas__loja_id__metricas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Primeiro dia (AAAA-MM-DD, America/Sao_Paulo).",
+            "in": "query",
+            "name": "de",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primeiro dia (AAAA-MM-DD, America/Sao_Paulo).",
+              "title": "De"
+            }
+          },
+          {
+            "description": "Ultimo dia, inclusive (AAAA-MM-DD). Padrao: hoje.",
+            "in": "query",
+            "name": "ate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Ultimo dia, inclusive (AAAA-MM-DD). Padrao: hoje.",
+              "title": "Ate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricasSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obter Metricas",
+        "tags": [
+          "metricas"
         ]
       }
     },

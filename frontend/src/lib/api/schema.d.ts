@@ -402,6 +402,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lojas/{loja_id}/metricas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obter Metricas
+         * @description Desempenho da IA no periodo (padrao: ultimos 30 dias), com comparacao ao periodo anterior.
+         *
+         *     O periodo anterior tem o mesmo tamanho e termina na vespera de `de`. Maximo de 366 dias.
+         */
+        get: operations["obter_metricas_lojas__loja_id__metricas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lojas/{loja_id}/onboarding/checklist": {
         parameters: {
             query?: never;
@@ -675,6 +697,15 @@ export interface components {
             /** Vendedor Nome */
             vendedor_nome: string | null;
         };
+        /** CelulaHorarioSchema */
+        CelulaHorarioSchema: {
+            /** Dia Semana */
+            dia_semana: number;
+            /** Hora */
+            hora: number;
+            /** Mensagens */
+            mensagens: number;
+        };
         /** ChecklistSchema */
         ChecklistSchema: {
             /** Itens */
@@ -741,6 +772,34 @@ export interface components {
             qr_base64: string | null;
             status: components["schemas"]["EstadoConexao"];
         };
+        /** CustoModeloSchema */
+        CustoModeloSchema: {
+            /** Cache Escrita */
+            cache_escrita: number;
+            /** Cache Leitura */
+            cache_leitura: number;
+            /** Chamadas */
+            chamadas: number;
+            /** Custo Usd */
+            custo_usd: string | null;
+            /** Entrada */
+            entrada: number;
+            /** Modelo */
+            modelo: string;
+            /** Saida */
+            saida: number;
+        };
+        /** CustoSchema */
+        CustoSchema: {
+            /** Completo */
+            completo: boolean;
+            /** Modelos Sem Preco */
+            modelos_sem_preco: string[];
+            /** Por Modelo */
+            por_modelo: components["schemas"]["CustoModeloSchema"][];
+            /** Total Usd */
+            total_usd: string;
+        };
         /** DetalheLeadSchema */
         DetalheLeadSchema: {
             card: components["schemas"]["CardLeadSchema"];
@@ -787,12 +846,34 @@ export interface components {
             /** Mensagem */
             mensagem: string;
         };
+        /** ErroPorTipoSchema */
+        ErroPorTipoSchema: {
+            /** Quantidade */
+            quantidade: number;
+            /** Tipo */
+            tipo: string;
+        };
         /** ErroSchema */
         ErroSchema: {
             /** Caminho */
             caminho: string;
             /** Mensagem */
             mensagem: string;
+        };
+        /** ErrosAgenteSchema */
+        ErrosAgenteSchema: {
+            /** Ferramentas */
+            ferramentas: number;
+            /** Limite Iteracoes */
+            limite_iteracoes: number;
+            /** Llm */
+            llm: number;
+            /** Llm Por Tipo */
+            llm_por_tipo: components["schemas"]["ErroPorTipoSchema"][];
+            /** Respostas Descartadas */
+            respostas_descartadas: number;
+            /** Total */
+            total: number;
         };
         /**
          * ErrosSchema
@@ -823,6 +904,17 @@ export interface components {
          * @enum {string}
          */
         Etapa: "novo_contato" | "interesse_identificado" | "interesse_qualificado" | "com_o_vendedor" | "venda_fechada";
+        /** EtapaFunilSchema */
+        EtapaFunilSchema: {
+            /** Etapa */
+            etapa: string;
+            /** Leads */
+            leads: number;
+            /** Leads Anterior */
+            leads_anterior: number;
+            /** Nome */
+            nome: string;
+        };
         /** EventoDonoMudouSchema */
         EventoDonoMudouSchema: {
             /** Dono */
@@ -934,6 +1026,15 @@ export interface components {
             tipo: "texto" | "audio" | "imagem";
         };
         EventoPainel: components["schemas"]["EventoEtapaMudouSchema"] | components["schemas"]["EventoMensagemNovaSchema"] | components["schemas"]["EventoDonoMudouSchema"];
+        /** FerramentaSchema */
+        FerramentaSchema: {
+            /** Erros */
+            erros: number;
+            /** Execucoes */
+            execucoes: number;
+            /** Nome */
+            nome: string;
+        };
         /** FollowupSchema */
         "FollowupSchema-Input": {
             /**
@@ -983,6 +1084,37 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HandoffsSchema */
+        HandoffsSchema: {
+            /** Por Motivo */
+            por_motivo: components["schemas"]["MotivoHandoffSchema"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * IndicadorSchema
+         * @description Um numero do periodo, o mesmo numero no periodo anterior e a variacao %.
+         */
+        IndicadorSchema: {
+            /** Anterior */
+            anterior: number | null;
+            /** Valor */
+            valor: number | null;
+            /** Variacao Pct */
+            variacao_pct: number | null;
+        };
+        /**
+         * IndicadorUsdSchema
+         * @description Como `IndicadorSchema`, para US$ (valores `Decimal` como texto, ate 6 casas).
+         */
+        IndicadorUsdSchema: {
+            /** Anterior */
+            anterior: string | null;
+            /** Valor */
+            valor: string | null;
+            /** Variacao Pct */
+            variacao_pct: number | null;
+        };
         /** ItemChecklistSchema */
         ItemChecklistSchema: {
             /** Chave */
@@ -998,6 +1130,29 @@ export interface components {
         KanbanSchema: {
             /** Etapas */
             etapas: components["schemas"]["ColunaKanbanSchema"][];
+        };
+        /** KpisSchema */
+        KpisSchema: {
+            acordos_fechados: components["schemas"]["IndicadorSchema"];
+            conversas_ativas: components["schemas"]["IndicadorSchema"];
+            conversas_novas: components["schemas"]["IndicadorSchema"];
+            custo_por_acordo_usd: components["schemas"]["IndicadorUsdSchema"];
+            custo_por_conversa_usd: components["schemas"]["IndicadorUsdSchema"];
+            custo_total_usd: components["schemas"]["IndicadorUsdSchema"];
+            erros: components["schemas"]["IndicadorSchema"];
+            handoffs: components["schemas"]["IndicadorSchema"];
+            latencia_llm_media_ms: components["schemas"]["IndicadorSchema"];
+            latencia_llm_p95_ms: components["schemas"]["IndicadorSchema"];
+            mensagens_enviadas: components["schemas"]["IndicadorSchema"];
+            mensagens_por_conversa: components["schemas"]["IndicadorSchema"];
+            mensagens_recebidas: components["schemas"]["IndicadorSchema"];
+            respostas_descartadas: components["schemas"]["IndicadorSchema"];
+            taxa_cache: components["schemas"]["IndicadorSchema"];
+            taxa_conversao: components["schemas"]["IndicadorSchema"];
+            taxa_handoff: components["schemas"]["IndicadorSchema"];
+            tempo_resposta_media_ms: components["schemas"]["IndicadorSchema"];
+            tempo_resposta_p95_ms: components["schemas"]["IndicadorSchema"];
+            tokens_total: components["schemas"]["IndicadorSchema"];
         };
         /** LinhaEstoqueSchema */
         "LinhaEstoqueSchema-Input": {
@@ -1231,10 +1386,47 @@ export interface components {
             /** Texto */
             texto: string;
         };
+        /** MetricasSchema */
+        MetricasSchema: {
+            custo: components["schemas"]["CustoSchema"];
+            erros: components["schemas"]["ErrosAgenteSchema"];
+            /** Ferramentas */
+            ferramentas: components["schemas"]["FerramentaSchema"][];
+            /** Funil */
+            funil: components["schemas"]["EtapaFunilSchema"][];
+            handoffs: components["schemas"]["HandoffsSchema"];
+            kpis: components["schemas"]["KpisSchema"];
+            /** Mapa Horario */
+            mapa_horario: components["schemas"]["CelulaHorarioSchema"][];
+            /** Modelos Procurados */
+            modelos_procurados: components["schemas"]["ModeloProcuradoSchema"][];
+            periodo: components["schemas"]["PeriodoSchema"];
+            /** Series */
+            series: components["schemas"]["PontoDiarioSchema"][];
+            tokens: components["schemas"]["TokensSchema"];
+        };
         /** MidiaSchema */
         MidiaSchema: {
             /** Midia Url */
             midia_url: string;
+        };
+        /** ModeloProcuradoSchema */
+        ModeloProcuradoSchema: {
+            /** Leads */
+            leads: number;
+            /** Modelo */
+            modelo: string;
+        };
+        /** MotivoHandoffSchema */
+        MotivoHandoffSchema: {
+            /** Anterior */
+            anterior: number;
+            /** Motivo */
+            motivo: string;
+            /** Nome */
+            nome: string;
+            /** Quantidade */
+            quantidade: number;
         };
         /** MoverEtapaIn */
         MoverEtapaIn: {
@@ -1321,6 +1513,61 @@ export interface components {
              * @default
              */
             whatsapp_contato: string;
+        };
+        /** PeriodoSchema */
+        PeriodoSchema: {
+            /**
+             * Anterior Ate
+             * Format: date
+             */
+            anterior_ate: string;
+            /**
+             * Anterior De
+             * Format: date
+             */
+            anterior_de: string;
+            /**
+             * Ate
+             * Format: date
+             */
+            ate: string;
+            /**
+             * De
+             * Format: date
+             */
+            de: string;
+            /** Dias */
+            dias: number;
+            /** Fuso */
+            fuso: string;
+        };
+        /** PontoDiarioSchema */
+        PontoDiarioSchema: {
+            /** Conversas Ativas */
+            conversas_ativas: number;
+            /** Conversas Novas */
+            conversas_novas: number;
+            /** Custo Usd */
+            custo_usd: string;
+            /**
+             * Dia
+             * Format: date
+             */
+            dia: string;
+            /** Erros */
+            erros: number;
+            /** Latencia Llm Media Ms */
+            latencia_llm_media_ms: number | null;
+            /** Latencia Llm P95 Ms */
+            latencia_llm_p95_ms: number | null;
+            /** Mensagens Recebidas */
+            mensagens_recebidas: number;
+            /** Tempo Resposta Media Ms */
+            tempo_resposta_media_ms: number | null;
+            /** Tempo Resposta P95 Ms */
+            tempo_resposta_p95_ms: number | null;
+            /** Tokens */
+            tokens: number;
         };
         /** PrecoSchema */
         "PrecoSchema-Input": {
@@ -1516,6 +1763,21 @@ export interface components {
             mensagem: string;
             /** Ok */
             ok: boolean;
+        };
+        /** TokensSchema */
+        TokensSchema: {
+            /** Cache Escrita */
+            cache_escrita: number;
+            /** Cache Leitura */
+            cache_leitura: number;
+            /** Chamadas */
+            chamadas: number;
+            /** Entrada */
+            entrada: number;
+            /** Saida */
+            saida: number;
+            /** Total */
+            total: number;
         };
         /** TrocaSchema */
         "TrocaSchema-Input": {
@@ -2717,6 +2979,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrosSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_metricas_lojas__loja_id__metricas_get: {
+        parameters: {
+            query?: {
+                /** @description Primeiro dia (AAAA-MM-DD, America/Sao_Paulo). */
+                de?: string | null;
+                /** @description Ultimo dia, inclusive (AAAA-MM-DD). Padrao: hoje. */
+                ate?: string | null;
+            };
+            header?: never;
+            path: {
+                loja_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricasSchema"];
                 };
             };
             /** @description Validation Error */
