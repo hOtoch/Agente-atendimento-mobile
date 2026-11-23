@@ -1,10 +1,13 @@
+"use client"
+
 import { Suspense } from "react"
 
 import { PageHeader } from "@/components/ui/page-header"
 import { InboxDaPagina } from "@/features/inbox/inbox-da-pagina"
-import { LOJA_ID } from "@/lib/loja"
+import { useSessao } from "@/lib/sessao"
 
 export default function Page() {
+  const { lojaId } = useSessao()
   return (
     <section>
       <PageHeader
@@ -12,7 +15,7 @@ export default function Page() {
         description="Acompanhe os atendimentos, assuma uma conversa ou devolva para a IA."
       />
       <Suspense fallback={null}>
-        <InboxDaPagina lojaId={LOJA_ID} />
+        <InboxDaPagina lojaId={lojaId} />
       </Suspense>
     </section>
   )

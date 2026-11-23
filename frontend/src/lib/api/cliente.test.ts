@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { criarCliente, mensagemDeErro, type DetalheLead, type Kanban } from "./cliente"
+import {
+  criarCliente,
+  criarClientePublico,
+  mensagemDeErro,
+  registrarAoNaoAutorizado,
+  type DetalheLead,
+  type Kanban,
+} from "./cliente"
 
 const LOJA = "11111111-1111-1111-1111-111111111111"
 const LEAD = "22222222-2222-2222-2222-222222222222"
@@ -65,5 +72,41 @@ describe("cliente da API do painel", () => {
       detalhe.eventos,
     ]
     expect(_campos).toHaveLength(4)
+  })
+})
+
+describe("cookies de sessão e 401", () => {
+  const rota = { params: { path: { loja_id: LOJA } } }
+  const resp = (status: number) => async () =>
+    respostaJson({ erros: [{ caminho: "x", mensagem: "x" }] }, status)
+
+  it("o cliente do painel envia credentials: include", async () => {
+    const fetchFalso = vi.fn<(req: Request) => Promise<Response>>(async () => respostaJson({ etapas: [] }))
+    await criarCliente("http://api.local", fetchFalso).GET("/lojas/{loja_id}/leads", rota)
+    expect(fetchFalso.mock.calls[0][0].credentials).toBe("include")
+  })
+
+  it("o cliente público (chat web) usa o credentials padrão, sem cookies", async () => {
+    const fetchFalso = vi.fn<(req: Request) => Promise<Response>>(async () => respostaJson({ etapas: [] }))
+    await criarClientePublico("http://api.local", fetchFalso).GET("/lojas/{loja_id}/leads", rota)
+    expect(fetchFalso.mock.calls[0][0].credentials).toBe("same-origin")
+  })
+
+  it("401 e 403 avisam o handler registrado; login com senha errada não", async () => {
+    const aviso = vi.fn()
+    const parar = registrarAoNaoAutorizado(aviso)
+
+    await criarCliente("http://api.local", resp(401)).GET("/lojas/{loja_id}/leads", rota)
+    expect(aviso).toHaveBeenCalledTimes(1)
+    await criarCliente("http://api.local", resp(403)).GET("/lojas/{loja_id}/leads", rota)
+    expect(aviso).toHaveBeenCalledTimes(2)
+    await criarCliente("http://api.local", resp(401)).POST("/auth/login", {
+      body: { email: "a@b.com", senha: "x" },
+    })
+    expect(aviso).toHaveBeenCalledTimes(2)
+
+    parar()
+    await criarCliente("http://api.local", resp(401)).GET("/lojas/{loja_id}/leads", rota)
+    expect(aviso).toHaveBeenCalledTimes(2)
   })
 })

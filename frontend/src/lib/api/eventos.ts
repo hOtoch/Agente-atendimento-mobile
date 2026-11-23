@@ -48,7 +48,7 @@ export function assinarEventosLoja(
   onEvento: (evento: EventoPainel) => void,
   { baseUrl = URL_API, onErro }: OpcoesAssinatura = {},
 ): () => void {
-  const fonte = new EventSource(`${baseUrl}/lojas/${lojaId}/eventos`)
+  const fonte = new EventSource(`${baseUrl}/lojas/${lojaId}/eventos`, { withCredentials: true })
   fonte.onmessage = (mensagem: MessageEvent<string>) => {
     const evento = interpretar(mensagem.data)
     if (evento) onEvento(evento)

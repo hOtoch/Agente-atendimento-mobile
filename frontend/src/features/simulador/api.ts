@@ -1,4 +1,4 @@
-import { criarCliente, api, mensagemDeErro, URL_API } from "@/lib/api"
+import { apiPublica, mensagemDeErro, URL_API, type criarCliente } from "@/lib/api"
 
 /** Resposta publicada no stream da sessão (IA ou vendedor); ver `WebChatAdapter` no backend. */
 export type MensagemWebchat = {
@@ -65,7 +65,7 @@ export function assinarSessao(
   return () => fonte.close()
 }
 
-export function criarServicoWebchat(cliente: ReturnType<typeof criarCliente> = api): ServicoChat {
+export function criarServicoWebchat(cliente: ReturnType<typeof criarCliente> = apiPublica): ServicoChat {
   return {
     async criarSessao(lojaId) {
       const { data, error } = await cliente.POST("/webchat/{loja_id}/sessoes", {

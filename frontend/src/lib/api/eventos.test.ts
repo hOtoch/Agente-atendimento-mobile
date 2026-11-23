@@ -8,7 +8,10 @@ class EventSourceFalso {
   onerror: ((e: Event) => void) | null = null
   closed = false
 
-  constructor(public url: string) {
+  constructor(
+    public url: string,
+    public opcoes?: EventSourceInit,
+  ) {
     EventSourceFalso.instancias.push(this)
   }
 
@@ -48,6 +51,11 @@ describe("assinarEventosLoja", () => {
     assinarEventosLoja(LOJA, vi.fn(), { baseUrl: "http://api.local" })
     expect(EventSourceFalso.instancias).toHaveLength(1)
     expect(EventSourceFalso.instancias[0].url).toBe(`http://api.local/lojas/${LOJA}/eventos`)
+  })
+
+  it("abre o EventSource com cookies (withCredentials)", () => {
+    assinarEventosLoja(LOJA, vi.fn(), { baseUrl: "http://api.local" })
+    expect(EventSourceFalso.instancias[0].opcoes).toEqual({ withCredentials: true })
   })
 
   it("entrega cada evento tipado ao callback, discriminado por `evento`", () => {

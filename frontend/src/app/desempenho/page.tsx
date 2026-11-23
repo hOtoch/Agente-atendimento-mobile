@@ -1,10 +1,13 @@
+"use client"
+
 import { Desempenho } from "@/features/desempenho/desempenho"
-import { LOJA_ID } from "@/lib/loja"
+import { useSessao } from "@/lib/sessao"
 
 export default function Page() {
+  const { lojaId } = useSessao()
   return (
     <section>
-      <Desempenho lojaId={LOJA_ID} />
+      <Desempenho lojaId={lojaId} />
     </section>
   )
 }
