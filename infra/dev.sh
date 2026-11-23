@@ -5,6 +5,13 @@ set -eu
 cd "$(dirname "$0")/.."
 ENVARGS=""
 [ -f .env ] && ENVARGS="--env-file .env"
+# Docker dentro do WSL com a API rodando no Windows: `host-gateway` aponta para a VM do WSL, nao
+# para o Windows, e o webhook da Evolution leva ECONNREFUSED. No WSL (modo NAT) o Windows e o
+# gateway padrao; o IP muda a cada boot, entao e descoberto aqui. Fora do WSL fica host-gateway.
+if [ -z "${API_HOST_IP:-}" ] && grep -qi microsoft /proc/version 2>/dev/null; then
+  API_HOST_IP="$(ip route | awk '/^default/ {print $3; exit}')"
+  export API_HOST_IP
+fi
 dc() { docker compose -f infra/docker-compose.yml $ENVARGS "$@"; }
 
 case "${1:-}" in

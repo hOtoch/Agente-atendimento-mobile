@@ -102,6 +102,7 @@ Não altere código. Responda com o veredito e o resumo.
 > Docker roda dentro do WSL. Se o daemon estiver parado: `wsl -u root service docker start`.
 > Em Linux/macOS (fora do WSL): `bash infra/dev.sh up` direto, `uv` no PATH (`~/.local/bin`) e Node 24 (`nvm use 24`; o Node 20 quebra o vitest).
 > Comandos Docker: `wsl -e sh -c "cd '/mnt/d/Otoch IA Solutions/PS Power' && docker compose -f infra/docker-compose.yml <cmd>"`.
+> Suba/recrie a Evolution sempre pelo `infra/dev.sh up`: no WSL ele define `API_HOST_IP` (IP do Windows), sem o qual o webhook da Evolution não alcança a API que roda no Windows (`ECONNREFUSED 172.17.0.1:8000`).
 
 | O quê | Comando |
 |---|---|

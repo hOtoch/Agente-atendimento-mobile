@@ -102,9 +102,10 @@ services:
       # Webhook global desligado: cada instancia recebe o seu webhook ao ser criada pela API
       WEBHOOK_GLOBAL_ENABLED: "false"
       LOG_LEVEL: ERROR,WARN,INFO
-    # Alcanca a API no host (webhook por instancia: http://host.docker.internal:8000/...)
+    # Alcanca a API no host (webhook por instancia: http://host.docker.internal:8000/...).
+    # API_HOST_IP: IP do Windows quando o Docker roda no WSL (definido por infra/dev.sh).
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:${API_HOST_IP:-host-gateway}"
     ports:
       - "8080:8080"
     volumes:
