@@ -28,7 +28,7 @@ from app.application.agente.pergunta_pagamento import (
     pergunta_pagamento_ao_cliente,
     rotulos_aceitos,
 )
-from app.application.agente.proposta import FRASE_OBRIGATORIA, MOTIVOS_LOJA, montar_proposta
+from app.application.agente.proposta import FRASE_OBRIGATORIA, montar_proposta
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.estoque import EstoqueIndisponivel
 from app.application.llm import DefinicaoFerramenta
@@ -593,31 +593,52 @@ async def _registrar_usado(
         campos["outros_defeitos"] = tuple(d.strip() for d in defeitos if d.strip())
 
     ficha = estado.ficha.com(tem_troca=True).com_usado(**campos)
-    ficha, motivo = await _marcar_avaliacao_na_loja(ficha, ctx)
-    conteudo: dict[str, Any] = {"status": "ok", **_situacao(ficha)}
+    motivo = await _fora_da_tabela(ficha, ctx)
     if motivo is not None:
-        conteudo["troca"] = {
-            "status": "avaliacao_na_loja",
-            "motivo": MOTIVOS_LOJA[motivo],
-            "mensagem": (
-                "A tabela de troca da loja não dá valor a esse aparelho pelo WhatsApp. Avise o "
-                "cliente, em uma frase, que o usado será avaliado na loja, com ele em mãos, e "
-                "siga para a próxima pergunta. Não pergunte o estado do aparelho."
-            ),
-        }
-    return _Saida(conteudo, replace(estado, ficha=ficha))
+        return _troca_nao_aceita(estado, ficha, motivo)
+    ficha = ficha.com_usado(avaliacao_na_loja=False)
+    return _Saida({"status": "ok", **_situacao(ficha)}, replace(estado, ficha=ficha))
 
 
-async def _marcar_avaliacao_na_loja(
-    ficha: Ficha, ctx: ContextoFerramentas
-) -> tuple[Ficha, MotivoLoja | None]:
-    """O codigo confere na tabela da loja (lida agora) se o usado tem valor pelo WhatsApp."""
+_MOTIVOS_RECUSA: dict[MotivoLoja, str] = {
+    MotivoLoja.MODELO_FORA_DA_TABELA: "modelo fora da tabela de troca da loja",
+    MotivoLoja.OUTRA_MARCA: "a loja não tem essa marca na tabela de troca",
+    MotivoLoja.CAPACIDADE_ABAIXO_DA_TABELA: "capacidade fora da tabela de troca da loja",
+}
+
+
+async def _fora_da_tabela(ficha: Ficha, ctx: ContextoFerramentas) -> MotivoLoja | None:
+    """O codigo confere na tabela da loja (lida agora) se ela aceita esse usado na troca."""
     u = ficha.usado
     if u.modelo is None:
-        return ficha.com_usado(avaliacao_na_loja=False), None
+        return None
     tabela = await ctx.config.obter_troca(ctx.loja_id)
-    motivo = motivo_fora_da_tabela(tabela, u.modelo, u.capacidade)
-    return ficha.com_usado(avaliacao_na_loja=motivo is not None), motivo
+    return motivo_fora_da_tabela(tabela, u.modelo, u.capacidade)
+
+
+def _troca_nao_aceita(estado: EstadoAtendimento, ficha: Ficha, motivo: MotivoLoja) -> _Saida:
+    """Aparelho fora da tabela de troca: a loja nao aceita, e a ficha segue SEM troca."""
+    u = ficha.usado
+    assert u.modelo is not None
+    nome = u.modelo.nome if u.modelo.marca == "Apple" else f"{u.modelo.marca} {u.modelo.nome}"
+    aparelho = f"{nome} {u.capacidade}" if u.capacidade is not None else nome
+    sem_troca = replace(ficha.com(tem_troca=False), usado=UsadoInformado())
+    conteudo: dict[str, Any] = {
+        "status": "ok",
+        "troca": {
+            "status": "nao_aceito",
+            "aparelho": aparelho,
+            "motivo": _MOTIVOS_RECUSA[motivo],
+            "mensagem": (
+                f"A loja não aceita o {aparelho} na troca. Avise o cliente, em uma frase, que "
+                "a loja não aceita esse aparelho na troca e siga para a próxima pergunta, sem "
+                "perguntar o estado dele. O atendimento continua sem troca; se o cliente tiver "
+                "outro aparelho para dar, registre com registrar_usado."
+            ),
+        },
+        **_situacao(sem_troca),
+    }
+    return _Saida(conteudo, replace(estado, ficha=sem_troca))
 
 
 async def _registrar_leitura_imagem(

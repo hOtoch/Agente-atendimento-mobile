@@ -11,7 +11,7 @@ from app.application.agente.ferramentas import ResultadoFerramenta
 from app.application.config.modelos import LinhaEstoqueLocal
 from app.domain.desconto import EstadoDesconto
 from app.domain.estoque import Condicao, ItemEstoque
-from app.domain.ficha import TipoPagamento
+from app.domain.ficha import TipoPagamento, UsadoInformado
 from app.domain.valores import Bandeira, Capacidade, Dinheiro, ModeloAparelho
 
 from .apoio_ferramentas import (
@@ -658,40 +658,58 @@ async def test_bateria_fora_de_0_a_100_e_erro_e_nao_grava() -> None:
         assert r.estado == VAZIO
 
 
-async def test_usado_de_outra_marca_e_aceito() -> None:
+def _recusado(r: ResultadoFerramenta, aparelho: str) -> None:
+    """Fora da tabela de troca: a loja nao aceita, a ficha segue sem troca e a conversa avanca."""
+    assert not r.erro
+    assert r.estado.ficha.tem_troca is False
+    assert r.estado.ficha.usado == UsadoInformado()
+    troca = r.conteudo["troca"]
+    assert troca["status"] == "nao_aceito"
+    assert troca["aparelho"] == aparelho
+    assert "não aceita" in troca["mensagem"] and aparelho in troca["mensagem"]
+    assert "avaliad" not in json.dumps(troca, ensure_ascii=False)
+    assert not [f for f in r.conteudo["faltam"] if "usado" in f or "troca" in f]
+    assert "data prevista da compra" in r.conteudo["faltam"]
+
+
+async def test_usado_de_outra_marca_fora_da_tabela_nao_e_aceito() -> None:
     amb = await criar_ambiente()
     r = await amb.rodar("registrar_usado", _usado_nulo(modelo="Samsung S21"), VAZIO)
-    assert not r.erro
-    assert r.estado.ficha.usado.modelo is not None
-    assert r.estado.ficha.usado.modelo.marca == "Samsung"
+    _recusado(r, "Samsung S21")
 
 
-async def test_modelo_fora_da_tabela_de_troca_avisa_ja_e_pula_o_estado_do_usado() -> None:
+async def test_modelo_fora_da_tabela_de_troca_nao_e_aceito_e_segue_para_a_compra() -> None:
     amb = await criar_ambiente()
     r = await amb.rodar("registrar_usado", _usado_nulo(modelo="iPhone XR"), VAZIO)
-    assert not r.erro
-    assert r.estado.ficha.usado.avaliacao_na_loja is True
-    assert r.conteudo["troca"]["status"] == "avaliacao_na_loja"
-    assert "loja" in r.conteudo["troca"]["mensagem"]
-    assert not [f for f in r.conteudo["faltam"] if "usado" in f]
-    assert "data prevista da compra" in r.conteudo["faltam"]
+    _recusado(r, "iPhone XR")
+
+
+async def test_capacidade_fora_da_tabela_nao_e_aceita() -> None:
+    amb = await criar_ambiente()
+    r = await amb.rodar(
+        "registrar_usado", _usado_nulo(modelo="iPhone 12", capacidade="32GB"), VAZIO
+    )
+    _recusado(r, "iPhone 12 32GB")
 
 
 async def test_modelo_da_tabela_segue_com_as_perguntas_de_estado() -> None:
     amb = await criar_ambiente()
     r = await amb.rodar("registrar_usado", _usado_nulo(modelo="iPhone 12"), VAZIO)
+    assert r.estado.ficha.tem_troca is True
     assert r.estado.ficha.usado.avaliacao_na_loja is False
     assert "troca" not in r.conteudo
     assert "capacidade do aparelho usado" in r.conteudo["faltam"]
 
 
-async def test_corrigir_o_modelo_para_um_da_tabela_volta_a_avaliar() -> None:
+async def test_depois_da_recusa_outro_aparelho_da_tabela_entra_na_troca() -> None:
     amb = await criar_ambiente()
     estado, _ = await amb.seq(
         VAZIO,
         ("registrar_usado", _usado_nulo(modelo="iPhone XR")),
         ("registrar_usado", _usado_nulo(modelo="iPhone 12")),
     )
+    assert estado.ficha.tem_troca is True
+    assert estado.ficha.usado.modelo == ModeloAparelho.de("iPhone 12")
     assert estado.ficha.usado.avaliacao_na_loja is False
 
 
@@ -723,11 +741,11 @@ async def _proposta_com_usado(amb: Ambiente, usado: dict[str, object]) -> Result
     return resultados[-1]
 
 
-async def test_proposta_com_usado_fora_da_tabela_sai_sem_perguntar_o_estado() -> None:
+async def test_proposta_com_usado_fora_da_tabela_sai_sem_troca() -> None:
     amb = await criar_ambiente()
     r = await _proposta_com_usado(amb, _usado_nulo(modelo="iPhone XR"))
     assert r.conteudo["bloqueado"] is False
-    assert r.conteudo["troca"]["status"] == "avaliacao_na_loja"
+    assert r.conteudo["troca"]["status"] == "sem_troca"
 
 
 async def test_proposta_desconta_o_usado_avaliado_so_com_as_quatro_perguntas() -> None:
