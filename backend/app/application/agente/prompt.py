@@ -46,9 +46,6 @@ ROTULOS_PENDENCIA: Final[dict[Pendencia, str]] = {
     _P.USADO_TRASEIRA: "estado da traseira do usado",
     _P.USADO_CARCACA: "marcas na carcaça do usado",
     _P.USADO_BATERIA: "saúde da bateria do usado",
-    _P.USADO_CAMERA: "funcionamento da câmera do usado",
-    _P.USADO_OUTROS_DEFEITOS: "outros defeitos do usado",
-    _P.USADO_PECA_TROCADA: "peça já trocada no usado",
     _P.DATA_COMPRA: "data prevista da compra",
     _P.PAGAMENTO_TIPO: "forma de pagamento",
     _P.PAGAMENTO_PARCELAS: "número de parcelas",
@@ -75,9 +72,6 @@ _PERGUNTAS: Final[dict[Pendencia, str]] = {
         "Peça um print de Ajustes > Bateria > Saúde da Bateria, ou o percentual de lá. "
         "Se ele mandar o print, use registrar_leitura_imagem."
     ),
-    _P.USADO_CAMERA: "Pergunte se as câmeras do aparelho usado funcionam normalmente.",
-    _P.USADO_OUTROS_DEFEITOS: "Pergunte se o aparelho usado tem algum outro defeito.",
-    _P.USADO_PECA_TROCADA: "Pergunte se o aparelho usado já teve alguma peça trocada.",
     _P.DATA_COMPRA: "Pergunte quando o cliente pretende comprar.",
     _P.PAGAMENTO_TIPO: instrucao_pergunta_pagamento(None),
     _P.PAGAMENTO_PARCELAS: "Pergunte em quantas parcelas ele quer pagar no crédito.",

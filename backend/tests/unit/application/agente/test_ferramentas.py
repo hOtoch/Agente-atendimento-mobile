@@ -586,6 +586,85 @@ async def test_usado_de_outra_marca_e_aceito() -> None:
     assert r.estado.ficha.usado.modelo.marca == "Samsung"
 
 
+async def test_modelo_fora_da_tabela_de_troca_avisa_ja_e_pula_o_estado_do_usado() -> None:
+    amb = await criar_ambiente()
+    r = await amb.rodar("registrar_usado", _usado_nulo(modelo="iPhone XR"), VAZIO)
+    assert not r.erro
+    assert r.estado.ficha.usado.avaliacao_na_loja is True
+    assert r.conteudo["troca"]["status"] == "avaliacao_na_loja"
+    assert "loja" in r.conteudo["troca"]["mensagem"]
+    assert not [f for f in r.conteudo["faltam"] if "usado" in f]
+    assert "data prevista da compra" in r.conteudo["faltam"]
+
+
+async def test_modelo_da_tabela_segue_com_as_perguntas_de_estado() -> None:
+    amb = await criar_ambiente()
+    r = await amb.rodar("registrar_usado", _usado_nulo(modelo="iPhone 12"), VAZIO)
+    assert r.estado.ficha.usado.avaliacao_na_loja is False
+    assert "troca" not in r.conteudo
+    assert "capacidade do aparelho usado" in r.conteudo["faltam"]
+
+
+async def test_corrigir_o_modelo_para_um_da_tabela_volta_a_avaliar() -> None:
+    amb = await criar_ambiente()
+    estado, _ = await amb.seq(
+        VAZIO,
+        ("registrar_usado", _usado_nulo(modelo="iPhone XR")),
+        ("registrar_usado", _usado_nulo(modelo="iPhone 12")),
+    )
+    assert estado.ficha.usado.avaliacao_na_loja is False
+
+
+async def test_avaliacao_do_usado_nao_pergunta_camera_defeitos_nem_peca() -> None:
+    amb = await criar_ambiente()
+    r = await amb.rodar(
+        "registrar_usado",
+        _usado_nulo(
+            modelo="iPhone 16",
+            capacidade="128GB",
+            tela_danificada=False,
+            traseira_danificada=False,
+            carcaca_marcada=False,
+        ),
+        VAZIO,
+    )
+    assert [f for f in r.conteudo["faltam"] if "usado" in f] == ["saúde da bateria do usado"]
+
+
+async def _proposta_com_usado(amb: Ambiente, usado: dict[str, object]) -> ResultadoFerramenta:
+    _, resultados = await amb.seq(
+        VAZIO,
+        ("registrar_interesse", INTERESSE_16),
+        ("consultar_estoque", INTERESSE_16),
+        ("registrar_usado", usado),
+        ("registrar_compra", COMPRA_HOJE_12X),
+        ("calcular_proposta", {}),
+    )
+    return resultados[-1]
+
+
+async def test_proposta_com_usado_fora_da_tabela_sai_sem_perguntar_o_estado() -> None:
+    amb = await criar_ambiente()
+    r = await _proposta_com_usado(amb, _usado_nulo(modelo="iPhone XR"))
+    assert r.conteudo["bloqueado"] is False
+    assert r.conteudo["troca"]["status"] == "avaliacao_na_loja"
+
+
+async def test_proposta_desconta_o_usado_avaliado_so_com_as_quatro_perguntas() -> None:
+    amb = await criar_ambiente()
+    usado = _usado_nulo(
+        modelo="iPhone 12",
+        capacidade="128GB",
+        tela_danificada=False,
+        traseira_danificada=True,
+        carcaca_marcada=False,
+        bateria_pct=88,
+    )
+    r = await _proposta_com_usado(amb, usado)
+    assert r.conteudo["bloqueado"] is False
+    assert r.conteudo["troca"]["status"] == "avaliada"
+
+
 # --- registrar_compra --------------------------------------------------------------------
 
 

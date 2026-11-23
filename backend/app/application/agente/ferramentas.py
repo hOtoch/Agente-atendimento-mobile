@@ -28,7 +28,7 @@ from app.application.agente.pergunta_pagamento import (
     pergunta_pagamento_ao_cliente,
     rotulos_aceitos,
 )
-from app.application.agente.proposta import FRASE_OBRIGATORIA, montar_proposta
+from app.application.agente.proposta import FRASE_OBRIGATORIA, MOTIVOS_LOJA, montar_proposta
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.estoque import EstoqueIndisponivel
 from app.application.llm import DefinicaoFerramenta
@@ -42,6 +42,7 @@ from app.domain.estoque import (
     resolver_modelo,
 )
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, UsadoInformado, pendencias
+from app.domain.troca import MotivoLoja, motivo_fora_da_tabela
 from app.domain.valores import Bandeira, Capacidade, Dinheiro, ModeloAparelho
 
 __all__ = [
@@ -92,15 +93,6 @@ _TEXTOS_PENDENCIA: dict[Pendencia, tuple[str, str]] = {
     _P.USADO_BATERIA: (
         "saúde da bateria do usado",
         "Qual a saúde da bateria dele (em Ajustes, Bateria)?",
-    ),
-    _P.USADO_CAMERA: ("funcionamento da câmera do usado", "A câmera funciona normalmente?"),
-    _P.USADO_OUTROS_DEFEITOS: (
-        "outros defeitos do usado",
-        "Ele tem algum outro defeito, como Face ID, alto-falante ou botões?",
-    ),
-    _P.USADO_PECA_TROCADA: (
-        "peça já trocada no usado",
-        "Alguma peça dele já foi trocada ou reparada?",
     ),
     _P.DATA_COMPRA: ("data prevista da compra", "Quando você pretende fazer a compra?"),
     _P.PAGAMENTO_TIPO: (
@@ -547,7 +539,31 @@ async def _registrar_usado(
         campos["outros_defeitos"] = tuple(d.strip() for d in defeitos if d.strip())
 
     ficha = estado.ficha.com(tem_troca=True).com_usado(**campos)
-    return _Saida({"status": "ok", **_situacao(ficha)}, replace(estado, ficha=ficha))
+    ficha, motivo = await _marcar_avaliacao_na_loja(ficha, ctx)
+    conteudo: dict[str, Any] = {"status": "ok", **_situacao(ficha)}
+    if motivo is not None:
+        conteudo["troca"] = {
+            "status": "avaliacao_na_loja",
+            "motivo": MOTIVOS_LOJA[motivo],
+            "mensagem": (
+                "A tabela de troca da loja não dá valor a esse aparelho pelo WhatsApp. Avise o "
+                "cliente, em uma frase, que o usado será avaliado na loja, com ele em mãos, e "
+                "siga para a próxima pergunta. Não pergunte o estado do aparelho."
+            ),
+        }
+    return _Saida(conteudo, replace(estado, ficha=ficha))
+
+
+async def _marcar_avaliacao_na_loja(
+    ficha: Ficha, ctx: ContextoFerramentas
+) -> tuple[Ficha, MotivoLoja | None]:
+    """O codigo confere na tabela da loja (lida agora) se o usado tem valor pelo WhatsApp."""
+    u = ficha.usado
+    if u.modelo is None:
+        return ficha.com_usado(avaliacao_na_loja=False), None
+    tabela = await ctx.config.obter_troca(ctx.loja_id)
+    motivo = motivo_fora_da_tabela(tabela, u.modelo, u.capacidade)
+    return ficha.com_usado(avaliacao_na_loja=motivo is not None), motivo
 
 
 async def _registrar_leitura_imagem(
@@ -941,8 +957,9 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
             "Registra na ficha o aparelho usado que o cliente dará na troca, ou que ele não tem "
             "troca (tem_troca=false). Pode ser chamada várias vezes, conforme o cliente responde: "
             "preencha só o que foi dito e use null no resto (null não apaga o que já foi "
-            "registrado). outros_defeitos: lista vazia = nenhum defeito; null = ainda não "
-            "perguntado. bateria_pct é a saúde da bateria de 0 a 100."
+            "registrado). bateria_pct é a saúde da bateria de 0 a 100. camera_ok, "
+            "outros_defeitos e peca_trocada não são perguntados: preencha só se o cliente contar "
+            "por conta própria (null no resto)."
         ),
         esquema_json=_objeto(
             {
@@ -958,16 +975,16 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                     "type": ["integer", "null"],
                     "description": "Saúde da bateria em %, de 0 a 100; null se não informada.",
                 },
-                "camera_ok": _bool("A câmera funciona normalmente?"),
+                "camera_ok": _bool("Só se o cliente contar: a câmera funciona?"),
                 "outros_defeitos": {
                     "type": ["array", "null"],
                     "items": {"type": "string"},
                     "description": (
-                        "Outros defeitos (Face ID, alto-falante...); lista vazia se nenhum; "
-                        "null se ainda não perguntado."
+                        "Só se o cliente contar: outros defeitos (Face ID, alto-falante...); "
+                        "null se ele não falou nada."
                     ),
                 },
-                "peca_trocada": _bool("Alguma peça já foi trocada/reparada?"),
+                "peca_trocada": _bool("Só se o cliente contar: alguma peça já foi trocada?"),
             }
         ),
     ),

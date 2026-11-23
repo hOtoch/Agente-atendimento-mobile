@@ -13,6 +13,7 @@ from app.domain.troca import (
     TabelaTroca,
     ValorTroca,
     avaliar_troca,
+    motivo_fora_da_tabela,
 )
 from app.domain.valores import Capacidade, Dinheiro, ModeloAparelho
 
@@ -261,3 +262,23 @@ def test_linha_e_imutavel() -> None:
     with pytest.raises(AttributeError):
         linha().valor_sem_detalhes = R("1")  # type: ignore[misc]
     assert replace(linha(), limite_bateria_pct=90).limite_bateria_pct == 90
+
+
+def test_condicao_sem_camera_defeitos_e_peca_assume_aparelho_sem_esses_problemas() -> None:
+    cond = CondicaoUsado(
+        tela_danificada=False, traseira_danificada=False, carcaca_marcada=False, bateria_pct=90
+    )
+    assert (cond.camera_ok, cond.outros_defeitos, cond.peca_trocada) == (True, (), False)
+
+
+def test_motivo_fora_da_tabela_antes_de_perguntar_o_estado() -> None:
+    tab = tabela(linha(capacidade=128), outras=(linha(modelo=GALAXY),))
+    assert motivo_fora_da_tabela(tab, IPHONE_16, Capacidade(256)) is None
+    assert motivo_fora_da_tabela(tab, IPHONE_16, None) is None
+    assert motivo_fora_da_tabela(tab, IPHONE_15, None) is MotivoLoja.MODELO_FORA_DA_TABELA
+    assert motivo_fora_da_tabela(tab, IPHONE_16, Capacidade(64)) is (
+        MotivoLoja.CAPACIDADE_ABAIXO_DA_TABELA
+    )
+    pixel = ModeloAparelho.de("Pixel 9", marca="Google")
+    assert motivo_fora_da_tabela(tab, pixel, None) is MotivoLoja.OUTRA_MARCA
+    assert motivo_fora_da_tabela(tab, GALAXY, Capacidade(128)) is None

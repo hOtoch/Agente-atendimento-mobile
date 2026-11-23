@@ -14,6 +14,10 @@ Ordem de precedência das checagens em `avaliar_troca` (a primeira que falhar ve
 
 Defeitos vêm antes da busca na tabela porque, com eles, a resposta é "avaliação na loja"
 independentemente do modelo. SEM em problema que o cliente não tem é ignorado.
+
+Câmera, outros defeitos e peça trocada não são perguntados ao cliente; só contam se ele contar
+(o padrão é "sem esse problema"). Os itens 3 e 4 (`motivo_fora_da_tabela`) são checados já ao
+registrar o modelo do usado, para não perguntar o estado de um aparelho que a tabela não avalia.
 """
 
 from __future__ import annotations
@@ -96,9 +100,9 @@ class CondicaoUsado:
     traseira_danificada: bool
     carcaca_marcada: bool
     bateria_pct: int
-    camera_ok: bool
-    outros_defeitos: tuple[str, ...]
-    peca_trocada: bool
+    camera_ok: bool = True
+    outros_defeitos: tuple[str, ...] = ()
+    peca_trocada: bool = False
 
     def __post_init__(self) -> None:
         if not 0 <= self.bateria_pct <= 100:
@@ -131,6 +135,24 @@ def _problemas_relatados(
     return problemas
 
 
+def motivo_fora_da_tabela(
+    tabela: TabelaTroca, modelo: ModeloAparelho, capacidade: Capacidade | None
+) -> MotivoLoja | None:
+    """Por que a tabela não dá valor a esse usado (sem olhar o estado); None se dá.
+
+    Sem capacidade informada, só confere se o modelo tem alguma linha.
+    """
+    if not tabela._linhas_do_modelo(modelo):
+        return (
+            MotivoLoja.MODELO_FORA_DA_TABELA
+            if modelo.marca == _MARCA_APPLE
+            else MotivoLoja.OUTRA_MARCA
+        )
+    if capacidade is not None and tabela.buscar(modelo, capacidade) is None:
+        return MotivoLoja.CAPACIDADE_ABAIXO_DA_TABELA
+    return None
+
+
 def avaliar_troca(
     tabela: TabelaTroca,
     modelo: ModeloAparelho,
@@ -142,16 +164,11 @@ def avaliar_troca(
         return AvaliacaoNaLoja(MotivoLoja.PECA_TROCADA)
     if not condicao.camera_ok or condicao.outros_defeitos:
         return AvaliacaoNaLoja(MotivoLoja.OUTRO_DEFEITO)
-    if not tabela._linhas_do_modelo(modelo):
-        sem_linha = (
-            MotivoLoja.MODELO_FORA_DA_TABELA
-            if modelo.marca == _MARCA_APPLE
-            else MotivoLoja.OUTRA_MARCA
-        )
-        return AvaliacaoNaLoja(sem_linha)
+    fora = motivo_fora_da_tabela(tabela, modelo, capacidade)
+    if fora is not None:
+        return AvaliacaoNaLoja(fora)
     linha = tabela.buscar(modelo, capacidade)
-    if linha is None:
-        return AvaliacaoNaLoja(MotivoLoja.CAPACIDADE_ABAIXO_DA_TABELA)
+    assert linha is not None
 
     aplicados: list[tuple[str, Dinheiro]] = []
     for motivo, desconto in _problemas_relatados(linha, condicao):

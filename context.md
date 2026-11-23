@@ -12,7 +12,7 @@ Processo seletivo: construir uma IA que atende leads de lojas de celular (foco e
 ### Obrigatório
 1. Atender o lead e entender qual aparelho ele quer.
 2. Consultar o estoque (planilha ou API simulada — aqui: porta + adaptadores, incluindo um ERP simulado).
-3. **Só passar preço depois de qualificar**: avaliar o usado (tela, bateria, traseira, câmera), saber a data da compra e a forma de pagamento.
+3. **Só passar preço depois de qualificar**: avaliar o usado (tela, vidro traseiro, carcaça, bateria), saber a data da compra e a forma de pagamento.
 4. Calcular o valor do usado pela tabela de descontos.
 5. Passar a conversa para o vendedor com resumo do atendimento, com opção de **assumir** e de **devolver para a IA**.
 6. Mover o lead num kanban: `Novo contato → Interesse identificado → Interesse qualificado → Com o vendedor → Venda fechada`.
@@ -87,7 +87,7 @@ Uma linha por **modelo + capacidade**. Colunas: valor sem detalhes (R$), descont
 ### 3.4 Ficha de qualificação (pré-requisito para preço)
 Campos obrigatórios:
 - Aparelho desejado: modelo, capacidade (cor opcional), item do estoque confirmado.
-- Usado (se houver troca): modelo, capacidade, tela, traseira, carcaça, saúde da bateria (%), câmera/outros defeitos, peça já trocada.
+- Usado (se houver troca): modelo, capacidade, tela, traseira, carcaça, saúde da bateria (%). Câmera, outros defeitos e peça trocada não são perguntados: só contam se o cliente contar. Modelo/capacidade sem valor na tabela da loja dispensa as perguntas de estado (avaliação na loja, avisada na hora).
 - Data prevista da compra.
 - Forma de pagamento: Pix/dinheiro, cartão (n parcelas, bandeira), entrada + cartão.
 
@@ -334,6 +334,9 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-23 | Gráficos com recharts num `components/ui/chart.tsx` no padrão shadcn; paleta `--chart-*` validada para daltonismo nos dois temas | Design system sem cor hardcoded |
 | 2026-11-23 | Segundo provedor do LLM: `OpenAIAdapter` (Chat Completions via `httpx`), escolhido por `LLM_PROVIDER=openai`; modelos `gpt-4.1-mini` (principal) e `gpt-4o-mini` (reserva); ferramentas sem `strict` (o estrito da OpenAI exige todo parâmetro em `required`); modelo reportado sem a data do snapshot; o adaptador põe o estado antes da fala do cliente e soma uma instrução fixa de uso das ferramentas (sem isso `gpt-4.1-mini` e `gpt-4.1` respondiam só texto, sem registrar a ficha); `tests/conftest.py` zera chaves pagas e força `LLM_PROVIDER=anthropic` | A mesma `OPENAI_API_KEY` passa a cobrir conversa e áudio; teste real: 5 turnos até a proposta por ~US$ 0,009; o eval e os custos medidos continuam sendo da Anthropic |
 | 2026-11-23 | Dados de demonstração só por script (`popular_metricas_demo.py`), marcados (`telefone demo:*`, `payload.demo`) e removíveis; ids `uuid4` e trava por loja | Apresentar o painel sem LLM e sem sujar dados reais |
+| 2026-11-23 | Resposta a áudio do cliente sai só em voz (texto só se o TTS ou o envio falhar); voz padrão `cedar` (masculina) | Pedido do dono após teste real: texto + voz duplicava a resposta |
+| 2026-11-23 | Avaliação do usado com só tela, vidro traseiro, carcaça e bateria; `registrar_usado` confere a tabela de troca ao receber o modelo e, se não houver valor, marca `avaliacao_na_loja` e pula as perguntas de estado | Avaliação longa demais; o iPhone XR (fora da tabela) passava por 9 perguntas para no fim ir para a loja |
+| 2026-11-23 | `sem_repeticao` limpa o texto do modelo antes do envio (texto dobrado, linhas iguais seguidas); modelo da conversa `gpt-5.4-mini` com `gpt-4.1-mini` de reserva | `gpt-4.1-mini` mandou a mesma frase duas vezes na mesma resposta |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?

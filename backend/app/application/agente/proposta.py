@@ -29,12 +29,18 @@ from app.domain.pagamento import (
     calcular_pagamento,
     simular_opcoes,
 )
-from app.domain.troca import AvaliacaoNaLoja, MotivoLoja, ValorTroca, avaliar_troca
+from app.domain.troca import (
+    AvaliacaoNaLoja,
+    MotivoLoja,
+    ValorTroca,
+    avaliar_troca,
+    motivo_fora_da_tabela,
+)
 from app.domain.valores import Bandeira, Dinheiro
 
 FRASE_OBRIGATORIA = "pré-avaliação, valor final confirmado na loja com o aparelho em mãos"
 
-_MOTIVOS_LOJA: dict[MotivoLoja, str] = {
+MOTIVOS_LOJA: dict[MotivoLoja, str] = {
     MotivoLoja.SEM_VALOR_WHATSAPP: "esse tipo de problema só é avaliado presencialmente",
     MotivoLoja.OUTRO_DEFEITO: "defeito que precisa ser avaliado com o aparelho em mãos",
     MotivoLoja.PECA_TROCADA: "peça já trocada precisa ser avaliada com o aparelho em mãos",
@@ -136,7 +142,12 @@ async def montar_proposta(ctx: ContextoFerramentas, estado: EstadoAtendimento) -
         troca_info = {"status": "sem_troca"}
     else:
         u = entradas.usado
-        avaliacao = avaliar_troca(tabela, u.modelo, u.capacidade, u.condicao)
+        avaliacao: ValorTroca | AvaliacaoNaLoja
+        if u.condicao is None or u.capacidade is None:
+            fora = motivo_fora_da_tabela(tabela, u.modelo, u.capacidade)
+            avaliacao = AvaliacaoNaLoja(fora or MotivoLoja.MODELO_FORA_DA_TABELA)
+        else:
+            avaliacao = avaliar_troca(tabela, u.modelo, u.capacidade, u.condicao)
         if isinstance(avaliacao, ValorTroca):
             troca = avaliacao.valor
             troca_info = {
@@ -151,7 +162,7 @@ async def montar_proposta(ctx: ContextoFerramentas, estado: EstadoAtendimento) -
             assert isinstance(avaliacao, AvaliacaoNaLoja)
             troca_info = {
                 "status": "avaliacao_na_loja",
-                "motivo": _MOTIVOS_LOJA[avaliacao.motivo],
+                "motivo": MOTIVOS_LOJA[avaliacao.motivo],
                 "observacao": (
                     "O valor do aparelho usado só sai na loja, com ele em mãos. "
                     "Esta proposta foi calculada SEM a troca."

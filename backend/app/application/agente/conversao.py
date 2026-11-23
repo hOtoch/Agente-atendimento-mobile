@@ -22,9 +22,11 @@ class FichaIncompleta(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class UsadoParaAvaliar:
+    """`condicao`/`capacidade` None: a tabela nao avalia esse usado (vai para a loja)."""
+
     modelo: ModeloAparelho
-    capacidade: Capacidade
-    condicao: CondicaoUsado
+    capacidade: Capacidade | None
+    condicao: CondicaoUsado | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,26 +39,27 @@ class EntradasDeCalculo:
 
 
 def _usado(u: UsadoInformado) -> UsadoParaAvaliar:
+    if u.modelo is None:
+        raise FichaIncompleta("dados do aparelho usado incompletos")
+    if u.avaliacao_na_loja:
+        return UsadoParaAvaliar(u.modelo, u.capacidade, None)
     if (
-        u.modelo is None
-        or u.capacidade is None
+        u.capacidade is None
         or u.tela_danificada is None
         or u.traseira_danificada is None
         or u.carcaca_marcada is None
         or u.bateria_pct is None
-        or u.camera_ok is None
-        or u.outros_defeitos is None
-        or u.peca_trocada is None
     ):
         raise FichaIncompleta("dados do aparelho usado incompletos")
+    # camera, outros defeitos e peca trocada nao sao perguntados: so contam se o cliente contou
     condicao = CondicaoUsado(
         tela_danificada=u.tela_danificada,
         traseira_danificada=u.traseira_danificada,
         carcaca_marcada=u.carcaca_marcada,
         bateria_pct=u.bateria_pct,
-        camera_ok=u.camera_ok,
-        outros_defeitos=u.outros_defeitos,
-        peca_trocada=u.peca_trocada,
+        camera_ok=u.camera_ok is not False,
+        outros_defeitos=u.outros_defeitos or (),
+        peca_trocada=u.peca_trocada is True,
     )
     return UsadoParaAvaliar(u.modelo, u.capacidade, condicao)
 

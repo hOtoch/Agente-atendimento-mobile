@@ -11,13 +11,10 @@ O que já sabemos:
 Pendências, em ordem:
 1. marcas na carcaça do usado
 2. saúde da bateria do usado
-3. funcionamento da câmera do usado
-4. outros defeitos do usado
-5. peça já trocada no usado
-6. data prevista da compra
-7. forma de pagamento
+3. data prevista da compra
+4. forma de pagamento
 PRÓXIMA PERGUNTA: Pergunte se a carcaça (laterais e bordas) tem marcas ou amassados.
-NÃO chame calcular_proposta ainda (faltam 7 itens). Se o cliente pedir preço, explique que faltam informações e faça a próxima pergunta.
+NÃO chame calcular_proposta ainda (faltam 4 itens). Se o cliente pedir preço, explique que faltam informações e faça a próxima pergunta.
 
 Lembretes: uma pergunta por mensagem, no máximo 3 frases, sem inventar valores.
 Registre cada resposta do cliente com a ferramenta certa antes da próxima pergunta.

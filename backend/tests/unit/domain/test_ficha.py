@@ -99,9 +99,6 @@ def test_com_troca_exige_todo_o_bloco_do_usado_em_ordem() -> None:
         P.USADO_TRASEIRA,
         P.USADO_CARCACA,
         P.USADO_BATERIA,
-        P.USADO_CAMERA,
-        P.USADO_OUTROS_DEFEITOS,
-        P.USADO_PECA_TROCADA,
         P.DATA_COMPRA,
         P.PAGAMENTO_TIPO,
     ]
@@ -139,9 +136,6 @@ CAMPOS_FALTANTES = [
     ("com_usado", "traseira_danificada", P.USADO_TRASEIRA),
     ("com_usado", "carcaca_marcada", P.USADO_CARCACA),
     ("com_usado", "bateria_pct", P.USADO_BATERIA),
-    ("com_usado", "camera_ok", P.USADO_CAMERA),
-    ("com_usado", "outros_defeitos", P.USADO_OUTROS_DEFEITOS),
-    ("com_usado", "peca_trocada", P.USADO_PECA_TROCADA),
     ("com", "data_prevista_compra", P.DATA_COMPRA),
     ("com_pagamento", "tipo", P.PAGAMENTO_TIPO),
 ]
@@ -169,12 +163,30 @@ def test_cor_nao_e_obrigatoria() -> None:
     assert ficha.com_interesse(cor="Titânio Azul").interesse.cor == "Titânio Azul"
 
 
-def test_outros_defeitos_vazio_e_resposta_valida_e_none_e_nao_perguntado() -> None:
-    assert P.USADO_OUTROS_DEFEITOS not in pendencias(ficha_completa().com_usado(outros_defeitos=()))
-    assert P.USADO_OUTROS_DEFEITOS in pendencias(ficha_completa().com_usado(outros_defeitos=None))
-    assert P.USADO_OUTROS_DEFEITOS not in pendencias(
-        ficha_completa().com_usado(outros_defeitos=("alto-falante baixo",))
+def test_avaliacao_do_usado_so_pergunta_tela_traseira_carcaca_e_bateria() -> None:
+    """Camera, outros defeitos e peca trocada nao sao perguntados (so valem se o cliente contar)."""
+    ficha = ficha_completa().com_usado(camera_ok=None, outros_defeitos=None, peca_trocada=None)
+    assert pendencias(ficha) == []
+
+
+def test_usado_avaliado_na_loja_dispensa_as_perguntas_de_estado() -> None:
+    """Modelo sem valor na tabela da loja: nao adianta perguntar o estado do aparelho."""
+    ficha = (
+        ficha_completa()
+        .com(tem_troca=True)
+        .com_usado(
+            capacidade=None,
+            tela_danificada=None,
+            traseira_danificada=None,
+            carcaca_marcada=None,
+            bateria_pct=None,
+            avaliacao_na_loja=True,
+        )
     )
+    assert pendencias(ficha) == []
+    assert pendencias(ficha.com_usado(modelo=None))[0] is P.USADO_MODELO
+    assert Ficha.de_dict(json.loads(json.dumps(ficha.para_dict()))) == ficha
+    assert Ficha.de_dict({"usado": {}}).usado.avaliacao_na_loja is False
 
 
 def test_bateria_zero_conta_como_informada() -> None:

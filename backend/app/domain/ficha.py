@@ -35,7 +35,13 @@ class InteresseInformado:
 
 @dataclass(frozen=True, slots=True)
 class UsadoInformado:
-    """Aparelho usado da troca. `outros_defeitos`: None = nao perguntado, () = nenhum."""
+    """Aparelho usado da troca. `outros_defeitos`: None = nao perguntado, () = nenhum.
+
+    A avaliacao pergunta so modelo, capacidade, tela, traseira, carcaca e bateria. Camera,
+    outros defeitos e peca trocada nao sao perguntados: so entram se o cliente contar.
+    `avaliacao_na_loja`: o codigo viu que a tabela da loja nao da valor a esse modelo/capacidade;
+    as perguntas de estado nao sao feitas (o valor sai na loja).
+    """
 
     modelo: ModeloAparelho | None = None
     capacidade: Capacidade | None = None
@@ -46,6 +52,7 @@ class UsadoInformado:
     camera_ok: bool | None = None
     outros_defeitos: tuple[str, ...] | None = None
     peca_trocada: bool | None = None
+    avaliacao_na_loja: bool = False
 
 
 class TipoPagamento(StrEnum):
@@ -78,9 +85,6 @@ class Pendencia(Enum):
     USADO_TRASEIRA = 8
     USADO_CARCACA = 9
     USADO_BATERIA = 10
-    USADO_CAMERA = 11
-    USADO_OUTROS_DEFEITOS = 12
-    USADO_PECA_TROCADA = 13
     DATA_COMPRA = 14
     PAGAMENTO_TIPO = 15
     PAGAMENTO_PARCELAS = 16
@@ -153,6 +157,7 @@ class Ficha:
                 "camera_ok": u.camera_ok,
                 "outros_defeitos": None if u.outros_defeitos is None else list(u.outros_defeitos),
                 "peca_trocada": u.peca_trocada,
+                "avaliacao_na_loja": u.avaliacao_na_loja,
             },
             "data_prevista_compra": (
                 None if self.data_prevista_compra is None else self.data_prevista_compra.isoformat()
@@ -191,6 +196,7 @@ class Ficha:
                 camera_ok=u.get("camera_ok"),
                 outros_defeitos=None if defeitos is None else tuple(defeitos),
                 peca_trocada=u.get("peca_trocada"),
+                avaliacao_na_loja=bool(u.get("avaliacao_na_loja", False)),
             ),
             data_prevista_compra=None if data is None else date.fromisoformat(data),
             pagamento=PagamentoInformado(
@@ -221,6 +227,8 @@ def _capacidade(valor: int | None) -> Capacidade | None:
 
 
 def _faltas_usado(u: UsadoInformado) -> list[Pendencia]:
+    if u.avaliacao_na_loja and u.modelo is not None:
+        return []
     checagens = (
         (u.modelo, _P.USADO_MODELO),
         (u.capacidade, _P.USADO_CAPACIDADE),
@@ -228,9 +236,6 @@ def _faltas_usado(u: UsadoInformado) -> list[Pendencia]:
         (u.traseira_danificada, _P.USADO_TRASEIRA),
         (u.carcaca_marcada, _P.USADO_CARCACA),
         (u.bateria_pct, _P.USADO_BATERIA),
-        (u.camera_ok, _P.USADO_CAMERA),
-        (u.outros_defeitos, _P.USADO_OUTROS_DEFEITOS),
-        (u.peca_trocada, _P.USADO_PECA_TROCADA),
     )
     return [pend for valor, pend in checagens if valor is None]
 
