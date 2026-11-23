@@ -475,6 +475,24 @@ async def test_bad_request_nao_tem_retry_nem_reserva() -> None:
     assert len(api.requests) == 1
 
 
+async def test_erros_carregam_status_e_modelo_para_a_telemetria() -> None:
+    api = ApiFalsa(resposta_erro(400, "invalid_request_error"))
+    with pytest.raises(ErroLLM) as exc:
+        await montar(api, tentativas=1).responder(["s"], [usuario()], [])
+    assert (exc.value.status, exc.value.modelo) == (400, SONNET)
+
+    api = ApiFalsa(*[resposta_erro(529, "overloaded_error")] * 2)
+    with pytest.raises(LLMIndisponivel) as exc_ind:
+        await montar(api, reserva=None, tentativas=2).responder(["s"], [usuario()], [])
+    assert (exc_ind.value.status, exc_ind.value.modelo) == (529, SONNET)
+
+    api = ApiFalsa(httpx2.ConnectError("x"), httpx2.ConnectError("y"))
+    with pytest.raises(LLMIndisponivel) as exc_rede:
+        await montar(api, reserva=None, tentativas=2).responder(["s"], [usuario()], [])
+    assert exc_rede.value.status is None  # sem resposta HTTP, so o modelo
+    assert exc_rede.value.modelo == SONNET
+
+
 async def test_erro_de_autenticacao_nao_tem_retry() -> None:
     api = ApiFalsa(resposta_erro(401, "authentication_error"))
     with pytest.raises(ErroLLM) as exc:

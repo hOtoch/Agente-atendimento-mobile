@@ -1142,6 +1142,7 @@ class CatalogoFerramentas:
             "nome": nome,
             "entrada": entrada,
             "resultado_resumido": _resumir(conteudo),
+            "erro": erro,
         }
         return ResultadoFerramenta(conteudo, novo, [evento], erro)
 
