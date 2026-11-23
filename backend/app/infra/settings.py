@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     """Validade da sessao de login (renovada a cada uso) e do cookie."""
     cookie_secure: bool = False
     """Marca o cookie de sessao como `Secure` (exige HTTPS). Ligar em producao."""
+    login_max_falhas_email: int = 5
+    """Falhas de login por e-mail dentro da janela antes de bloquear."""
+    login_max_falhas_ip: int = 20
+    """Falhas de login por IP dentro da janela antes de bloquear."""
+    login_janela_min: int = 15
+    """Janela (minutos, a partir da primeira falha) do limite de tentativas de login."""
+    confiar_proxy: bool = False
+    """Usa o IP de `X-Forwarded-For` (acrescentado pelo proxy, ex. Caddy). So atras de proxy."""
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 

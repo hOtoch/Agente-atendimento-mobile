@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.application.auth.modelos import DadosSessao, Usuario
+from app.application.auth.modelos import ChaveLimite, DadosSessao, Usuario
 
 
 class RepositorioUsuarios(Protocol):
@@ -49,3 +50,15 @@ class Sessoes(Protocol):
     async def encerrar_do_usuario(self, usuario_id: UUID, *, manter: str | None = None) -> None:
         """Encerra todas as sessoes do usuario, exceto a do token `manter`."""
         ...
+
+
+class LimiteTentativas(Protocol):
+    """Contador de falhas de login por chave, com janela fixa a partir da primeira falha."""
+
+    async def bloqueado(self, chaves: Sequence[ChaveLimite]) -> int | None:
+        """Segundos ate a janela expirar se alguma chave atingiu o maximo; senao None."""
+        ...
+
+    async def registrar_falha(self, chaves: Sequence[ChaveLimite]) -> None: ...
+
+    async def limpar(self, chaves: Sequence[ChaveLimite]) -> None: ...

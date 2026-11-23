@@ -5,16 +5,17 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi import APIRouter, Cookie, Depends, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.auth.casos_de_uso import Entrar, QuemSouEu, Sair, TrocarSenha
 from app.application.auth.modelos import Identidade, SessaoAtual
-from app.application.auth.portas import HasherSenha, RepositorioUsuarios, Sessoes
+from app.application.auth.portas import HasherSenha, LimiteTentativas, RepositorioUsuarios, Sessoes
 from app.infra.dependencias import (
     COOKIE_SESSAO,
     get_hasher_senha,
+    get_limite_tentativas,
     get_repositorio_usuarios,
     get_session,
     get_sessoes,
@@ -75,10 +76,26 @@ Hasher = Annotated[HasherSenha, Depends(get_hasher_senha)]
 SessoesDep = Annotated[Sessoes, Depends(get_sessoes)]
 Config = Annotated[Settings, Depends(get_settings)]
 Sessao = Annotated[AsyncSession, Depends(get_session)]
+Limite = Annotated[LimiteTentativas, Depends(get_limite_tentativas)]
 
 
-@router.post("/login", response_model=IdentidadeSchema)
+def _ip_cliente(request: Request, settings: Settings) -> str | None:
+    """IP da conexao; atras de proxy confiavel, o ultimo de `X-Forwarded-For` (o que ele viu)."""
+    if settings.confiar_proxy:
+        encaminhado = request.headers.get("x-forwarded-for", "")
+        ultimo = encaminhado.rsplit(",", 1)[-1].strip()
+        if ultimo:
+            return ultimo
+    return request.client.host if request.client else None
+
+
+@router.post(
+    "/login",
+    response_model=IdentidadeSchema,
+    responses={429: {"description": "Muitas tentativas; veja o header `Retry-After` (segundos)."}},
+)
 async def login(
+    request: Request,
     corpo: LoginEntrada,
     response: Response,
     usuarios: Usuarios,
@@ -86,8 +103,17 @@ async def login(
     sessoes: SessoesDep,
     settings: Config,
     db: Sessao,
+    limite: Limite,
 ) -> IdentidadeSchema:
-    resultado = await Entrar(usuarios, hasher, sessoes)(corpo.email, corpo.senha)
+    entrar = Entrar(
+        usuarios,
+        hasher,
+        sessoes,
+        limite=limite,
+        max_falhas_email=settings.login_max_falhas_email,
+        max_falhas_ip=settings.login_max_falhas_ip,
+    )
+    resultado = await entrar(corpo.email, corpo.senha, _ip_cliente(request, settings))
     await db.commit()
     _gravar_cookie(response, resultado.token, settings)
     return _out(resultado.identidade)

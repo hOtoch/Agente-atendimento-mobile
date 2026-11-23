@@ -7,9 +7,15 @@ from uuid import uuid4
 import httpx
 import pytest
 
-from app.application.auth.memoria import MemoriaSessoes, MemoriaUsuarios, SenhaSemHash
+from app.application.auth.memoria import (
+    LimiteTentativasMemoria,
+    MemoriaSessoes,
+    MemoriaUsuarios,
+    SenhaSemHash,
+)
 from app.infra.dependencias import (
     get_hasher_senha,
+    get_limite_tentativas,
     get_repositorio_usuarios,
     get_session,
     get_sessoes,
@@ -41,6 +47,8 @@ async def ambiente() -> AsyncIterator[Ambiente]:
     app.dependency_overrides[get_repositorio_usuarios] = lambda: usuarios
     app.dependency_overrides[get_sessoes] = lambda: sessoes
     app.dependency_overrides[get_hasher_senha] = lambda: hasher
+    limite = LimiteTentativasMemoria(janela_s=900)
+    app.dependency_overrides[get_limite_tentativas] = lambda: limite
     app.dependency_overrides[get_settings] = lambda: Settings(
         sessao_ttl_horas=2, cookie_secure=True
     )
@@ -142,3 +150,98 @@ async def test_trocar_senha_sem_sessao_da_401(ambiente: Ambiente) -> None:
     c, _, _ = ambiente
     r = await c.put("/auth/senha", json={"senha_atual": SENHA, "senha_nova": "nova-senha-forte"})
     assert r.status_code == 401
+
+
+# --- limite de tentativas ---------------------------------------------------------------------
+
+
+async def _errar(c: httpx.AsyncClient, vezes: int, **kw: Any) -> None:
+    for _ in range(vezes):
+        r = await c.post(
+            "/auth/login", json={"email": "dono@loja.com", "senha": "errada-errada"}, **kw
+        )
+        assert r.status_code == 401
+
+
+async def test_sexta_tentativa_com_senha_certa_da_429_com_retry_after(ambiente: Ambiente) -> None:
+    c, _, sessoes = ambiente
+    await _errar(c, 5)
+    r = await _login(c)
+    assert r.status_code == 429
+    assert int(r.headers["retry-after"]) == 900
+    assert r.json() == {
+        "erros": [
+            {
+                "caminho": "login",
+                "mensagem": "Muitas tentativas de login. Tente novamente mais tarde.",
+            }
+        ]
+    }
+    assert "set-cookie" not in r.headers and sessoes.ativos() == 0
+
+
+async def test_429_igual_para_email_inexistente(ambiente: Ambiente) -> None:
+    c, _, _ = ambiente
+    corpos = []
+    for email in ("dono@loja.com", "fantasma@loja.com"):
+        for _ in range(5):
+            await c.post("/auth/login", json={"email": email, "senha": "errada-errada"})
+        r = await c.post("/auth/login", json={"email": email, "senha": "errada-errada"})
+        assert r.status_code == 429
+        corpos.append((r.json(), r.headers["retry-after"]))
+    assert corpos[0] == corpos[1]
+
+
+async def test_limite_por_ip_em_varios_emails(ambiente: Ambiente) -> None:
+    c, _, _ = ambiente
+    for i in range(20):
+        r = await c.post("/auth/login", json={"email": f"x{i}@l.com", "senha": "errada-errada"})
+        assert r.status_code == 401
+    assert (await _login(c)).status_code == 429
+
+
+async def test_x_forwarded_for_ignorado_sem_proxy_confiavel(ambiente: Ambiente) -> None:
+    c, _, _ = ambiente
+    for i in range(20):
+        await c.post(
+            "/auth/login",
+            json={"email": f"x{i}@l.com", "senha": "errada-errada"},
+            headers={"X-Forwarded-For": f"10.0.0.{i}"},
+        )
+    r = await c.post(
+        "/auth/login",
+        json={"email": "dono@loja.com", "senha": SENHA},
+        headers={"X-Forwarded-For": "10.9.9.9"},
+    )
+    assert r.status_code == 429  # todos contaram como o mesmo IP (o da conexao)
+
+
+async def test_x_forwarded_for_usado_com_proxy_confiavel(ambiente: Ambiente) -> None:
+    c, _, _ = ambiente
+    app.dependency_overrides[get_settings] = lambda: Settings(confiar_proxy=True)
+    for i in range(20):
+        await c.post(
+            "/auth/login",
+            json={"email": f"x{i}@l.com", "senha": "errada-errada"},
+            headers={"X-Forwarded-For": f"203.0.113.50, 10.0.0.{i}"},
+        )
+    # o IP que o proxy confiavel acrescentou (ultimo) varia: nao bloqueia um cliente de outro IP
+    r = await c.post(
+        "/auth/login",
+        json={"email": "dono@loja.com", "senha": SENHA},
+        headers={"X-Forwarded-For": "10.7.7.7"},
+    )
+    assert r.status_code == 200
+    # ja o mesmo IP repetido bloqueia
+    for i in range(20):
+        await c.post(
+            "/auth/login",
+            json={"email": f"y{i}@l.com", "senha": "errada-errada"},
+            headers={"X-Forwarded-For": "198.51.100.1"},
+        )
+    r = await c.post(
+        "/auth/login",
+        json={"email": "dono@loja.com", "senha": SENHA},
+        headers={"X-Forwarded-For": "198.51.100.1"},
+    )
+    assert r.status_code == 429

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from app.application.auth.modelos import (
     CredenciaisInvalidas,
     LojaNaoAutorizada,
+    MuitasTentativas,
     SessaoInvalida,
     TrocaSenhaInvalida,
 )
@@ -72,6 +73,15 @@ def registrar_handlers(app: FastAPI) -> None:
     async def _credenciais(_: Request, exc: CredenciaisInvalidas) -> JSONResponse:
         erro = ErroCampo("credenciais", str(exc))
         return JSONResponse(_corpo([erro]), status_code=401)
+
+    @app.exception_handler(MuitasTentativas)
+    async def _muitas_tentativas(_: Request, exc: MuitasTentativas) -> JSONResponse:
+        # corpo generico: igual para e-mail existente ou nao
+        return JSONResponse(
+            _corpo([ErroCampo("login", str(exc))]),
+            status_code=429,
+            headers={"Retry-After": str(exc.segundos)},
+        )
 
     @app.exception_handler(SessaoInvalida)
     async def _sessao(_: Request, exc: SessaoInvalida) -> JSONResponse:

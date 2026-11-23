@@ -53,6 +53,22 @@ class ResultadoEntrar:
     identidade: Identidade
 
 
+@dataclass(frozen=True)
+class ChaveLimite:
+    """Uma chave de contagem de falhas (ex.: `email:x@y.com`) e quantas falhas ela tolera."""
+
+    chave: str
+    max_falhas: int
+
+
+class MuitasTentativas(Exception):
+    """Limite de falhas de login atingido; `segundos` e o que falta para a janela expirar."""
+
+    def __init__(self, segundos: int) -> None:
+        super().__init__("Muitas tentativas de login. Tente novamente mais tarde.")
+        self.segundos = segundos
+
+
 class CredenciaisInvalidas(Exception):
     """E-mail inexistente, senha errada ou usuario inativo: sempre a mesma resposta."""
 

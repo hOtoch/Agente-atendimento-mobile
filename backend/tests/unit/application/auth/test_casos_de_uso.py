@@ -5,10 +5,16 @@ from uuid import uuid4
 import pytest
 
 from app.application.auth.casos_de_uso import Entrar, QuemSouEu, Sair, TrocarSenha
-from app.application.auth.memoria import MemoriaSessoes, MemoriaUsuarios, SenhaSemHash
+from app.application.auth.memoria import (
+    LimiteTentativasMemoria,
+    MemoriaSessoes,
+    MemoriaUsuarios,
+    SenhaSemHash,
+)
 from app.application.auth.modelos import (
     CredenciaisInvalidas,
     MotivoTrocaSenha,
+    MuitasTentativas,
     SessaoInvalida,
     TrocaSenhaInvalida,
 )
@@ -155,3 +161,94 @@ async def test_trocar_senha_recusa(
 async def test_senha_de_exatamente_10_caracteres_passa(c: Cenario) -> None:
     token = (await c.entrar()("dono@loja.com", SENHA)).token
     await c.trocar()(c.usuario.id, token, SENHA, "1234567890")
+
+
+# --- limite de tentativas ---------------------------------------------------------------------
+
+
+async def _cenario_limite(
+    max_email: int = 3, max_ip: int = 5
+) -> tuple[Cenario, "LimiteTentativasMemoria", Entrar]:
+    c = await Cenario().montar()
+    limite = LimiteTentativasMemoria(janela_s=900)
+    entrar = Entrar(
+        c.usuarios,
+        c.hasher,
+        c.sessoes,
+        limite=limite,
+        max_falhas_email=max_email,
+        max_falhas_ip=max_ip,
+    )
+    return c, limite, entrar
+
+
+async def test_bloqueado_nao_gasta_hasher_nem_aceita_senha_certa() -> None:
+    c, _, entrar = await _cenario_limite(max_email=3)
+    for _ in range(3):
+        with pytest.raises(CredenciaisInvalidas):
+            await entrar("dono@loja.com", "errada-errada", ip="1.1.1.1")
+    conferencias = c.hasher.conferencias
+    with pytest.raises(MuitasTentativas) as exc:
+        await entrar("dono@loja.com", SENHA, ip="1.1.1.1")
+    assert exc.value.segundos > 0
+    assert c.hasher.conferencias == conferencias
+    assert c.sessoes.ativos() == 0
+
+
+async def test_email_normalizado_conta_junto() -> None:
+    _, _, entrar = await _cenario_limite(max_email=2)
+    for email in ("Dono@Loja.com", " dono@loja.com "):
+        with pytest.raises(CredenciaisInvalidas):
+            await entrar(email, "errada-errada", ip="1.1.1.1")
+    with pytest.raises(MuitasTentativas):
+        await entrar("DONO@loja.com", SENHA, ip="2.2.2.2")
+
+
+async def test_login_certo_zera_o_contador_do_email() -> None:
+    _, _, entrar = await _cenario_limite(max_email=3)
+    for _ in range(2):
+        with pytest.raises(CredenciaisInvalidas):
+            await entrar("dono@loja.com", "errada-errada", ip="1.1.1.1")
+    await entrar("dono@loja.com", SENHA, ip="1.1.1.1")
+    for _ in range(2):
+        with pytest.raises(CredenciaisInvalidas):
+            await entrar("dono@loja.com", "errada-errada", ip="1.1.1.1")
+    await entrar("dono@loja.com", SENHA, ip="1.1.1.1")  # ainda nao bloqueou
+
+
+async def test_limite_por_ip_pega_varredura_de_emails() -> None:
+    _, _, entrar = await _cenario_limite(max_email=3, max_ip=4)
+    for i in range(4):
+        with pytest.raises(CredenciaisInvalidas):
+            await entrar(f"x{i}@loja.com", "errada-errada", ip="9.9.9.9")
+    with pytest.raises(MuitasTentativas):
+        await entrar("dono@loja.com", SENHA, ip="9.9.9.9")
+    await entrar("dono@loja.com", SENHA, ip="8.8.8.8")  # outro IP segue livre
+
+
+async def test_bloqueio_igual_para_email_existente_ou_nao() -> None:
+    _, _, entrar = await _cenario_limite(max_email=2)
+    resultados = []
+    for email in ("dono@loja.com", "fantasma@loja.com"):
+        for _ in range(2):
+            with pytest.raises(CredenciaisInvalidas):
+                await entrar(email, "errada-errada", ip=None)
+        with pytest.raises(MuitasTentativas) as exc:
+            await entrar(email, "errada-errada", ip=None)
+        resultados.append(exc.value.segundos)
+    assert resultados[0] == resultados[1]
+
+
+async def test_janela_expirada_libera() -> None:
+    c = await Cenario().montar()
+    agora = [0.0]
+    limite = LimiteTentativasMemoria(janela_s=900, relogio=lambda: agora[0])
+    entrar = Entrar(c.usuarios, c.hasher, c.sessoes, limite=limite, max_falhas_email=2)
+    for _ in range(2):
+        with pytest.raises(CredenciaisInvalidas):
+            await entrar("dono@loja.com", "errada-errada")
+    with pytest.raises(MuitasTentativas) as exc:
+        await entrar("dono@loja.com", SENHA)
+    assert exc.value.segundos == 900
+    agora[0] = 901
+    await entrar("dono@loja.com", SENHA)
