@@ -106,7 +106,7 @@ A regra de dependência é verificada pelo **import-linter** (`uv run lint-impor
 | API | Python 3.12, FastAPI, Pydantic v2, `uv` | Async para webhooks e chamadas ao LLM; ecossistema de IA; contrato OpenAPI que gera o cliente TypeScript do painel. |
 | Banco | Postgres 16, SQLAlchemy 2 async, Alembic | Multi-loja (`loja_id` em tudo), transações, JSONB para a ficha, migrations versionadas. |
 | Fila | Redis + arq | Debounce, trava e ordem por conversa; escala horizontal subindo mais workers; mesmo Redis serve o pub/sub do SSE. |
-| LLM | Anthropic SDK; Haiku 5.5 e Sonnet 5.5 (configuráveis por env); prompt caching | Tool use e visão nativos; **fallback de modelo** em 429/5xx; o cache do prefixo (ferramentas + system + conversa) corta o custo de entrada. Modelo escolhido por eval, não por achismo. |
+| LLM | Anthropic SDK; Haiku 5.5 e Sonnet 5.5 (configuráveis por env); prompt caching. Alternativa: OpenAI (`LLM_PROVIDER=openai`, `gpt-4.1-mini` com reserva `gpt-4o-mini`) | Tool use e visão nativos; **fallback de modelo** em 429/5xx; o cache do prefixo (ferramentas + system + conversa) corta o custo de entrada. Modelo escolhido por eval, não por achismo. O provedor é só um adaptador do `LLMPort`: trocar não mexe no domínio nem nas ferramentas. O eval e os custos medidos abaixo são da Anthropic. |
 | WhatsApp | Evolution API v2 self-hosted (Docker) | Sem custo por mensagem, conecta por QR code, entrega `fromMe` (a IA silencia quando o vendedor digita no celular). Risco: não é a API oficial. |
 | Tempo real | SSE (`/lojas/{id}/eventos`) sobre Redis pub/sub | Unidirecional basta para o painel; sem websockets nem serviço externo (descartamos Supabase para rodar tudo local). |
 | Painel | Next.js 16, React 19, Tailwind 4, shadcn/ui, dnd-kit, Vitest + Testing Library | Produtividade; **design system** com tokens (CSS variables) e componentes próprios, sem cor ou espaçamento hardcoded (`DESIGN.md`). |
@@ -124,6 +124,7 @@ O custo abaixo é **medido** (uso de tokens registrado no eval com LLM real, 202
 | Haiku 5.5 | 15 / **14** | **~US$ 0,004** |
 | Sonnet 5.5 | 3 / 1 (amostra pequena; as 2 reprovações foram de uma checagem de handoff que depois saiu do eval) | ~US$ 0,079 |
 
+- **OpenAI (`LLM_PROVIDER=openai`)**: uma conversa de teste com `gpt-4.1-mini` (5 turnos até a proposta, estoque real do ERP, 13 chamadas ao modelo, 85 a 95% do prompt vindo do cache automático) custou **~US$ 0,009**. É uma medição única, não o eval. O adaptador põe a fala do cliente depois do estado e acrescenta uma instrução fixa de uso das ferramentas: sem isso os modelos da OpenAI respondiam só em texto e não registravam a ficha.
 - O **cache incremental da conversa** (commit `5a1145c`) cortou o custo do Sonnet em cerca de 55%. Sem cache de prompt, a mesma conversa custaria 76% (Haiku) a 81% (Sonnet) mais.
 - **Recomendação: Haiku 5.5 como principal**, cerca de 1/20 do custo do Sonnet. A única reprovação (`mente_tela_perfeita`) foi de tamanho de mensagem; as travas de negócio (valor só de ferramenta, desconto no teto) passaram em todos os cenários.
 - **Configuração atual: o `.env.example` vem com `LLM_MODEL=claude-sonnet-5-5` e `LLM_FALLBACK_MODEL=claude-haiku-5-5`**, ou seja, Sonnet como principal e Haiku como reserva. Para usar o Haiku como principal, troque no `.env`: `LLM_MODEL=claude-haiku-5-5` (e, se quiser, `LLM_FALLBACK_MODEL=claude-sonnet-5-5`). Nada mais muda.
@@ -208,8 +209,9 @@ cp .env.example .env
 
 No `.env`:
 
-- `ANTHROPIC_API_KEY`: **obrigatória para a IA real** (conversa com o LLM e eval real). Sem ela, o atendimento responde com a mensagem de espera e chama o vendedor.
-- `OPENAI_API_KEY`: **opcional**, só para áudio (STT e TTS). Sem ela o agente pede ao cliente que digite e responde só em texto.
+- `LLM_PROVIDER`: quem conversa com o cliente, `anthropic` (padrão) ou `openai`.
+- `ANTHROPIC_API_KEY`: **obrigatória para a IA real com `LLM_PROVIDER=anthropic`** (e para o eval real). Sem a chave do provedor escolhido, o atendimento responde com a mensagem de espera e chama o vendedor.
+- `OPENAI_API_KEY`: áudio (STT e TTS) e, com `LLM_PROVIDER=openai`, também a conversa (use `LLM_MODEL=gpt-4.1-mini` e `LLM_FALLBACK_MODEL=gpt-4o-mini`). Sem ela o agente pede ao cliente que digite e responde só em texto.
 - `LLM_MODEL`: modelo principal (padrão `claude-sonnet-5-5`; troque por `claude-haiku-5-5` para o custo da seção [Modelo e custo](#modelo-e-custo)).
 - `MERCADOPHONE_API_KEY`: **opcional**, só para sincronizar estoque e vendedores com o ERP Mercado Phone ([docs/mercadophone.md](docs/mercadophone.md)). Sem ela a integração fica desligada.
 
