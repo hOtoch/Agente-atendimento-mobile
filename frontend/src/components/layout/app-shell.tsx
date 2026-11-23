@@ -33,7 +33,8 @@ function Casca({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="flex w-sidebar shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      {/* Presa à altura da tela: em páginas longas (kanban) o rodapé com Sair continua visível. */}
+      <aside className="sticky top-0 flex h-screen w-sidebar shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
         <div className="px-4 py-4">
           <div className="text-base font-semibold">Atendimento Mobile</div>
           <LojaDaSessao />

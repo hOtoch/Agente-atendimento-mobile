@@ -92,6 +92,13 @@ describe("AppShell", () => {
     expect(rota.sair).toHaveBeenCalledTimes(1)
   })
 
+  it("a barra lateral fica presa à altura da tela, para Sair ficar visível em páginas longas", () => {
+    render(<AppShell>x</AppShell>)
+    const barra = screen.getByRole("complementary")
+    expect(barra).toHaveClass("sticky", "top-0", "h-screen")
+    expect(within(barra).getByRole("button", { name: "Sair" })).toBeInTheDocument()
+  })
+
   it("na tela de login renderiza só o conteúdo, sem barra lateral", () => {
     rota.atual = "/login"
     render(<AppShell>entrar</AppShell>)
