@@ -231,7 +231,8 @@ Premissas originais: ~12 mensagens do cliente, ~18 chamadas ao LLM por conversa,
 | M6 | Diferenciais | `milestone/m6-diferenciais` | 2026-11-22 | ✅ concluído (PR #55) |
 | M7 | Entrega | `milestone/m7-entrega` | 2026-11-23 09:00 | ✅ concluído (PR #56) |
 | M8 | Integração Mercado Phone | `milestone/m8-mercado-phone` | 2026-11-22 | ✅ concluído (PR #65) |
-| M9 | Fechamento pela IA | `milestone/m9-fechamento-pela-ia` | 2026-11-22 | ✅ concluído (PR do M9) |
+| M9 | Fechamento pela IA | `milestone/m9-fechamento-pela-ia` | 2026-11-22 | ✅ concluído (PR #75) |
+| M10 | Painel de desempenho da IA | `milestone/m10-painel-desempenho` | 2026-11-23 | ✅ concluído (PR do M10) |
 
 Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda) estão no GitHub: https://github.com/hOtoch/Agente-atendimento-mobile/issues
 
@@ -248,6 +249,7 @@ Issues detalhadas (escopo, critérios de aceite, testes TDD, dependências, onda
 | M7 | #41 carga k6, #42 custos | #43 README, #44 roteiro demo | | |
 | M8 | #57 cliente MCP, #58 qualidade/mapeamento, #59 conexão da loja (schema do M8) | #60 sincronização do estoque, #61 vendedores do ERP | #62 cliente + orçamento no handoff, #63 confirmação ao vivo | #64 docs, smoke e demo |
 | M9 | #70 espera entre mensagens, #71 estoque em etapas, #72 formas de pagamento e chave Pix, #73 resumo do handoff sem LLM | #74 IA fecha o acordo | | |
+| M10 | #76 telemetria (latência e erros), #77 métricas e API | #78 tela `/desempenho`, #79 dados de demonstração | | |
 
 Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa ponta a ponta no chat web.
 
@@ -326,6 +328,11 @@ Para a call de sábado: M0–M3 completos + kanban (M4) já mostrando a conversa
 | 2026-11-22 | Formas aceitas e chave Pix na config da loja (`pagamento_loja`, migration 0008); `registrar_compra` recusa forma desligada; chave Pix fora do prompt, só devolvida por `fechar_acordo`; dinheiro fora do escopo (Pix cobre o à vista) | O código decide; a IA não inventa chave |
 | 2026-11-22 | Resumo do handoff determinístico (aparelho, troca, proposta e valores da `ultima_proposta`, pagamento, pendências, últimas falas do cliente); `falha_llm` vira motivo legível | Teste real: sem crédito na Anthropic o resumo ficou vazio |
 | 2026-11-22 | IA fecha o acordo: `fechar_acordo` (proposta apresentada, ficha completa, forma aceita, proposta ainda válida) grava o acordo e devolve endereço, horário e chave Pix; depois a IA agradece e chama o vendedor com `acordo_fechado`; o acordo é zerado se a ficha/proposta mudar | Pedido do dono do produto: a IA conduz até o fim |
+| 2026-11-23 | Telemetria por rodada no `llm_uso` (`latencia_llm_ms`, `latencia_rodada_ms`, `tempo_resposta_ms`, relógios injetados), `ferramenta.erro` e evento `erro_llm` | Painel de desempenho precisa de latência e erros; eventos antigos ficam sem latência (null) |
+| 2026-11-23 | Preços por modelo no domínio (`domain/precos.py`, `Decimal`); `evals/precos.py` reexporta; modelo sem preço não é estimado (`custo.completo=false`) | O código decide o custo; uma fonte só |
+| 2026-11-23 | Métricas por período no fuso America/Sao_Paulo com período anterior do mesmo tamanho; conversa ativa = com mensagem no período; handoff = `dono_mudou` com `motivo`; acordo = `handoff_resumo` com `acordo`; erros = `erro_llm` + ferramenta com erro + limite + descartes | Definições explícitas para o dono da loja |
+| 2026-11-23 | Gráficos com recharts num `components/ui/chart.tsx` no padrão shadcn; paleta `--chart-*` validada para daltonismo nos dois temas | Design system sem cor hardcoded |
+| 2026-11-23 | Dados de demonstração só por script (`popular_metricas_demo.py`), marcados (`telefone demo:*`, `payload.demo`) e removíveis; ids `uuid4` e trava por loja | Apresentar o painel sem LLM e sem sujar dados reais |
 
 ## 11. Questões em aberto (perguntar ao recrutador)
 1. "Data da compra" = quando pretende comprar (premissa atual) ou quando comprou o usado?
@@ -470,6 +477,13 @@ _Atualizado ao final de cada milestone._
   - Testes: backend 2069, frontend 341, eval fake 7/7 (cenário novo `fecha_acordo_pix` e controle `controle_handoff_sem_acordo`).
   - Pontos de atenção: nada testado com a LLM real depois do M9 (sem crédito); `followup.py` ainda não usa a config de formas; corrida pequena entre a checagem de mensagem nova e o envio.
   - Próximo: recarregar crédito e rodar um eval real curto do fluxo de fechamento; cadastrar a chave Pix e um vendedor com WhatsApp real na loja demo.
+- **2026-11-23 — M10 Painel de desempenho da IA concluído** (#76–#79).
+  - #76 telemetria de latência e erros por rodada; #77 `GET /lojas/{id}/metricas` (KPIs com variação, funil, handoffs por motivo, tokens e custo por modelo, erros, ferramentas, modelos procurados, mapa hora × dia, séries diárias); #78 tela `/desempenho` (Visão geral, Volume, Resultado, Custo e uso, Qualidade, Demanda; 11 gráficos com tabela alternativa); #79 `scripts/popular_metricas_demo.py` e `docs/desempenho.md`.
+  - Loja demo do banco de dev populada com 60 dias de demonstração (remover com `--remover`).
+  - Achado: a máquina de desenvolvimento mostrou bit flip (um arquivo do `react-dom` em `node_modules` com um byte trocado, segfault do Node, reinício inesperado); suspeita de RAM. Testes intermitentes do script de demonstração podem ter a mesma origem; a correção (ids `uuid4` + trava) cobre a parte explicável.
+  - Testes: backend 2166, frontend 394, eval fake 7/7.
+  - Pontos de atenção: shell do painel não colapsa a sidebar em telas estreitas (rolagem horizontal em 375 px); itens inativos da sidebar quase invisíveis no tema escuro (`--sidebar-foreground` não redeclarado no `.dark`); latência só existe para conversas depois do M10.
+  - Próximo: testar a memória da máquina; corrigir o shell responsivo e o tema escuro da sidebar.
 
 ---
 
@@ -480,7 +494,7 @@ _Atualizado ao final de cada milestone._
 3. `cp .env.example .env` e preencher `ANTHROPIC_API_KEY` (só necessário para conversar com a LLM real ou rodar o eval real).
 4. Infra: `bash infra/dev.sh up` e `bash infra/smoke.sh` (7 containers: Postgres dev/teste, Redis, Evolution + seus serviços, ERP simulado).
 5. Backend: `cd backend && uv sync && uv run alembic upgrade head && uv run python -m app.infra.seed`.
-6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (2069 testes) e `cd ../frontend && npm ci && npm test -- --run` (341 testes).
+6. Validar: `uv run ruff check . && uv run mypy app evals && uv run lint-imports && EXIGIR_INTEGRACAO=1 uv run pytest` (2166 testes) e `cd ../frontend && npm ci && npm test -- --run` (394 testes).
 7. Rodar o agente: API `uv run uvicorn app.main:app`, worker `uv run arq app.infra.worker.WorkerSettings`, painel `cd frontend && npm run dev` (http://localhost:3000), ou `uv run python scripts/conversar.py --fake`.
-8. Todos os milestones (M0–M9) estão concluídos; para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
+8. Todos os milestones (M0–M10) estão concluídos; para ligar o ERP Mercado Phone, ponha `MERCADOPHONE_API_KEY` no `.env` e siga `docs/mercadophone.md`. Para a apresentação, siga `docs/roteiro-demo.md`. As worktrees de subagentes ficam em `.worktrees/` (criadas à mão; na máquina original o repo estava aninhado em outro repo git, por isso a isolação automática do Agent não era usada).
 9. Memória local do Claude Code não vai junto: tudo o que importa está neste arquivo e no `CLAUDE.md`.
