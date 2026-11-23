@@ -27,6 +27,8 @@ PRECOS: dict[str, Preco] = {
     "claude-haiku-5-5": Preco(Decimal("0.10"), Decimal("0.50"), Decimal("0.01"), Decimal("0.125")),
     # OpenAI: tabela publica de referencia (conferir em openai.com/api/pricing). O cache de
     # prefixo e automatico e nao cobra escrita.
+    # gpt-6-luna: tabela da OpenAI informada em 2026-11-23 (modelo de raciocinio).
+    "gpt-6-luna": Preco(Decimal("0.10"), Decimal("0.50"), Decimal("0.01"), Decimal("0.125")),
     "gpt-5.4-mini": Preco(Decimal("0.75"), Decimal("4.50"), Decimal("0.075"), Decimal(0)),
     "gpt-4.1-mini": Preco(Decimal("0.40"), Decimal("1.60"), Decimal("0.10"), Decimal(0)),
     "gpt-4o-mini": Preco(Decimal("0.15"), Decimal("0.60"), Decimal("0.075"), Decimal(0)),

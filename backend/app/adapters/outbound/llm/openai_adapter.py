@@ -11,7 +11,7 @@ Traducao do formato neutro da porta:
 - Ferramentas sem `strict`: o modo estrito da OpenAI exige todo parametro em `required`, e os
   esquemas do projeto tem opcionais; a validacao de argumentos continua no codigo das ferramentas.
 - `motivo_parada` usa o vocabulario do projeto (`end_turn`, `tool_use`, `max_tokens`).
-- `reasoning_effort` so vai para modelos de raciocinio (`gpt-5*`, `o*`).
+- `reasoning_effort` so vai para modelos de raciocinio (`gpt-6*`, `gpt-5*`, `o*`).
 - O modelo reportado (uso e `modelo_usado`) e o configurado, sem a data do snapshot que a API
   devolve, para a tabela de precos e a telemetria acharem o modelo.
 """
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 _ROTA = "/v1/chat/completions"
 _STATUS_TRANSITORIOS = frozenset({408, 409, 429}) | frozenset(range(500, 600))
-_PREFIXOS_RACIOCINIO = ("gpt-5", "o1", "o3", "o4")
+_PREFIXOS_RACIOCINIO = ("gpt-6", "gpt-5", "o1", "o3", "o4")
 _MOTIVOS = {"stop": "end_turn", "tool_calls": "tool_use", "length": "max_tokens"}
 
 # Os modelos da OpenAI tendem a responder so em texto e a seguir a "PROXIMA PERGUNTA" do estado,

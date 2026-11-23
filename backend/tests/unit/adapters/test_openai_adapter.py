@@ -320,6 +320,12 @@ async def test_modelo_de_raciocinio_recebe_o_effort() -> None:
     assert g.corpo()["reasoning_effort"] == "low"
 
 
+async def test_gpt_6_e_de_raciocinio_e_recebe_o_effort() -> None:
+    g = Gravador(resposta_ok(model="gpt-6-luna"))
+    await adaptador(g, modelo="gpt-6-luna", reserva=None).responder(["s"], [usuario()], [])
+    assert g.corpo()["reasoning_effort"] == "low"
+
+
 async def test_modelo_sem_raciocinio_nao_recebe_effort() -> None:
     g = Gravador(resposta_ok())
     await adaptador(g).responder(["s"], [usuario()], [])
