@@ -7,6 +7,7 @@ Links rápidos (loja demo, `LOJA_DEMO_ID` = `00000000-0000-4000-8000-00000000de3
 
 | O quê | URL |
 |---|---|
+| Login do painel (antes de qualquer tela abaixo) | `http://localhost:3000/login` com `demo@atendimento.local` e a senha de `SEED_SENHA_DEMO` |
 | Chat do cliente (público, sem barra lateral) | `http://localhost:3000/chat/00000000-0000-4000-8000-00000000de30` |
 | Simulador (mesmo chat, dentro do painel) | `http://localhost:3000/simulador` |
 | Kanban | `http://localhost:3000/kanban` |
@@ -69,6 +70,7 @@ Fale devagar e não leia número por número: aponte.
 (Soma: 0:45 + 2:15 + 1:15 + 1:15 + 1:15 + 0:45 + 0:45 + 0:30 = 8:45.)
 
 ### Bloco 1 (0:00 a 0:45): abertura e tese
+- Antes de gravar: faça o login em `/login` (usuário demo, senha de `SEED_SENHA_DEMO`); o painel já abre logado e o chat público fica na outra janela.
 - Tela: kanban vazio (ou com poucos leads) e o chat do cliente ao lado.
 - Fala: "Esta é uma IA que atende leads de loja de iPhone com troca do usado e entrega a venda
   pronta para o vendedor. A tese do projeto cabe numa frase: **a IA conduz a conversa, o código
@@ -183,6 +185,7 @@ da integração em [mercadophone.md](mercadophone.md).
 ## 3. Apresentação de 30 min (avaliador testando ao vivo)
 
 ### Abas abertas (nesta ordem, para trocar com Ctrl+1..7)
+0. **Antes de tudo, entre no painel** em `/login` (usuário demo, senha de `SEED_SENHA_DEMO`) na janela das abas 2 a 6; o chat do cliente (aba 1) é público e não precisa de login. A sessão dura 7 dias, mas confira que não caiu antes de começar.
 1. Chat do cliente da loja demo (a aba que o avaliador usa, ou o WhatsApp no celular de teste).
 2. Kanban (`/kanban`), ao lado do chat, em tela dividida.
 3. Inbox (`/conversas`), com "Atendendo como" já em um vendedor.
@@ -259,6 +262,7 @@ Faça com pelo menos 1 hora de folga. Marque cada item.
       Redis, Evolution e ERP simulado). No WSL: `wsl -u root service docker start` antes.
 - [ ] `bash infra/smoke.sh` sem nenhum `[FAIL]` (a Evolution leva ~60 s no primeiro boot).
 - [ ] `.env` na raiz (a partir de `.env.example`), nunca commitado.
+- [ ] Login do painel funcionando: `SEED_SENHA_DEMO` no `.env`, seed rodado e entrada em `http://localhost:3000/login` com `demo@atendimento.local`. Para a gravação, entre antes de começar (a tela de login não faz parte do roteiro).
 
 ### Backend
 - [ ] `cd backend && uv sync && uv run alembic upgrade head`

@@ -228,7 +228,7 @@ O teste **não** cobre o LLM real, a Evolution real nem várias lojas no mesmo w
 
 A plataforma é multi-loja: loja nova é **dados**, não código nem deploy de backend. Tudo o que a loja precisa preencher está num assistente de 9 passos em `/onboarding`, com checklist de progresso (vem da API e persiste ao recarregar), grades editáveis com erro por célula e importação de planilha (validar → aplicar; nunca grava dados inválidos). As planilhas modelo vazias estão em [docs/modelos](docs/modelos): `modelo-troca.xlsx`, `modelo-taxas.xlsx` e `modelo-estoque.xlsx`.
 
-**Passo 0 (nosso, ~10 min)**: criar a loja (`POST /lojas` com o nome; devolve o `id`) e apontar o painel para ela com `NEXT_PUBLIC_LOJA_ID=<id>` (o painel ainda não tem login nem seletor de loja; a variável entra no build do Next). Plataforma já instalada; a primeira instalação (servidor, `.env`, Evolution) é uma vez só, na ordem de 1 a 2 h.
+**Passo 0 (nosso, ~10 min)**: criar a loja e o login do dono com `uv run python scripts/criar_loja.py --nome "Loja X" --email dono@loja.com` (em `backend/`; imprime a loja e uma senha provisória, uma vez). O dono entra no painel com esse e-mail e troca a senha no primeiro acesso; a loja do painel vem da sessão, sem variável de build. Plataforma já instalada; a primeira instalação (servidor, `.env`, Evolution) é uma vez só, na ordem de 1 a 2 h.
 
 | # | Passo | O que fazer | Tempo estimado |
 |---|---|---|---|
@@ -310,7 +310,16 @@ npm ci
 npm run dev                     # http://localhost:3000
 ```
 
-Depois de subir tudo: abra o painel em <http://localhost:3000> e use **Simulador** (`/simulador`) para conversar como cliente; o lead aparece no **Kanban** e na **Conversas** (inbox). A loja demo tem o ID fixo `00000000-0000-4000-8000-00000000de30` e o chat público fica em `http://localhost:3000/chat/00000000-0000-4000-8000-00000000de30`. Para o WhatsApp, conecte o número pelo QR no passo 8 do onboarding. Para ver o painel de desempenho com dados, popule a loja demo: `uv run python scripts/popular_metricas_demo.py --loja 00000000-0000-4000-8000-00000000de30 --dias 30` (em `backend/`; `--remover` desfaz).
+**Entrar no painel.** O painel exige login (exceto `/login` e o chat público `/chat/{loja}`). O seed cria o usuário da loja demo: e-mail `demo@atendimento.local` e a senha de `SEED_SENHA_DEMO` no `.env` (o `.env.example` já traz um valor de dev; sem a variável o seed pula o usuário e avisa). Abra <http://localhost:3000>, entre e use o botão **Sair** quando quiser encerrar a sessão. No dev, painel (`localhost:3000`) e API (`localhost:8000`) contam como o mesmo "site" para o cookie de sessão (`SameSite=Lax`), e `CORS_ORIGINS` precisa conter `http://localhost:3000` (já está no `.env.example`).
+
+- **Criar outra loja** (não há cadastro público): `cd backend && uv run python scripts/criar_loja.py --nome "Loja X" --email dono@loja.com [--senha-provisoria ...]`. Sem `--senha-provisoria` gera uma senha forte e a imprime uma única vez; o dono troca no primeiro acesso (`/conta/senha`).
+- **Redefinir senha** (dono esqueceu): `uv run python scripts/redefinir_senha.py --email dono@loja.com` gera uma nova senha provisória, imprime uma vez e encerra as sessões abertas.
+- **Público, sem login**: `/login`, o chat do cliente (`/chat/{loja}`, `POST /webchat/{loja}/...`), os webhooks (Evolution), `/health` e os arquivos de mídia.
+- **Exige login da própria loja**: todo o resto do painel e toda rota `/lojas/{loja_id}/...` da API (kanban, leads, conversas, configuração, métricas, onboarding, importação, WhatsApp e o stream SSE `/lojas/{loja_id}/eventos`). Sem sessão a API responde 401; com a sessão de outra loja, 403 (ou 404 para um lead de outra loja). O teste `backend/tests/integration/test_isolamento_lojas.py` prova isso com duas lojas.
+- Limite de tentativas: 5 falhas por e-mail e 20 por IP em 15 min viram `429` com `Retry-After` (`LOGIN_*` no `.env`).
+- Produção na VPS (HTTPS, um domínio, cookie `Secure`): [docs/deploy-vps.md](docs/deploy-vps.md).
+
+Depois de entrar: use o **Simulador** (`/simulador`) para conversar como cliente; o lead aparece no **Kanban** e na **Conversas** (inbox). A loja demo tem o ID fixo `00000000-0000-4000-8000-00000000de30` e o chat público fica em `http://localhost:3000/chat/00000000-0000-4000-8000-00000000de30`. Para o WhatsApp, conecte o número pelo QR no passo 8 do onboarding. Para ver o painel de desempenho com dados, popule a loja demo: `uv run python scripts/popular_metricas_demo.py --loja 00000000-0000-4000-8000-00000000de30 --dias 30` (em `backend/`; `--remover` desfaz).
 
 **Conversar pelo terminal, sem painel, sem Redis e sem custo:**
 
@@ -359,7 +368,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 - **Mídia em disco local** (`MIDIA_DIR`), atrás de uma porta (`ArmazenamentoMidia`): simples para a demo, mas não serve para várias instâncias; trocar por S3/R2 não toca o caso de uso.
 - **Horário comercial em UTC-3 fixo** (sem `tzdata`): vale para o follow-up, para "hoje" nas regras e para as métricas; lojas em outros fusos pediriam fuso por loja.
 - **Strict tool use com limites.** Na Anthropic, ferramentas com tipos que poderiam quebrar a ficha usam `strict`; as demais ficam sem. A API limita ferramentas strict (≤ 20), parâmetros opcionais (≤ 24) e uniões (≤ 16); um teste trava esses limites, mas o limite de uniões só aparece num `messages.create` real. Na OpenAI, nenhuma ferramenta é strict (o modo estrito exige todos os parâmetros obrigatórios).
-- **Sem login no painel.** O inbox usa o seletor "Atendendo como" e `/chat/{loja}` é público; a loja do painel vem de `NEXT_PUBLIC_LOJA_ID`. Os dados já são separados por loja; falta autenticação (e seletor de loja) antes de expor o painel.
+- **Login simples, um usuário por loja.** Cada loja tem um login de dono criado por script (sem cadastro público, sem papéis, sem recuperação por e-mail: a senha é redefinida por comando no servidor). A loja do painel vem da sessão; o inbox ainda usa o seletor "Atendendo como" para escolher o vendedor. `/chat/{loja}` é público de propósito.
 - **Evolution não oficial.** Risco de bloqueio do número: usar chip secundário e, em produção séria, avaliar a API oficial (que cobra templates de follow-up).
 
 ## Riscos conhecidos e pendências
@@ -377,6 +386,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 | Documento | Conteúdo |
 |---|---|
 | [docs/roteiro-demo.md](docs/roteiro-demo.md) | Roteiro do vídeo (≤ 10 min) e da apresentação, tentativas de quebrar a IA, checklist e planos B/C |
+| [docs/deploy-vps.md](docs/deploy-vps.md) | Subir na VPS: um domínio com Caddy (painel em `/`, API em `/api`), variáveis de produção, build fora da VPS, swap |
 | [docs/custos.md](docs/custos.md) | Custo medido por conversa, efeito do cache, projeção 1 mil / 10 mil leads, premissas |
 | [docs/black-friday.md](docs/black-friday.md) | Resultado do k6, interpretação, gargalos e plano da Black Friday |
 | [infra/k6/README.md](infra/k6/README.md) | Como repetir o teste de carga |
