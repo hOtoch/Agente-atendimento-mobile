@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.adapters.outbound.auth.hasher import HasherSenhaArgon2
+from app.adapters.outbound.auth.limite import LimiteTentativasRedis
 from app.adapters.outbound.auth.sessoes import SessoesRedis
 from app.adapters.outbound.auth.usuarios import RepositorioUsuariosSql
 from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
@@ -31,7 +32,7 @@ from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
 from app.application.auth.modelos import LojaNaoAutorizada, SessaoAtual, SessaoInvalida
-from app.application.auth.portas import HasherSenha, RepositorioUsuarios, Sessoes
+from app.application.auth.portas import HasherSenha, LimiteTentativas, RepositorioUsuarios, Sessoes
 from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.conexao_erp import ConfigurarConexaoErp
@@ -302,3 +303,9 @@ async def loja_autorizada(
     if sessao.loja_id != loja_id:
         raise LojaNaoAutorizada
     return sessao
+
+
+def get_limite_tentativas(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> LimiteTentativas:
+    return LimiteTentativasRedis(_redis(), janela_s=settings.login_janela_min * 60)

@@ -10,11 +10,17 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.adapters.outbound.auth.hasher import HasherSenhaArgon2
+from app.adapters.outbound.auth.limite import LimiteTentativasRedis
 from app.adapters.outbound.auth.sessoes import SessoesRedis
 from app.adapters.outbound.auth.usuarios import RepositorioUsuariosSql
 from app.adapters.outbound.db.config import RepositorioLojasSql
 from app.application.auth.modelos import SessaoAtual
-from app.infra.dependencias import get_session, get_sessoes, sessao_atual
+from app.infra.dependencias import (
+    get_limite_tentativas,
+    get_session,
+    get_sessoes,
+    sessao_atual,
+)
 from app.main import app
 from tests.integration.conftest import aplicar_migrations
 
@@ -44,6 +50,8 @@ async def client(
 
     app.dependency_overrides[get_session] = _sessao
     app.dependency_overrides[get_sessoes] = lambda: sessoes
+    limite = LimiteTentativasRedis(redis_pool, janela_s=60, prefixo=prefixo_redis)
+    app.dependency_overrides[get_limite_tentativas] = lambda: limite
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
         yield c
     app.dependency_overrides.clear()

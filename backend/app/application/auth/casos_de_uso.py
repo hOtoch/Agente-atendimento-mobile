@@ -9,16 +9,18 @@ from uuid import UUID
 
 from app.application.auth.modelos import (
     SENHA_MIN_CARACTERES,
+    ChaveLimite,
     CredenciaisInvalidas,
     Identidade,
     MotivoTrocaSenha,
+    MuitasTentativas,
     ResultadoEntrar,
     SessaoInvalida,
     TrocaSenhaInvalida,
     Usuario,
     normalizar_email,
 )
-from app.application.auth.portas import HasherSenha, RepositorioUsuarios, Sessoes
+from app.application.auth.portas import HasherSenha, LimiteTentativas, RepositorioUsuarios, Sessoes
 
 
 def identidade_de(usuario: Usuario) -> Identidade:
@@ -41,11 +43,18 @@ class Entrar:
         hasher: HasherSenha,
         sessoes: Sessoes,
         agora: Callable[[], datetime] = lambda: datetime.now(UTC),
+        *,
+        limite: LimiteTentativas | None = None,
+        max_falhas_email: int = 5,
+        max_falhas_ip: int = 20,
     ) -> None:
         self._usuarios = usuarios
         self._hasher = hasher
         self._sessoes = sessoes
         self._agora = agora
+        self._limite = limite
+        self._max_email = max_falhas_email
+        self._max_ip = max_falhas_ip
 
     async def _hash_falso(self) -> str:
         tipo = type(self._hasher)
@@ -53,8 +62,27 @@ class Entrar:
             Entrar._hashes_falsos[tipo] = await self._hasher.gerar("senha-que-ninguem-tem")
         return Entrar._hashes_falsos[tipo]
 
-    async def __call__(self, email: str, senha: str) -> ResultadoEntrar:
-        usuario = await self._usuarios.obter_por_email(normalizar_email(email))
+    async def __call__(self, email: str, senha: str, ip: str | None = None) -> ResultadoEntrar:
+        email = normalizar_email(email)
+        chave_email = ChaveLimite(f"email:{email}", self._max_email)
+        chaves = [chave_email] + ([ChaveLimite(f"ip:{ip}", self._max_ip)] if ip else [])
+        if self._limite is not None:
+            # antes de qualquer hash: bloqueado nao gasta argon2 e nem a senha certa entra
+            segundos = await self._limite.bloqueado(chaves)
+            if segundos is not None:
+                raise MuitasTentativas(segundos)
+        try:
+            resultado = await self._autenticar(email, senha)
+        except CredenciaisInvalidas:
+            if self._limite is not None:
+                await self._limite.registrar_falha(chaves)
+            raise
+        if self._limite is not None:
+            await self._limite.limpar([chave_email])
+        return resultado
+
+    async def _autenticar(self, email: str, senha: str) -> ResultadoEntrar:
+        usuario = await self._usuarios.obter_por_email(email)
         if usuario is None:
             # gasta o mesmo tempo de uma conferencia real: nao revela se o e-mail existe
             await self._hasher.conferir(senha, await self._hash_falso())

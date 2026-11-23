@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from app.application.auth.modelos import DadosSessao, Usuario, normalizar_email
+from app.application.auth.modelos import ChaveLimite, DadosSessao, Usuario, normalizar_email
 
 
 class SenhaSemHash:
@@ -96,3 +98,38 @@ class MemoriaSessoes:
         for token in [t for t, d in self._dados.items() if d.usuario_id == usuario_id]:
             if token != manter:
                 del self._dados[token]
+
+
+class LimiteTentativasMemoria:
+    """Contador de falhas em memoria (janela fixa a partir da primeira falha)."""
+
+    def __init__(self, janela_s: int, relogio: Callable[[], float] = time.monotonic) -> None:
+        self._janela = janela_s
+        self._relogio = relogio
+        self._falhas: dict[str, tuple[int, float]] = {}  # chave -> (contagem, expira_em)
+
+    def _contagem(self, chave: str) -> tuple[int, float]:
+        contagem, expira = self._falhas.get(chave, (0, 0.0))
+        if contagem and expira <= self._relogio():
+            del self._falhas[chave]
+            return 0, 0.0
+        return contagem, expira
+
+    async def bloqueado(self, chaves: Sequence[ChaveLimite]) -> int | None:
+        restantes = []
+        for c in chaves:
+            contagem, expira = self._contagem(c.chave)
+            if contagem >= c.max_falhas:
+                restantes.append(max(1, round(expira - self._relogio())))
+        return max(restantes) if restantes else None
+
+    async def registrar_falha(self, chaves: Sequence[ChaveLimite]) -> None:
+        for c in chaves:
+            contagem, expira = self._contagem(c.chave)
+            if not contagem:
+                expira = self._relogio() + self._janela
+            self._falhas[c.chave] = (contagem + 1, expira)
+
+    async def limpar(self, chaves: Sequence[ChaveLimite]) -> None:
+        for c in chaves:
+            self._falhas.pop(c.chave, None)
