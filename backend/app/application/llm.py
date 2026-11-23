@@ -124,7 +124,14 @@ class RespostaLLM:
 
 
 class ErroLLM(Exception):
-    """Falha ao falar com o LLM."""
+    """Falha ao falar com o LLM. `status` (HTTP) e `modelo` sao opcionais, para a telemetria."""
+
+    def __init__(
+        self, mensagem: str = "", *, status: int | None = None, modelo: str | None = None
+    ) -> None:
+        super().__init__(mensagem)
+        self.status = status
+        self.modelo = modelo
 
 
 class LLMIndisponivel(ErroLLM):
@@ -134,8 +141,16 @@ class LLMIndisponivel(ErroLLM):
 class LLMRecusou(ErroLLM):
     """O modelo recusou a requisicao (recusa final, depois de qualquer fallback)."""
 
-    def __init__(self, categoria: str | None, mensagem: str | None = None) -> None:
-        super().__init__(mensagem or f"LLM recusou a requisicao (categoria={categoria})")
+    def __init__(
+        self,
+        categoria: str | None,
+        mensagem: str | None = None,
+        *,
+        modelo: str | None = None,
+    ) -> None:
+        super().__init__(
+            mensagem or f"LLM recusou a requisicao (categoria={categoria})", modelo=modelo
+        )
         self.categoria = categoria
 
 

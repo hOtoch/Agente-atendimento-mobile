@@ -82,6 +82,13 @@ def test_hierarquia_de_erros() -> None:
     assert LLMRecusou(None).categoria is None
 
 
+def test_erro_llm_leva_status_e_modelo_opcionais() -> None:
+    assert ErroLLM("x").status is None and ErroLLM("x").modelo is None
+    erro = LLMIndisponivel("fora", status=529, modelo="claude-x")
+    assert (erro.status, erro.modelo) == (529, "claude-x")
+    assert LLMRecusou("cyber", modelo="claude-x").modelo == "claude-x"
+
+
 def test_modulo_nao_importa_o_sdk() -> None:
     codigo = "import sys, app.application.llm; sys.exit(1 if 'anthropic' in sys.modules else 0)"
     assert subprocess.run([sys.executable, "-c", codigo], check=False).returncode == 0

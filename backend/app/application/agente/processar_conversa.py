@@ -40,6 +40,7 @@ from app.application.estoque import EstoquePort
 from app.application.handoff import CasosHandoff
 from app.application.llm import (
     BlocoTexto,
+    DefinicaoFerramenta,
     ErroLLM,
     LLMPort,
     MensagemLLM,
@@ -53,6 +54,7 @@ from app.application.painel.publicador import (
     PublicadorPainelNulo,
     publicar_sem_falhar,
 )
+from app.application.relogio import RelogioParedePort, RelogioPort
 from app.domain.kanban import Ator, atualizar_etapa
 from app.domain.valores import Dinheiro
 
@@ -77,6 +79,20 @@ _PROVISORIOS = {
     TipoMensagem.AUDIO: "[cliente enviou um áudio]",
     TipoMensagem.IMAGEM: "[cliente enviou uma imagem]",
 }
+
+
+def _ms(segundos: float) -> int:
+    """Segundos em milissegundos inteiros, nunca negativos (relogios podem destoar)."""
+    return max(0, round(segundos * 1000))
+
+
+def _payload_erro_llm(exc: ErroLLM) -> dict[str, Any]:
+    payload: dict[str, Any] = {"tipo": type(exc).__name__}
+    if exc.status is not None:
+        payload["status"] = exc.status
+    if exc.modelo is not None:
+        payload["modelo"] = exc.modelo
+    return payload
 
 
 class CanalNaoConfigurado(Exception):
@@ -117,6 +133,8 @@ class ProcessarConversa:
         audio_saida: ResponderEmAudio | None = None,
         descartes: ContadorDescartes | None = None,
         max_descartes: int = 2,
+        relogio: RelogioPort | None = None,
+        relogio_parede: RelogioParedePort | None = None,
     ) -> None:
         self._conversas = conversas
         self._transcricao = transcricao
@@ -136,6 +154,9 @@ class ProcessarConversa:
         self._audio_saida = audio_saida
         self._descartes = descartes or DescartesEmMemoria()
         self._max_descartes = max_descartes
+        # Telemetria de latencia: sem relogios injetados o agente funciona igual, sem as medidas.
+        self._relogio = relogio
+        self._parede = relogio_parede
 
     async def __call__(self, conversa_id: UUID) -> None:
         conversa = await self._conversas.obter_conversa(conversa_id)
@@ -166,6 +187,9 @@ class _Turno:
         self._historico: list[MensagemLLM] = []
         self._ultima_foi_audio = False
         self._loja_quer_audio = True
+        self._inicio_rodada: float | None = None
+        self._primeira_entrada_em: datetime | None = None
+        self._latencia_llm_s = 0.0
 
     async def _evento(self, tipo: str, payload: dict[str, Any]) -> None:
         await self._c._eventos.registrar(
@@ -174,6 +198,8 @@ class _Turno:
 
     async def rodar(self, entradas: list[EntradaConversa], ate: CursorEntrada) -> None:
         self._ultima_foi_audio = entradas[-1].tipo is TipoMensagem.AUDIO
+        self._inicio_rodada = self._c._relogio.agora() if self._c._relogio else None
+        self._primeira_entrada_em = entradas[0].criado_em
         await self._conversar(entradas, ate)
         await self._passar_ao_vendedor()
 
@@ -236,7 +262,7 @@ class _Turno:
 
         for _ in range(c._max_iteracoes):
             try:
-                resposta = await c._llm.responder(sistema, self._historico, definicoes)
+                resposta = await self._chamar_llm(sistema, definicoes)
             except ErroLLM as exc:
                 await self._falha_llm(exc)
                 return
@@ -262,6 +288,16 @@ class _Turno:
         await self._evento("limite_iteracoes", {"max_iteracoes": c._max_iteracoes})
         await self._acrescentar([MensagemLLM("assistant", [BlocoTexto(MENSAGEM_LIMITE)])])
         await self._responder(MENSAGEM_LIMITE)
+
+    async def _chamar_llm(self, sistema: list[str], definicoes: list[DefinicaoFerramenta]) -> Any:
+        """Uma chamada ao LLM; o tempo gasto entra na rodada mesmo quando ela falha."""
+        relogio = self._c._relogio
+        inicio = relogio.agora() if relogio else None
+        try:
+            return await self._c._llm.responder(sistema, self._historico, definicoes)
+        finally:
+            if relogio is not None and inicio is not None:
+                self._latencia_llm_s += relogio.agora() - inicio
 
     async def _descartar_se_chegou_mensagem(self, ate: CursorEntrada, texto: str) -> bool:
         """O cliente escreveu depois do cursor desta rodada? Entao a resposta pronta fica velha.
@@ -382,6 +418,17 @@ class _Turno:
                     "traceback": traceback.format_exc()[-_TRACEBACK_MAX:],
                 },
             )
+            await self._evento(
+                "ferramenta",
+                {
+                    "nome": nome,
+                    "entrada": entrada,
+                    "resultado_resumido": json.dumps(
+                        {"erro": _ERRO_FERRAMENTA}, ensure_ascii=False
+                    ),
+                    "erro": True,
+                },
+            )
             return ResultadoFerramenta(id_, json.dumps({"erro": _ERRO_FERRAMENTA}), True)
         for ev in res.eventos:
             await self._evento(
@@ -428,6 +475,7 @@ class _Turno:
         c = self._c
         self._estado = replace(self._estado, handoff_solicitado=True, motivo_handoff="falha_llm")
         await c._atendimento.salvar(self._conversa.loja_id, self._conversa.lead_id, self._estado)
+        await self._evento("erro_llm", _payload_erro_llm(exc))
         await self._evento("handoff", {"motivo": "falha_llm", "erro": type(exc).__name__})
         await self._recalcular_etapa()
         await self._acrescentar([MensagemLLM("assistant", [BlocoTexto(MENSAGEM_ESPERA)])])
@@ -439,24 +487,45 @@ class _Turno:
         if canal is None:
             raise CanalNaoConfigurado(conversa.canal.value)
         await self._enviar(canal, TipoMensagem.TEXTO, texto, None)
+        enviada_em = self._agora_parede()  # a nota de voz (TTS) nao entra no tempo de resposta
+        duracao_rodada = self._duracao_da_rodada()
         await c._descartes.zerar(conversa.conversa_id)
         await self._enviar_audio(canal, texto)
-        await self._registrar_uso()
+        await self._registrar_uso(duracao_rodada, enviada_em)
 
-    async def _registrar_uso(self) -> None:
+    def _agora_parede(self) -> datetime | None:
+        parede = self._c._parede
+        return parede.agora() if parede else None
+
+    def _duracao_da_rodada(self) -> float | None:
+        relogio = self._c._relogio
+        if relogio is None or self._inicio_rodada is None:
+            return None
+        return relogio.agora() - self._inicio_rodada
+
+    async def _registrar_uso(
+        self, duracao_rodada: float | None = None, enviada_em: datetime | None = None
+    ) -> None:
+        """`llm_uso` da rodada. Sem `enviada_em` (resposta descartada) nao ha tempo de resposta."""
         if not self._chamadas_llm:
             return
-        await self._evento(
-            "llm_uso",
-            {
-                "modelo": self._uso.modelo,
-                "entrada": self._uso.entrada,
-                "saida": self._uso.saida,
-                "cache_leitura": self._uso.cache_leitura,
-                "cache_escrita": self._uso.cache_escrita,
-                "chamadas": self._chamadas_llm,
-            },
-        )
+        payload: dict[str, Any] = {
+            "modelo": self._uso.modelo,
+            "entrada": self._uso.entrada,
+            "saida": self._uso.saida,
+            "cache_leitura": self._uso.cache_leitura,
+            "cache_escrita": self._uso.cache_escrita,
+            "chamadas": self._chamadas_llm,
+        }
+        if self._c._relogio is not None and self._inicio_rodada is not None:
+            if duracao_rodada is None:
+                duracao_rodada = self._duracao_da_rodada()
+            payload["latencia_llm_ms"] = _ms(self._latencia_llm_s)
+            payload["latencia_rodada_ms"] = _ms(duracao_rodada or 0.0)
+        if enviada_em is not None and self._primeira_entrada_em is not None:
+            espera = (enviada_em - self._primeira_entrada_em).total_seconds()
+            payload["tempo_resposta_ms"] = _ms(espera)
+        await self._evento("llm_uso", payload)
 
     async def _enviar_audio(self, canal: CanalPort, texto: str) -> None:
         """Nota de voz adicional ao texto (que ja saiu). Qualquer falha deixa so o texto."""

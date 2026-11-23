@@ -32,6 +32,7 @@ from app.application.llm import (
 from app.application.midia import ArmazenamentoMidia
 from app.application.painel.memoria import PublicadorEmMemoria, RepositorioPainelEmMemoria
 from app.application.painel.portas import LeadRegistro, MensagemRegistro
+from app.application.relogio import RelogioFalso, RelogioParedeFalso
 from app.domain.kanban import Etapa
 
 from .apoio_ferramentas import (
@@ -143,6 +144,8 @@ class Cenario:
     painel: PublicadorEmMemoria
     painel_repo: PainelSincronizado
     handoff: CasosHandoff
+    relogio: RelogioFalso
+    parede: RelogioParedeFalso
 
     @property
     def lead_id(self) -> UUID:
@@ -185,6 +188,8 @@ async def criar_cenario(
     transcrever: TranscreverAudio | None = None,
     audio_saida: ResponderEmAudio | None = None,
     max_descartes: int = 2,
+    relogio: RelogioFalso | None = None,
+    parede: RelogioParedeFalso | None = None,
 ) -> Cenario:
     amb = await criar_ambiente()
     conversas = ConversasEmMemoria()
@@ -195,6 +200,8 @@ async def criar_cenario(
         contato="sessao-1",
         dono=dono,
     )
+    relogio = relogio or RelogioFalso()
+    parede = parede or RelogioParedeFalso(conversas._relogio)
     llm = llm_cls(roteiro)
     canal = CanalEmMemoria()
     transcricao = RepositorioTranscricaoEmMemoria()
@@ -242,8 +249,10 @@ async def criar_cenario(
         midia=midia,
         audio_saida=audio_saida,
         max_descartes=max_descartes,
+        relogio=relogio,
+        relogio_parede=parede,
     )
     return Cenario(
         amb, llm, canal, conversas, transcricao, atendimento, eventos, caso, conversa_id, painel,
-        painel_repo, handoff,
+        painel_repo, handoff, relogio, parede,
     )  # fmt: skip

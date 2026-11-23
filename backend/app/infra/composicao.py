@@ -79,7 +79,7 @@ from app.domain.conexao_erp import ConexaoErp
 from app.infra.fila import AgendadorArq, DescartesRedis, RelogioParede, TravaRedis
 from app.infra.llm import criar_llm
 from app.infra.mercadophone import MercadoPhoneNaoConfigurado, get_cliente_mercadophone
-from app.infra.relogio import RelogioSistema
+from app.infra.relogio import RelogioParedeSistema, RelogioSistema
 from app.infra.settings import Settings, get_settings
 
 log = logging.getLogger(__name__)
@@ -417,6 +417,8 @@ def montar_processar_conversa(
         audio_saida=audio_saida,
         descartes=descartes,
         max_descartes=max_descartes,
+        relogio=RelogioSistema(),
+        relogio_parede=RelogioParedeSistema(),
     )
 
 

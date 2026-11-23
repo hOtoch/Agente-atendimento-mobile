@@ -132,6 +132,21 @@ async def test_fluxo_com_banco_real_e_fake_llm(db_url: str, session: AsyncSessio
     tipos = (await session.execute(select(Evento.tipo))).scalars().all()
     for esperado in ("llm_mensagem", "ferramenta", "etapa_mudou", "llm_uso"):
         assert esperado in tipos
+    # a composicao real injeta os relogios: o llm_uso nasce com as tres latencias
+    uso = (
+        (await session.execute(select(Evento.payload).where(Evento.tipo == "llm_uso")))
+        .scalars()
+        .first()
+    )
+    assert uso is not None
+    for campo in ("latencia_llm_ms", "latencia_rodada_ms", "tempo_resposta_ms"):
+        assert isinstance(uso[campo], int) and uso[campo] >= 0
+    fer = (
+        (await session.execute(select(Evento.payload).where(Evento.tipo == "ferramenta")))
+        .scalars()
+        .all()
+    )
+    assert fer and all(p["erro"] is False for p in fer)
 
     # segundo turno: o historico e a reproducao exata + novidades; nada reprocessado
     await caso(conversa)

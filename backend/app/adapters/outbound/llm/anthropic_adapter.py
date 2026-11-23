@@ -162,7 +162,9 @@ class AnthropicAdapter:
             modelos.append(self.modelo_reserva)
 
         ultimo_erro: Exception | None = None
+        ultimo_modelo = self.modelo
         for modelo in modelos:
+            ultimo_modelo = modelo
             for tentativa in range(self._tentativas):
                 try:
                     resposta = await self._chamar(modelo, base)
@@ -178,11 +180,17 @@ class AnthropicAdapter:
                     if tentativa + 1 < self._tentativas and self._backoff_s > 0:
                         await asyncio.sleep(self._backoff_s * (2**tentativa))
                 except anthropic.APIStatusError as e:
-                    raise ErroLLM(f"erro da API Anthropic ({e.status_code}): {e.message}") from e
+                    raise ErroLLM(
+                        f"erro da API Anthropic ({e.status_code}): {e.message}",
+                        status=e.status_code,
+                        modelo=modelo,
+                    ) from e
                 else:
                     return self._converter(resposta)
         raise LLMIndisponivel(
-            f"LLM indisponivel apos tentar {modelos}: {ultimo_erro}"
+            f"LLM indisponivel apos tentar {modelos}: {ultimo_erro}",
+            status=getattr(ultimo_erro, "status_code", None),
+            modelo=ultimo_modelo,
         ) from ultimo_erro
 
     async def _chamar(self, modelo: str, base: dict[str, Any]) -> Any:
@@ -197,7 +205,7 @@ class AnthropicAdapter:
             detalhes = getattr(r, "stop_details", None)
             categoria = getattr(detalhes, "category", None)
             logger.warning("LLM recusou modelo=%s categoria=%s", r.model, categoria)
-            raise LLMRecusou(categoria)
+            raise LLMRecusou(categoria, modelo=r.model)
 
         texto = "".join(b.text for b in r.content if b.type == "text")
         chamadas = [
