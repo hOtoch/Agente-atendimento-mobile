@@ -19,7 +19,7 @@ Variaveis: `DATABASE_URL`, `REDIS_URL`, `LLM_MODEL` (padrao `claude-sonnet-5-5`)
 | O que | Comando |
 |---|---|
 | Instalar deps | `uv sync` |
-| Subir a API | `uv run uvicorn app.main:app --reload` (GET `/health`) |
+| Subir a API | `uv run uvicorn app.main:app --reload --reload-dir app --timeout-graceful-shutdown 3` (GET `/health`; o timeout evita que o reload trave com streams SSE abertos) |
 | Testes rapidos | `uv run pytest -m "not integration"` |
 | Todos os testes | `uv run pytest` |
 | Lint | `uv run ruff check .` |

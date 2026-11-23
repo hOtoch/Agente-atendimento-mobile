@@ -297,8 +297,9 @@ uv sync
 uv run alembic upgrade head
 uv run python -m app.infra.seed
 
-# 3. API (--host 0.0.0.0 para a Evolution, dentro do Docker, alcançar o webhook)
-uv run uvicorn app.main:app --host 0.0.0.0 --reload     # http://localhost:8000/health
+# 3. API (--host 0.0.0.0 para a Evolution, dentro do Docker, alcançar o webhook;
+#    o timeout evita que o reload trave esperando os streams SSE do painel/webchat)
+uv run uvicorn app.main:app --host 0.0.0.0 --reload --reload-dir app --timeout-graceful-shutdown 3     # http://localhost:8000/health
 
 # 4. Worker do agente (outro terminal, em backend/)
 uv run arq app.infra.worker.WorkerSettings
