@@ -292,6 +292,17 @@ async def test_chamadas_e_resultados_de_ferramenta_no_historico() -> None:
     assert len(msgs) == 6
 
 
+async def test_resposta_vazia_gravada_no_historico_vai_com_content_vazio() -> None:
+    """Resposta sem texto e sem ferramenta: o orquestrador manda MENSAGEM_LIMITE ao cliente mas
+    grava a mensagem vazia. `content: null` sem `tool_calls` e recusado pela API (400) e
+    quebraria todos os turnos seguintes da conversa."""
+    g = Gravador(resposta_ok())
+    vazia = MensagemLLM("assistant", [])
+    await adaptador(g).responder(["s"], [usuario(), vazia, usuario("oi?")], [])
+    msgs = sem_instrucao(g)
+    assert msgs[2] == {"role": "assistant", "content": ""}
+
+
 async def test_assistente_so_com_ferramenta_vai_com_content_nulo() -> None:
     g = Gravador(resposta_ok())
     assistente = MensagemLLM("assistant", [ChamadaFerramenta("c", "consultar_estoque", {})])
