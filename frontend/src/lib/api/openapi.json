@@ -1242,6 +1242,35 @@
         "title": "HandoffsSchema",
         "type": "object"
       },
+      "IdentidadeSchema": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "loja_id": {
+            "format": "uuid",
+            "title": "Loja Id",
+            "type": "string"
+          },
+          "loja_nome": {
+            "title": "Loja Nome",
+            "type": "string"
+          },
+          "senha_provisoria": {
+            "title": "Senha Provisoria",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "loja_id",
+          "loja_nome",
+          "email",
+          "senha_provisoria"
+        ],
+        "title": "IdentidadeSchema",
+        "type": "object"
+      },
       "IndicadorSchema": {
         "description": "Um numero do periodo, o mesmo numero no periodo anterior e a variacao %.",
         "properties": {
@@ -1838,6 +1867,26 @@
           "limite_bateria_pct"
         ],
         "title": "LinhaTrocaSchema",
+        "type": "object"
+      },
+      "LoginEntrada": {
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          },
+          "senha": {
+            "maxLength": 1024,
+            "title": "Senha",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "senha"
+        ],
+        "title": "LoginEntrada",
         "type": "object"
       },
       "LojaIn": {
@@ -3163,6 +3212,26 @@
         "title": "TrocaSchema",
         "type": "object"
       },
+      "TrocaSenhaEntrada": {
+        "properties": {
+          "senha_atual": {
+            "maxLength": 1024,
+            "title": "Senha Atual",
+            "type": "string"
+          },
+          "senha_nova": {
+            "maxLength": 1024,
+            "title": "Senha Nova",
+            "type": "string"
+          }
+        },
+        "required": [
+          "senha_atual",
+          "senha_nova"
+        ],
+        "title": "TrocaSenhaEntrada",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3348,6 +3417,190 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/auth/eu": {
+      "get": {
+        "operationId": "eu_auth_eu_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentidadeSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Eu",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentidadeSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout_auth_logout_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/senha": {
+      "put": {
+        "operationId": "trocar_senha_auth_senha_put",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocaSenhaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trocar Senha",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",
