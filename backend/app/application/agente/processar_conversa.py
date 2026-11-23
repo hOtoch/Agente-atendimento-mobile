@@ -259,7 +259,12 @@ class _Turno:
         self._historico = [*antigas, *novas]
 
         ctx = ContextoFerramentas(
-            loja_id=loja_id, lead_id=lead_id, estoque=c._estoque, config=c._config, hoje=c._hoje()
+            loja_id=loja_id,
+            lead_id=lead_id,
+            estoque=c._estoque,
+            config=c._config,
+            hoje=c._hoje(),
+            fala_do_cliente="\n".join(textos),
         )
         definicoes = c._catalogo.definicoes()
 
@@ -286,6 +291,7 @@ class _Turno:
                     else resposta.mensagem_assistente
                 )
                 await self._acrescentar([registro])
+                await self._marcar_pergunta_da_troca(final)
                 await self._responder(final)
                 return
             resultados: list[ResultadoFerramenta] = []
@@ -409,6 +415,18 @@ class _Turno:
             consumido_ate=ate,
         )
         await self._responder(MENSAGEM_PEDIR_TEXTO)
+
+    async def _marcar_pergunta_da_troca(self, resposta: str) -> None:
+        """A resposta perguntou da troca? Entao um "nao" curto do cliente vale como sem troca."""
+        estado = self._estado
+        if estado.troca_perguntada or estado.ficha.tem_troca is not None:
+            return
+        if "troca" not in resposta.lower():
+            return
+        self._estado = replace(estado, troca_perguntada=True)
+        await self._c._atendimento.salvar(
+            self._conversa.loja_id, self._conversa.lead_id, self._estado
+        )
 
     async def _acrescentar(self, mensagens: list[MensagemLLM]) -> None:
         await self._c._transcricao.acrescentar(self._conversa.conversa_id, mensagens)

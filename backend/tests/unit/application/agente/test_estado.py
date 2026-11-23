@@ -99,3 +99,10 @@ def test_acordo_comeca_vazio_e_faz_ida_e_volta() -> None:
     volta = EstadoAtendimento.de_dict(json.loads(json.dumps(estado.para_dict())))
     assert volta.acordo == acordo
     assert volta == estado
+
+
+def test_troca_perguntada_comeca_falsa_e_vai_e_volta() -> None:
+    assert EstadoAtendimento().troca_perguntada is False
+    estado = EstadoAtendimento(troca_perguntada=True)
+    assert EstadoAtendimento.de_dict(json.loads(json.dumps(estado.para_dict()))) == estado
+    assert EstadoAtendimento.de_dict({}).troca_perguntada is False

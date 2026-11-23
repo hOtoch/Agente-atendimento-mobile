@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
+
+import pytest
 
 from app.application.agente.estado import EstadoAtendimento
 from app.application.agente.ferramentas import ResultadoFerramenta
@@ -1018,3 +1021,52 @@ async def test_registrar_interesse_que_manda_consultar_o_estoque_nao_sugere_perg
     assert "consultar_estoque" in r.conteudo["proximo_passo"]
     assert "proxima_pergunta" not in r.conteudo
     assert r.conteudo["faltam"]  # as pendencias continuam
+
+
+# --- sem troca so quando o cliente disse (#troca-presumida) ---------------------------------
+
+
+def _ctx_com_fala(amb: Ambiente, fala: str) -> Ambiente:
+    return replace(amb, ctx=replace(amb.ctx, fala_do_cliente=fala))
+
+
+async def test_sem_troca_presumido_pelo_modelo_e_recusado_e_manda_perguntar() -> None:
+    """Caso real: o cliente so escolheu o item ("o seminovo") e o modelo registrou sem troca."""
+    amb = _ctx_com_fala(await criar_ambiente(), "o seminovo")
+    r = await amb.rodar("registrar_usado", {"tem_troca": False}, VAZIO)
+    assert r.erro
+    assert r.estado == VAZIO
+    assert "pergunte" in r.conteudo["erro"].lower()
+    assert "troca" in r.conteudo["proxima_pergunta"].lower()
+
+
+@pytest.mark.parametrize(
+    "fala",
+    [
+        "não tenho troca, vou pagar no pix",
+        "nao vou trocar nada",
+        "não tenho celular usado",
+        "nao tenho nada pra dar",
+    ],
+)
+async def test_sem_troca_vale_quando_o_cliente_falou_de_troca(fala: str) -> None:
+    amb = _ctx_com_fala(await criar_ambiente(), fala)
+    r = await amb.rodar("registrar_usado", {"tem_troca": False}, VAZIO)
+    assert not r.erro
+    assert r.estado.ficha.tem_troca is False
+
+
+async def test_sem_troca_vale_quando_a_pergunta_ja_foi_feita() -> None:
+    amb = _ctx_com_fala(await criar_ambiente(), "não")
+    r = await amb.rodar(
+        "registrar_usado", {"tem_troca": False}, EstadoAtendimento(troca_perguntada=True)
+    )
+    assert not r.erro
+    assert r.estado.ficha.tem_troca is False
+
+
+async def test_com_troca_nao_passa_pela_trava() -> None:
+    amb = _ctx_com_fala(await criar_ambiente(), "tenho um iphone 12")
+    r = await amb.rodar("registrar_usado", _usado_nulo(modelo="iPhone 12"), VAZIO)
+    assert not r.erro
+    assert r.estado.ficha.tem_troca is True

@@ -9,6 +9,8 @@ orquestrador.
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from datetime import date
@@ -554,6 +556,39 @@ async def _confirmar_item(
     return _Saida(conteudo, replace(estado, ficha=ficha, estoque_consultado=True))
 
 
+_FALA_DE_TROCA = re.compile(
+    r"troc|usad|(pra|para) dar|dar (o|um|meu)|na entrada|celular antigo|aparelho antigo"
+)
+
+
+def _sem_acento(texto: str) -> str:
+    decomposto = unicodedata.normalize("NFKD", texto.lower())
+    return "".join(c for c in decomposto if not unicodedata.combining(c))
+
+
+def cliente_falou_de_troca(fala: str) -> bool:
+    """O cliente mencionou troca/usado nesta mensagem (sem acento e sem caixa)."""
+    return _FALA_DE_TROCA.search(_sem_acento(fala)) is not None
+
+
+def _exigir_que_o_cliente_disse_sem_troca(
+    estado: EstadoAtendimento, ctx: ContextoFerramentas
+) -> None:
+    """ "Sem troca" so vale se o cliente disse: a IA ja perguntou ou ele falou de troca agora.
+
+    O modelo as vezes presume que nao ha troca e pula a pergunta; aqui o codigo recusa.
+    """
+    if ctx.fala_do_cliente is None or estado.troca_perguntada:
+        return
+    if cliente_falou_de_troca(ctx.fala_do_cliente):
+        return
+    raise ErroFerramenta(
+        "O cliente ainda não disse se tem aparelho para dar na troca: não presuma. Pergunte a "
+        "ele com a proxima_pergunta e só registre depois que ele responder.",
+        proxima_pergunta=_TEXTOS_PENDENCIA[_P.TEM_TROCA][1],
+    )
+
+
 async def _registrar_usado(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
@@ -561,6 +596,7 @@ async def _registrar_usado(
     if not isinstance(tem_troca, bool):
         raise ErroFerramenta("O campo 'tem_troca' é obrigatório (verdadeiro ou falso).")
     if not tem_troca:
+        _exigir_que_o_cliente_disse_sem_troca(estado, ctx)
         ficha = replace(estado.ficha.com(tem_troca=False), usado=UsadoInformado())
         return _Saida({"status": "ok", **_situacao(ficha)}, replace(estado, ficha=ficha))
 
@@ -1055,7 +1091,9 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
         nome="registrar_usado",
         descricao=(
             "Registra na ficha o aparelho usado que o cliente dará na troca, ou que ele não tem "
-            "troca (tem_troca=false). Pode ser chamada várias vezes, conforme o cliente responde: "
+            "troca (tem_troca=false). Só use tem_troca=false quando o cliente disser que não tem "
+            "aparelho para a troca; nunca presuma. Pode ser chamada várias vezes, conforme o "
+            "cliente responde: "
             "preencha só o que foi dito e use null no resto (null não apaga o que já foi "
             "registrado). bateria_pct é a saúde da bateria de 0 a 100. camera_ok, "
             "outros_defeitos e peca_trocada não são perguntados: preencha só se o cliente contar "

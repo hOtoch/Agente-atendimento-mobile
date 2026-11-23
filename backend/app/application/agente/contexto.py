@@ -27,6 +27,9 @@ class ContextoFerramentas:
     hoje: date
     agora: Callable[[], datetime] = _agora
     """Relogio do fechamento do acordo (injetavel nos testes)."""
+    fala_do_cliente: str | None = None
+    """O que o cliente escreveu neste turno (o codigo confere o que o modelo diz que ele disse).
+    None: ferramenta rodando fora de uma conversa (testes isolados), sem essa conferencia."""
 
 
 class ErroFerramenta(Exception):

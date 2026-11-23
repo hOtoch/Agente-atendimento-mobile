@@ -27,6 +27,8 @@ class EstadoAtendimento:
     """Resumo JSON da ultima proposta (alimenta o resumo do handoff)."""
     acordo: dict[str, Any] | None = None
     """Snapshot do acordo fechado por `fechar_acordo` (None ate a IA fechar; cai se algo muda)."""
+    troca_perguntada: bool = False
+    """A IA ja perguntou ao cliente se ele tem aparelho para a troca (resposta curta vale)."""
 
     def para_dict(self) -> dict[str, Any]:
         return {
@@ -38,6 +40,7 @@ class EstadoAtendimento:
             "motivo_handoff": self.motivo_handoff,
             "ultima_proposta": self.ultima_proposta,
             "acordo": self.acordo,
+            "troca_perguntada": self.troca_perguntada,
         }
 
     @classmethod
@@ -55,6 +58,7 @@ class EstadoAtendimento:
             motivo_handoff=dados.get("motivo_handoff"),
             ultima_proposta=dados.get("ultima_proposta"),
             acordo=dados.get("acordo"),
+            troca_perguntada=bool(dados.get("troca_perguntada", False)),
         )
 
 

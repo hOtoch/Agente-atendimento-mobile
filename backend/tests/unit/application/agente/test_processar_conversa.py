@@ -167,6 +167,35 @@ async def test_pergunta_reescrita_pelo_modelo_vai_ao_cliente_uma_vez_so() -> Non
     assert c.canal.textos == [primeira]
 
 
+async def test_sem_troca_presumido_e_recusado_e_depois_da_pergunta_vale() -> None:
+    """Caso real: "o seminovo" e o modelo registra sem troca; o codigo recusa ate perguntar."""
+    sem_troca = {"tem_troca": False}
+    c = await criar_cenario(
+        [
+            RespostaRoteirizada(chamadas=[chamada("t1", "registrar_usado", sem_troca)]),
+            texto("Anotado! Você vai dar algum aparelho usado na troca?"),
+            # turno 2: o cliente responde so "nao"
+            RespostaRoteirizada(chamadas=[chamada("t2", "registrar_usado", sem_troca)]),
+            texto("Certo! Quando pretende fazer a compra?"),
+        ]
+    )
+    await c.turno("o seminovo")
+    resultado = resultados_json(c.llm.chamadas[1].mensagens[-1])[0]
+    assert "não presuma" in resultado["erro"]
+    estado = await c.atendimento.obter(c.loja_id, c.lead_id)
+    assert estado.ficha.tem_troca is None
+    assert estado.troca_perguntada  # a resposta enviada perguntou da troca
+
+    await c.turno("nao")
+    assert (await c.atendimento.obter(c.loja_id, c.lead_id)).ficha.tem_troca is False
+
+
+async def test_resposta_sem_falar_de_troca_nao_marca_a_pergunta() -> None:
+    c = await criar_cenario([texto("Temos 128GB e 256GB. Qual capacidade você prefere?")])
+    await c.turno("quero um iphone 16")
+    assert not (await c.atendimento.obter(c.loja_id, c.lead_id)).troca_perguntada
+
+
 async def test_dono_vendedor_ia_nao_responde_e_marca_como_consumidas() -> None:
     c = await criar_cenario([texto("nao deveria")], dono="vendedor")
     await c.turno("oi")
