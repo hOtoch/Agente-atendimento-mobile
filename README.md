@@ -2,6 +2,8 @@
 
 Uma IA que atende leads de lojas de celular (foco em iPhone, com troca do usado; também atende outras marcas), entende o aparelho desejado, consulta o estoque, qualifica o cliente, calcula troca e parcelas, fecha o acordo e entrega a venda pronta para o vendedor, com resumo, opção de assumir a conversa e opção de devolvê-la para a IA.
 
+Link do Video: https://drive.google.com/file/d/1kEIpaAoYaiU3UbCPykw6S0TK0QW-jVX6/view?usp=sharing
+
 
 **Neste README**, na ordem pedida:
 
