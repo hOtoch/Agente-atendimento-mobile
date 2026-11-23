@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
-from zoneinfo import ZoneInfo
 
 FUSO_NOME = "America/Sao_Paulo"
-FUSO = ZoneInfo(FUSO_NOME)
+# UTC-3 fixo (sem horario de verao desde 2019): ZoneInfo dependeria do tzdata, ausente no Windows.
+# O nome segue indo para o Postgres (AT TIME ZONE), que tem a propria base de fusos.
+FUSO = timezone(timedelta(hours=-3), FUSO_NOME)
 
 _UM_DECIMAL = Decimal("0.1")
 
