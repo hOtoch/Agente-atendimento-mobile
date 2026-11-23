@@ -9,12 +9,12 @@
   ligada por padrão); e
 - há TTS configurado (`OPENAI_API_KEY` preenchida).
 
-O texto da resposta **sempre** sai (preços e valores ficam por escrito); o áudio é uma segunda
-mensagem, enviada logo depois. Respostas acima de 1200 caracteres não viram áudio. Qualquer falha
-do TTS deixa só o texto, sem erro para o cliente.
+Nesse caso a resposta vai **só em áudio**, sem o texto junto. Respostas acima de 1200 caracteres
+não viram áudio e saem em texto. Qualquer falha do TTS ou do envio do áudio faz a resposta sair em
+texto, sem erro para o cliente.
 
-**Provedor:** OpenAI `gpt-4o-mini-tts` (`POST /v1/audio/speech`), voz `coral` por padrão, com
-instruções para português do Brasil. O formato `opus` (Ogg/Opus) é nativo, o mesmo da nota de voz do
+**Provedor:** OpenAI `gpt-4o-mini-tts` (`POST /v1/audio/speech`), voz masculina `cedar` por padrão, com
+instruções para português do Brasil e fala natural (sem tom de locutor). O formato `opus` (Ogg/Opus) é nativo, o mesmo da nota de voz do
 WhatsApp, então não precisa de ffmpeg. A mídia gerada é guardada na mesma pasta das mídias do chat
 (`MIDIA_DIR`) e servida em `GET /midias/<nome>`.
 
@@ -24,7 +24,7 @@ entrada a ~US$ 0,60 e áudio de saída a ~US$ 12 por milhão de tokens). **Confi
 custa uma fração de centavo.
 
 **Configuração (`.env`):** `OPENAI_API_KEY` (vazia = só texto), `TTS_MODEL` (padrão
-`gpt-4o-mini-tts`), `TTS_VOZ` (padrão `coral`).
+`gpt-4o-mini-tts`), `TTS_VOZ` (padrão `cedar`; outras masculinas: `ash`, `echo`, `onyx`).
 
 **Canais:** WhatsApp (Evolution) recebe como nota de voz (`sendWhatsAppAudio`, base64); o chat web e
 o simulador recebem o áudio com a URL da mídia e mostram um player.

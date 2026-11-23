@@ -2,6 +2,7 @@
 
 Por que este: voz em portugues do Brasil natural, aceita `instructions` (tom/sotaque) e entrega
 `opus` (Ogg/Opus) nativo, o formato da nota de voz do WhatsApp, entao nao precisa de ffmpeg.
+Voz padrao `cedar` (masculina, das mais naturais do modelo); troca por `TTS_VOZ`.
 
 Preco (referencia, anuncio do modelo em 2025; CONFERIR em https://openai.com/api/pricing antes de
 contar com o valor): tokens de texto de entrada + tokens de audio de saida, estimado em cerca de
@@ -16,8 +17,10 @@ import httpx
 from app.application.audio_saida import TIPO_MIME_AUDIO, AudioSintetizado, ErroTTS
 
 INSTRUCOES = (
-    "Fale em português do Brasil, com sotaque neutro, tom simpático e natural de vendedor "
-    "atencioso, em ritmo de conversa de WhatsApp. Leia valores em reais de forma natural."
+    "Voz masculina, em português do Brasil com sotaque neutro. Fale como uma pessoa de verdade "
+    "mandando um áudio no WhatsApp para um cliente: natural, descontraído e direto, sem tom de "
+    "locutor ou de propaganda, sem exagerar na entonação nem no entusiasmo. Ritmo de conversa, "
+    "com pausas curtas. Leia valores em reais de forma natural."
 )
 
 
@@ -34,7 +37,7 @@ class TTSOpenAI:
         *,
         api_key: str,
         modelo: str = "gpt-4o-mini-tts",
-        voz: str = "coral",
+        voz: str = "cedar",
     ) -> None:
         self._client = client
         self._api_key = api_key

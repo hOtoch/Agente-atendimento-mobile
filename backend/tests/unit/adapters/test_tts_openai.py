@@ -41,6 +41,22 @@ async def test_envia_modelo_voz_formato_opus_e_devolve_audio_ogg() -> None:
     assert "portugu" in corpo["instructions"].lower()
 
 
+async def test_voz_padrao_e_masculina_com_instrucoes_de_fala_natural() -> None:
+    vistas: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        vistas.append(req)
+        return httpx.Response(200, content=b"OggS-bytes")
+
+    await _tts(httpx.MockTransport(handler)).sintetizar("Oi")
+
+    corpo = json.loads(vistas[0].content)
+    assert corpo["voice"] == "cedar"
+    instrucoes = corpo["instructions"].lower()
+    assert "masculin" in instrucoes
+    assert "natural" in instrucoes
+
+
 async def test_status_de_erro_vira_erro_tts_sem_vazar_a_chave() -> None:
     def handler(req: httpx.Request) -> httpx.Response:
         return httpx.Response(429, json={"error": {"message": "rate limit"}})

@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     """Chave da OpenAI (STT e TTS). Vazia = sem audio: pede texto e responde so em texto."""
     stt_model: str = "gpt-4o-mini-transcribe"
     tts_model: str = "gpt-4o-mini-tts"
-    tts_voz: str = "coral"
+    tts_voz: str = "cedar"
     midia_dir: str = "./.midias"
     """Pasta das midias enviadas pelo cliente (relativa ao cwd; ignorada pelo git)."""
     midia_max_bytes: int = 10 * 1024 * 1024

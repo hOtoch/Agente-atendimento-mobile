@@ -486,11 +486,11 @@ class _Turno:
         canal = c._canais.get(conversa.canal)
         if canal is None:
             raise CanalNaoConfigurado(conversa.canal.value)
-        await self._enviar(canal, TipoMensagem.TEXTO, texto, None)
-        enviada_em = self._agora_parede()  # a nota de voz (TTS) nao entra no tempo de resposta
+        if not await self._enviar_audio(canal, texto):
+            await self._enviar(canal, TipoMensagem.TEXTO, texto, None)
+        enviada_em = self._agora_parede()
         duracao_rodada = self._duracao_da_rodada()
         await c._descartes.zerar(conversa.conversa_id)
-        await self._enviar_audio(canal, texto)
         await self._registrar_uso(duracao_rodada, enviada_em)
 
     def _agora_parede(self) -> datetime | None:
@@ -527,24 +527,26 @@ class _Turno:
             payload["tempo_resposta_ms"] = _ms(espera)
         await self._evento("llm_uso", payload)
 
-    async def _enviar_audio(self, canal: CanalPort, texto: str) -> None:
-        """Nota de voz adicional ao texto (que ja saiu). Qualquer falha deixa so o texto."""
+    async def _enviar_audio(self, canal: CanalPort, texto: str) -> bool:
+        """Resposta em nota de voz, no lugar do texto. `False` (manda o texto) se nao der."""
         gerar = self._c._audio_saida
         if gerar is None or not deve_responder_em_audio(
             ultima_entrada_foi_audio=self._ultima_foi_audio,
             loja_ligada=self._loja_quer_audio,
             tts_disponivel=True,  # `gerar` existe: o TTS esta configurado
         ):
-            return
+            return False
         midia_url = await gerar(texto)
         if midia_url is None:
-            return
+            return False
         try:
             await self._enviar(canal, TipoMensagem.AUDIO, None, midia_url)
         except Exception:
             log.exception(
                 "falha ao enviar a resposta em audio da conversa %s", self._conversa.conversa_id
             )
+            return False
+        return True
 
     async def _enviar(
         self, canal: CanalPort, tipo: TipoMensagem, texto: str | None, midia_url: str | None

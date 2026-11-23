@@ -1,10 +1,10 @@
 """Resposta em audio (TTS): porta, regra de quando usar e caso de uso.
 
 Regras (decididas pelo CODIGO, nao pelo LLM):
-- a resposta sai SEMPRE em texto (precos e valores tambem por escrito); o audio e um extra;
 - o audio so e gerado quando o cliente mandou audio na ULTIMA mensagem, a loja deixou a opcao
   ligada e ha um TTS configurado;
-- qualquer falha do TTS vira "so texto": nunca derruba o atendimento.
+- nesse caso a resposta vai SO em audio (sem o texto junto);
+- qualquer falha do TTS ou do envio do audio vira "so texto": nunca derruba o atendimento.
 """
 
 from __future__ import annotations

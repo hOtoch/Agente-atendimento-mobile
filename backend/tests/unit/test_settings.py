@@ -98,7 +98,7 @@ def test_settings_de_tts_sao_opcionais(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert s.openai_api_key is None
     assert s.tts_model == "gpt-4o-mini-tts"
-    assert s.tts_voz
+    assert s.tts_voz == "cedar"  # voz masculina natural
 
 
 def test_settings_mercadophone_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
