@@ -4,6 +4,74 @@
  */
 
 export interface paths {
+    "/auth/eu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eu */
+        get: operations["eu_auth_eu_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Trocar Senha */
+        put: operations["trocar_senha_auth_senha_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1091,6 +1159,20 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** IdentidadeSchema */
+        IdentidadeSchema: {
+            /** Email */
+            email: string;
+            /**
+             * Loja Id
+             * Format: uuid
+             */
+            loja_id: string;
+            /** Loja Nome */
+            loja_nome: string;
+            /** Senha Provisoria */
+            senha_provisoria: boolean;
+        };
         /**
          * IndicadorSchema
          * @description Um numero do periodo, o mesmo numero no periodo anterior e a variacao %.
@@ -1307,6 +1389,13 @@ export interface components {
             modelo: string;
             /** Valor Sem Detalhes */
             valor_sem_detalhes: string;
+        };
+        /** LoginEntrada */
+        LoginEntrada: {
+            /** Email */
+            email: string;
+            /** Senha */
+            senha: string;
         };
         /** LojaIn */
         LojaIn: {
@@ -1789,6 +1878,13 @@ export interface components {
             /** Tabela Troca */
             tabela_troca: components["schemas"]["LinhaTrocaSchema-Output"][];
         };
+        /** TrocaSenhaEntrada */
+        TrocaSenhaEntrada: {
+            /** Senha Atual */
+            senha_atual: string;
+            /** Senha Nova */
+            senha_nova: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -1855,6 +1951,132 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    eu_auth_eu_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentidadeSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentidadeSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trocar_senha_auth_senha_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sessao?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrocaSenhaEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;

@@ -429,3 +429,23 @@ class ConexaoErpRow(Base):
     ultima_sincronizacao_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ultimo_status: Mapped[str | None] = mapped_column(String(32))
     ultimo_relatorio: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class UsuarioRow(Base):
+    """Login da loja. Sem unicidade em `loja_id`: o modelo aceita mais de um usuario por loja."""
+
+    __tablename__ = "usuarios"
+    __table_args__ = (CheckConstraint("email = lower(email)", name="email_minusculo"),)
+
+    id: Mapped[uuid.UUID] = _pk()
+    loja_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lojas.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    senha_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    senha_provisoria: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    criado_em: Mapped[datetime] = _agora()
+    ultimo_login_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

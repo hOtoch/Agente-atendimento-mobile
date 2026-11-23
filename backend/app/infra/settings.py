@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     """Servidor MCP do Mercado Phone (ERP dos lojistas). Nao e segredo."""
     mercadophone_api_key: str | None = None
     """Chave da API do Mercado Phone (vai na query `key`; e segredo). Vazia = sem integracao."""
+    sessao_ttl_horas: int = 168
+    """Validade da sessao de login (renovada a cada uso) e do cookie."""
+    cookie_secure: bool = False
+    """Marca o cookie de sessao como `Secure` (exige HTTPS). Ligar em producao."""
     cors_origins: str = "http://localhost:3000"
     """Origens do painel (separadas por virgula) liberadas no CORS."""
 

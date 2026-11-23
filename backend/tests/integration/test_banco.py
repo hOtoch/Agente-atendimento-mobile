@@ -27,6 +27,7 @@ TABELAS = {
     "config_followup",
     "conexao_erp",
     "pagamento_loja",
+    "usuarios",
 }
 
 

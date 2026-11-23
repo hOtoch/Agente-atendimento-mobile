@@ -10,6 +10,11 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.application.auth.modelos import (
+    CredenciaisInvalidas,
+    SessaoInvalida,
+    TrocaSenhaInvalida,
+)
 from app.application.config.modelos import ErroCampo, ErrosDeValidacao, LojaNaoEncontrada
 from app.application.config.vendedores_erp import (
     ErpCredencialInvalida,
@@ -60,6 +65,22 @@ def registrar_handlers(app: FastAPI) -> None:
         return JSONResponse(
             _corpo(erros, detail=jsonable_encoder(detalhes, custom_encoder={Exception: str})),
             status_code=422,
+        )
+
+    @app.exception_handler(CredenciaisInvalidas)
+    async def _credenciais(_: Request, exc: CredenciaisInvalidas) -> JSONResponse:
+        erro = ErroCampo("credenciais", str(exc))
+        return JSONResponse(_corpo([erro]), status_code=401)
+
+    @app.exception_handler(SessaoInvalida)
+    async def _sessao(_: Request, exc: SessaoInvalida) -> JSONResponse:
+        return JSONResponse(_corpo([ErroCampo("sessao", str(exc))]), status_code=401)
+
+    @app.exception_handler(TrocaSenhaInvalida)
+    async def _troca_senha(_: Request, exc: TrocaSenhaInvalida) -> JSONResponse:
+        campo = "senha_atual" if exc.motivo.value == "senha_atual_incorreta" else "senha_nova"
+        return JSONResponse(
+            _corpo([ErroCampo(campo, str(exc))], motivo=exc.motivo.value), status_code=400
         )
 
     @app.exception_handler(LojaNaoEncontrada)

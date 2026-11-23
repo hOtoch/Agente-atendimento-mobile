@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.adapters.inbound.health import router as health_router
+from app.adapters.inbound.http.auth import router as auth_router
 from app.adapters.inbound.http.conexao_erp import router as conexao_erp_router
 from app.adapters.inbound.http.config import router as config_router
 from app.adapters.inbound.http.erros import registrar_handlers
@@ -27,6 +28,7 @@ app.add_middleware(
 registrar_handlers(app)
 registrar_openapi(app)
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(config_router)
 app.include_router(followup_router)
 app.include_router(conexao_erp_router)

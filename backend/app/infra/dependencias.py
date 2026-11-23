@@ -6,10 +6,13 @@ from typing import Annotated, cast
 from uuid import UUID
 
 from arq.connections import ArqRedis
-from fastapi import Depends
+from fastapi import Cookie, Depends
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.adapters.outbound.auth.hasher import HasherSenhaArgon2
+from app.adapters.outbound.auth.sessoes import SessoesRedis
+from app.adapters.outbound.auth.usuarios import RepositorioUsuariosSql
 from app.adapters.outbound.barramento.painel import PublicadorPainelBarramento
 from app.adapters.outbound.barramento.redis import BarramentoRedis
 from app.adapters.outbound.canal.enviadas import RegistroEnviadasRedis
@@ -27,6 +30,8 @@ from app.adapters.outbound.mercadophone.vendedores import LeitorVendedoresMercad
 from app.adapters.outbound.midia.disco import ArmazenamentoMidiaDisco
 from app.adapters.outbound.planilhas.leitor import LeitorXlsx
 from app.adapters.outbound.planilhas.modelos_xlsx import GeradorModeloXlsx
+from app.application.auth.modelos import SessaoAtual, SessaoInvalida
+from app.application.auth.portas import HasherSenha, RepositorioUsuarios, Sessoes
 from app.application.canal import BarramentoMensagens, ReceberMensagem
 from app.application.config.casos_de_uso import CasosDeUsoConfig
 from app.application.config.conexao_erp import ConfigurarConexaoErp
@@ -254,3 +259,36 @@ def get_sincronizar_estoque_erp(
     fonte: Annotated[FonteEstoqueErp, Depends(get_fonte_estoque_erp)],
 ) -> SincronizarEstoqueErp:
     return montar_sincronizar_estoque_erp(session, fonte)
+
+
+# --- autenticacao ---------------------------------------------------------------------------
+
+COOKIE_SESSAO = "sessao"
+
+
+def get_repositorio_usuarios(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RepositorioUsuarios:
+    return RepositorioUsuariosSql(session)
+
+
+def get_hasher_senha() -> HasherSenha:
+    return HasherSenhaArgon2()
+
+
+def get_sessoes(settings: Annotated[Settings, Depends(get_settings)]) -> Sessoes:
+    return SessoesRedis(_redis(), ttl_s=settings.sessao_ttl_horas * 3600)
+
+
+async def sessao_atual(
+    sessoes: Annotated[Sessoes, Depends(get_sessoes)],
+    sessao: Annotated[str | None, Cookie()] = None,
+) -> SessaoAtual:
+    """Le o cookie de sessao, renova o TTL e devolve quem esta logado; sem sessao valida, 401."""
+    if not sessao:
+        raise SessaoInvalida
+    dados = await sessoes.obter(sessao)
+    if dados is None:
+        raise SessaoInvalida
+    await sessoes.renovar(sessao)
+    return SessaoAtual(usuario_id=dados.usuario_id, loja_id=dados.loja_id, token=sessao)
