@@ -24,11 +24,13 @@ Definidos **somente** em `frontend/src/styles/tokens.css` (`:root` = claro, `.da
 | Estados | `--success`, `--warning`, `--danger` (+ `-foreground`); `--destructive` é alias de `--danger` | `bg-success`, `text-warning`, `border-danger`... |
 | Etapas do kanban | `--stage-novo-contato`, `--stage-interesse-identificado`, `--stage-interesse-qualificado`, `--stage-com-vendedor`, `--stage-venda-fechada` | `bg-stage-novo-contato`... |
 | Sidebar | `--sidebar`, `--sidebar-foreground`, `--sidebar-accent`, `--sidebar-border`, `--sidebar-primary`, `--sidebar-ring` | `bg-sidebar`, `border-sidebar-border`... |
-| Gráficos | `--chart-1` a `--chart-5` (derivados das etapas) | `bg-chart-1`... |
+| Gráficos | `--chart-1` a `--chart-5`: ordem categórica fixa azul, laranja, violeta, verde, cinza (valores próprios, não derivados das etapas) | `bg-chart-1`, `fill-chart-2`... |
 | Raio | `--radius` (0,5rem); escala `rounded-sm` a `rounded-4xl` derivada | `rounded-md`, `rounded-lg` |
 | Espaçamento | `--space-unit` (0,25rem) alimenta `--spacing` do Tailwind | `p-4`, `gap-2`, `mb-6` |
 | Tipografia | `--font-size-base` (0,875rem), `--line-height-base`; fontes `--font-sans`, `--font-mono` | `text-base`, `font-sans`, `font-mono` |
 | Layout | `--sidebar-width` | `w-sidebar` |
+
+**Cores de gráfico.** Séries entram sempre na ordem `chart-1`, `chart-2`, `chart-3`, `chart-4` (a cor segue a entidade, nunca o ranking) e nunca se geram matizes novos: acima de 4 séries, agrupe em "Outros" ou separe em gráficos. Os valores foram validados com o `validate_palette` da skill `dataviz` (OKLab ΔE ≥ 8 sob protanopia/deuteranopia nos pares vizinhos, ≥ 15 em visão normal, contraste ≥ 3:1 contra o card, faixa de luminosidade do tema): claro `oklch(0.62 0.13 235)`, `(0.64 0.15 62)`, `(0.58 0.15 285)`, `(0.56 0.14 150)`; escuro com L entre 0,65 e 0,66. Funil usa os tokens `stage-*` (a etapa é a entidade). Série única = uma cor. Mapa de calor = `chart-1` em degraus de opacidade.
 
 Para criar um token novo: declare em `tokens.css` nos **dois** temas, ligue em `globals.css` e documente aqui.
 
@@ -66,6 +68,16 @@ Vitrine viva em **`/design`** (todos os componentes e estados; o botão no topo 
 | Skeleton | `skeleton.tsx` | `aria-hidden`; pulsa sobre `bg-muted` |
 | MessageBubble | `message-bubble.tsx` | balão de conversa: `lado` (`cliente`/`atendente`, quem escreveu), `tipo` (`texto`, `imagem`, `audio` com `<audio controls>`), `texto`, `midiaUrl`, `horario` (HH:mm pt-BR), `autor`, `erro`; `perspectiva` define quem está olhando (as mensagens dele ficam à direita e em `primary`; padrão `atendente` para a inbox, o simulador usa `cliente`) |
 | EmptyState | `empty-state.tsx` | ícone decorativo, título (h3), descrição e ação |
+| Chart | `chart.tsx` | base shadcn sobre recharts: `ChartContainer` (`config` {série: rótulo + token de cor}, `rotulo` vira `aria-label`, `altura`), `ChartTooltipContent`, `ChartLegendContent`; cor só por `var(--color-<série>)` |
+| GraficoSerie, GraficoBarras | `graficos.tsx` | linha/área por dia (uma série = área; várias = linhas, legenda, lacuna em `null`, último valor rotulado) e barras horizontais com valor na ponta; teclado via `accessibilityLayer` |
+| CartaoGrafico | `cartao-grafico.tsx` | moldura do gráfico: título (h3), descrição curta e `<details>` "Ver dados em tabela" (`tabela` {colunas, linhas}); `role="region"` nomeada |
+| StatTile | `stat-tile.tsx` | KPI: `rotulo`, `valor` (`null` vira "—" + `dicaSemValor`), `variacao` {texto, tom `bom`/`ruim`/`neutro`, direcao, descricao para leitor de tela}; `null` = "Sem comparação"; `children` para um `Medidor` |
+| Medidor | `medidor.tsx` | barra de proporção (`role="meter"`) sobre trilha neutra |
+| MapaCalor | `mapa-calor.tsx` | grade linhas x colunas como `<table>` (valor em texto para leitor de tela, `title` com a descrição), 4 degraus de `chart-1` |
+
+### Gráficos
+
+Regras do método `dataviz`, já embutidas nos componentes: marcas finas (linha 2px, barra ≤ 24px com ponta de 4px arredondada, área a ~10%), grade só horizontal em hairline, legenda sempre que houver 2+ séries, valor rotulado só no último ponto/ponta da barra, texto em `foreground`/`muted-foreground` (nunca na cor da série), nunca dois eixos Y (duas grandezas = dois gráficos), cor de bom/ruim só nos indicadores (`success`/`danger`) e sempre com seta e texto. Todo gráfico tem título, descrição e tabela equivalente.
 
 ### Etapas e donos
 

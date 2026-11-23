@@ -54,12 +54,13 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Gráficos */
-  --chart-1: var(--stage-interesse-identificado);
-  --chart-2: var(--stage-interesse-qualificado);
-  --chart-3: var(--stage-com-vendedor);
-  --chart-4: var(--stage-venda-fechada);
-  --chart-5: var(--stage-novo-contato);
+  /* Gráficos: ordem categórica fixa (azul, laranja, violeta, verde, cinza). Pares adjacentes
+     validados para daltonismo e contraste nos dois temas; ver DESIGN.md §2. */
+  --chart-1: oklch(0.62 0.13 235);
+  --chart-2: oklch(0.64 0.15 62);
+  --chart-3: oklch(0.58 0.15 285);
+  --chart-4: oklch(0.56 0.14 150);
+  --chart-5: oklch(0.6 0.03 255);
 
   /* Raio, espaçamento e tipografia (painel denso) */
   --radius: 0.5rem;
@@ -100,6 +101,12 @@
   --stage-interesse-qualificado: oklch(0.72 0.14 285);
   --stage-com-vendedor: oklch(0.78 0.14 65);
   --stage-venda-fechada: oklch(0.72 0.15 150);
+
+  --chart-1: oklch(0.66 0.12 235);
+  --chart-2: oklch(0.66 0.14 62);
+  --chart-3: oklch(0.65 0.14 285);
+  --chart-4: oklch(0.65 0.14 150);
+  --chart-5: oklch(0.66 0.03 255);
 
   --sidebar: oklch(0.2 0.016 255);
   --sidebar-accent: oklch(0.29 0.02 255);

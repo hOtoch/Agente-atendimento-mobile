@@ -22,6 +22,7 @@ export type DetalheLead = Schemas["DetalheLeadSchema"]
 export type MensagemLead = Schemas["MensagemSchema"]
 export type EventoLead = Schemas["EventoLeadSchema"]
 export type ErrosApi = Schemas["ErrosSchema"]
+export type Metricas = Schemas["MetricasSchema"]
 export type EstadoConexao = Schemas["EstadoConexao"]
 
 /** Primeira mensagem do corpo de erro uniforme da API (`{ erros: [{ caminho, mensagem }] }`). */

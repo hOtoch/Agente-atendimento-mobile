@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge, DonoBadge, EtapaBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CartaoGrafico } from "@/components/ui/cartao-grafico"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DataGrid,
@@ -23,7 +24,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { EmptyState } from "@/components/ui/empty-state"
+import { GraficoBarras, GraficoSerie } from "@/components/ui/graficos"
 import { Input } from "@/components/ui/input"
+import { MapaCalor } from "@/components/ui/mapa-calor"
+import { Medidor } from "@/components/ui/medidor"
 import { PageHeader } from "@/components/ui/page-header"
 import {
   Select,
@@ -41,11 +45,89 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
+import { StatTile } from "@/components/ui/stat-tile"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toast"
 import { ETAPAS } from "@/lib/etapas"
+
+const DIAS_EXEMPLO = Array.from({ length: 14 }, (_, i) => ({
+  dia: `2026-11-${String(i + 1).padStart(2, "0")}`,
+  atendidas: 10 + ((i * 7) % 9),
+  novas: 4 + ((i * 5) % 6),
+}))
+
+const MAPA_EXEMPLO = Array.from({ length: 7 }, (_, d) =>
+  Array.from({ length: 24 }, (_, h) => (h >= 9 && h <= 20 ? ((d + 1) * (h - 8)) % 11 : 0)),
+)
+
+function GraficosDemo() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          rotulo="Acordos fechados"
+          valor="15"
+          variacao={{ texto: "+50%", tom: "bom", direcao: "alta", descricao: "aumento de 50% em relação ao período anterior" }}
+        />
+        <StatTile
+          rotulo="Gasto com a IA"
+          valor="US$ 15,30"
+          variacao={{ texto: "+50%", tom: "ruim", direcao: "alta", descricao: "aumento de 50% em relação ao período anterior" }}
+        />
+        <StatTile rotulo="Tempo médio de resposta" valor={null} dicaSemValor="sem medição no período" variacao={null} />
+        <StatTile rotulo="Aproveitamento do cache" valor="90%" variacao={undefined}>
+          <Medidor fracao={0.9} rotulo="Aproveitamento do cache" className="mt-1" />
+        </StatTile>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CartaoGrafico
+          titulo="Conversas por dia"
+          descricao="Duas séries: azul e laranja, sempre nessa ordem."
+          tabela={{
+            colunas: ["Dia", "Atendidas", "Novas"],
+            linhas: DIAS_EXEMPLO.map((d) => [d.dia.slice(8), d.atendidas, d.novas]),
+          }}
+        >
+          <GraficoSerie
+            rotulo="Gráfico de linhas de exemplo"
+            dados={DIAS_EXEMPLO}
+            chaveX="dia"
+            formatarX={(x) => x.slice(8)}
+            formatarValor={(v) => String(v ?? "—")}
+            series={[
+              { chave: "atendidas", rotulo: "Atendidas", cor: "chart-1" },
+              { chave: "novas", rotulo: "Novas", cor: "chart-2" },
+            ]}
+          />
+        </CartaoGrafico>
+        <CartaoGrafico titulo="Barras" descricao="Uma série, uma cor; valor na ponta da barra.">
+          <GraficoBarras
+            rotulo="Gráfico de barras de exemplo"
+            nomeDoValor="Clientes"
+            formatarValor={String}
+            dados={[
+              { nome: "iPhone 13", valor: 18 },
+              { nome: "Galaxy S23", valor: 9 },
+              { nome: "Moto G84", valor: 4 },
+            ]}
+          />
+        </CartaoGrafico>
+      </div>
+      <CartaoGrafico titulo="Mapa de calor" descricao="Uma cor em degraus: quanto mais forte, mais mensagens.">
+        <MapaCalor
+          legenda="Mapa de calor de exemplo"
+          linhas={["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]}
+          linhasCurtas={["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]}
+          colunas={Array.from({ length: 24 }, (_, h) => `${h}h`)}
+          valores={MAPA_EXEMPLO}
+          descreverCelula={(l, c, v) => `${l}, ${c}: ${v}`}
+        />
+      </CartaoGrafico>
+    </div>
+  )
+}
 
 const COLUNAS: DataGridColumn[] = [
   { key: "bandeira", header: "Bandeira", type: "select", options: [
@@ -329,6 +411,10 @@ export function Vitrine() {
           <Skeleton className="h-4 w-80" />
           <Skeleton className="h-16 w-full" />
         </div>
+      </Secao>
+
+      <Secao titulo="Gráficos">
+        <GraficosDemo />
       </Secao>
 
       <Secao titulo="EmptyState">
