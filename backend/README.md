@@ -135,3 +135,20 @@ uv run python -m evals.rodar --modo real --modelo claude-sonnet-5-5     [--model
 ```
 
 O modo fake roda no `pytest` (`tests/unit/evals/`). O modo real nunca é executado em testes.
+
+## Contas e login (sem cadastro publico)
+
+Loja nova e o login do dono sao criados por comando no servidor:
+
+```
+uv run python scripts/criar_loja.py --nome "Loja X" --email dono@loja.com [--senha-provisoria ...]
+uv run python scripts/redefinir_senha.py --email dono@loja.com   # dono esqueceu a senha
+```
+
+`criar_loja` cria loja e usuario (`senha_provisoria=true`) numa transacao e imprime a senha gerada
+UMA vez no fim (sai com codigo 1 se o e-mail ja existe). `redefinir_senha` gera nova senha
+provisoria, imprime uma vez e encerra as sessoes abertas do usuario. Nenhuma senha vai para log.
+
+O seed (`uv run python -m app.infra.seed`) cria o login `demo@atendimento.local` com a senha de
+`SEED_SENHA_DEMO` (valor de dev no `.env.example`); sem a variavel ele pula o usuario e avisa.
+Idempotente: se o usuario ja existe, nao recria nem troca a senha.

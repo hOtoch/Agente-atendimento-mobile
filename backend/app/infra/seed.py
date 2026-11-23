@@ -2,13 +2,18 @@
 
 Cria ou atualiza a "Loja Demo Celulares" (ID fixo `LOJA_DEMO_ID`). Perfil, preco, taxas, troca e
 estoque passam pelos casos de uso (mesma validacao do painel); vendedores sao gravados direto
-(ainda nao ha caso de uso). Idempotente: rodar de novo atualiza os valores, sem duplicar.
+(ainda nao ha caso de uso). Idempotente: rodar de novo atualiza os valores,
+sem duplicar.
+
+Tambem cria o login `demo@atendimento.local` com a senha de `SEED_SENHA_DEMO` (sem ela, pula e
+avisa). Se o usuario ja existe, nao e recriado nem tem a senha trocada.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -17,6 +22,8 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.adapters.outbound.auth.hasher import HasherSenhaArgon2
+from app.adapters.outbound.auth.usuarios import RepositorioUsuariosSql
 from app.adapters.outbound.db.config import (
     RepositorioConfigLojaSql,
     RepositorioEstoqueLocalSql,
@@ -40,6 +47,7 @@ from app.infra.seed_data.vendedores import VENDEDORES
 from app.infra.settings import get_settings
 
 LOJA_DEMO_ID = uuid.UUID("00000000-0000-4000-8000-00000000de30")
+EMAIL_DEMO = "demo@atendimento.local"
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +104,24 @@ async def _gravar_vendedores(session: AsyncSession) -> None:
     await session.flush()
 
 
-def _casos(session: AsyncSession) -> CasosDeUsoConfig:
+async def _garantir_usuario_demo(session: AsyncSession, senha: str | None) -> bool:
+    """Cria o login da loja demo se nao existir; nunca recria nem troca a senha de quem existe."""
+    if not senha:
+        print(
+            "SEED_SENHA_DEMO nao definida: usuario demo nao criado (o painel nao abre sem login).",
+            file=sys.stderr,
+        )
+        return False
+    usuarios = RepositorioUsuariosSql(session)
+    if await usuarios.obter_por_email(EMAIL_DEMO) is not None:
+        return False
+    await usuarios.criar(
+        LOJA_DEMO_ID, EMAIL_DEMO, await HasherSenhaArgon2().gerar(senha), senha_provisoria=False
+    )
+    return True
+
+
+def casos_de_uso(session: AsyncSession) -> CasosDeUsoConfig:
     return CasosDeUsoConfig(
         lojas=RepositorioLojasSql(session),
         config=RepositorioConfigLojaSql(session),
@@ -107,7 +132,7 @@ def _casos(session: AsyncSession) -> CasosDeUsoConfig:
     )
 
 
-async def semear(database_url: str) -> ResumoSeed:
+async def semear(database_url: str, *, senha_demo: str | None = None) -> ResumoSeed:
     """Cria/atualiza a loja demo no banco indicado, numa unica transacao."""
     engine = criar_engine(database_url)
     try:
@@ -115,8 +140,9 @@ async def semear(database_url: str) -> ResumoSeed:
             try:
                 await _garantir_loja(session)
                 await _gravar_vendedores(session)
-                casos = _casos(session)
+                casos = casos_de_uso(session)
                 await aplicar_dados(casos, LOJA_DEMO_ID)
+                await _garantir_usuario_demo(session, senha_demo)
                 checklist = await casos.checklist(LOJA_DEMO_ID)
                 await session.commit()
             except BaseException:
@@ -143,7 +169,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
     url = args.database_url or get_settings().database_url
-    resumo = asyncio.run(semear(url))
+    resumo = asyncio.run(semear(url, senha_demo=get_settings().seed_senha_demo))
     print(
         f"Loja demo {resumo.loja_id}: {resumo.vendedores} vendedores, {resumo.taxas} taxas, "
         f"{resumo.linhas_troca} linhas de troca, {resumo.itens_estoque} itens de estoque; "
