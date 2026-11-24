@@ -94,6 +94,20 @@ describe("aplicarEvento", () => {
     expect(aplicarEvento(base(), msg).recarregar).toBe(true)
   })
 
+  it("LeadRemovido tira o card do quadro sem recarregar", () => {
+    const evento = { evento: "LeadRemovido", lead_id: LEAD_A, em: "2026-11-20T12:30:00Z" } as EventoPainel
+    const { colunas: novo, recarregar } = aplicarEvento(base(), evento)
+    expect(recarregar).toBe(false)
+    expect(novo.flatMap((c) => c.leads.map((l) => l.id))).not.toContain(LEAD_A)
+    expect(novo.flatMap((c) => c.leads)).toHaveLength(base().flatMap((c) => c.leads).length - 1)
+  })
+
+  it("LeadRemovido de lead que não está no quadro não faz nada", () => {
+    const inicial = base()
+    const evento = { evento: "LeadRemovido", lead_id: "zzz", em: "2026-11-20T12:30:00Z" } as EventoPainel
+    expect(aplicarEvento(inicial, evento)).toEqual({ colunas: inicial, recarregar: false })
+  })
+
   it("MensagemNova de lead conhecido não muda nada", () => {
     const inicial = base()
     const msg = { evento: "MensagemNova", lead_id: LEAD_A } as unknown as EventoPainel

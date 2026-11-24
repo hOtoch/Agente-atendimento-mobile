@@ -32,14 +32,16 @@ export type StatusCarga = "carregando" | "pronto" | "erro"
 type Vendedor = VendedorResumo & { telefone: string | null }
 
 /**
- * Estado da inbox: lista de conversas, conversa aberta (detalhe) e ações assumir, devolver e
- * responder. O cliente da API e a assinatura SSE entram por parâmetro para os testes.
+ * Estado da inbox: lista de conversas, conversa aberta (detalhe) e ações assumir, devolver,
+ * responder e resetar. O cliente da API e a assinatura SSE entram por parâmetro para os testes.
+ * `onLeadRemovido` avisa quando um lead deixou de existir (reset aqui ou em outra aba).
  */
 export function useInbox(
   lojaId: string,
   leadId: string | null,
   cliente: Cliente = api,
   assinar: Assinar = assinarEventosLoja,
+  onLeadRemovido?: (leadId: string) => void,
 ) {
   const toast = useToast()
   const [colunas, setColunas] = useState<{ leads: CardLead[] }[]>([])
@@ -59,6 +61,7 @@ export function useInbox(
   const sequenciaDetalhe = useRef(0)
   const sequenciaMensagem = useRef(0)
   const offline = useRef(false)
+  const onLeadRemovidoRef = useRef(onLeadRemovido)
 
   const conversas = useMemo(() => achatarConversas(colunas, atividade), [colunas, atividade])
 
@@ -66,6 +69,7 @@ export function useInbox(
     conversasRef.current = conversas
     vendedoresRef.current = vendedores
     leadIdRef.current = leadId
+    onLeadRemovidoRef.current = onLeadRemovido
   })
 
   const carregarLista = useCallback(
@@ -105,6 +109,13 @@ export function useInbox(
     },
     [cliente, lojaId],
   )
+
+  /** Tira o lead da lista e, se era a conversa aberta, fecha o detalhe. */
+  const removerDaTela = useCallback((id: string) => {
+    setColunas((cs) => cs.map((col) => ({ ...col, leads: col.leads.filter((l) => l.id !== id) })))
+    setDetalhe((d) => (d && d.card.id === id ? null : d))
+    onLeadRemovidoRef.current?.(id)
+  }, [])
 
   // Vendedores ativos (para "Atendendo como" e para o nome do dono).
   useEffect(() => {
@@ -159,6 +170,10 @@ export function useInbox(
     }
 
     function aplicarEvento(evento: EventoPainel) {
+      if (evento.evento === "LeadRemovido") {
+        removerDaTela(evento.lead_id)
+        return
+      }
       const atual = leadIdRef.current === evento.lead_id
       const atualizarCard = (fn: (c: CardLead) => CardLead) => {
         setColunas((cs) => cs.map((col) => ({ ...col, leads: col.leads.map((l) => (l.id === evento.lead_id ? fn(l) : l)) })))
@@ -181,7 +196,7 @@ export function useInbox(
         atualizarCard((c) => ({ ...c, etapa: evento.para, etapa_desde: evento.em }))
       }
     }
-  }, [lojaId, assinar, carregarLista, carregarDetalhe])
+  }, [lojaId, assinar, carregarLista, carregarDetalhe, removerDaTela])
 
   const trocarCard = useCallback((novo: CardLead) => {
     setColunas((cs) => cs.map((col) => ({ ...col, leads: col.leads.map((l) => (l.id === novo.id ? novo : l)) })))
@@ -234,6 +249,29 @@ export function useInbox(
     }
   }, [cliente, lojaId, leadId, toast, trocarCard, carregarDetalhe])
 
+  /** Reseta a conversa aberta: apaga lead, mensagens e memória da IA (não tem volta). */
+  const resetar = useCallback(async () => {
+    if (!leadId) return
+    setOcupado(true)
+    try {
+      const { error, response } = await cliente.DELETE("/lojas/{loja_id}/leads/{lead_id}", {
+        params: { path: { loja_id: lojaId, lead_id: leadId } },
+      })
+      if (response.ok) {
+        removerDaTela(leadId)
+        toast.sucesso("Conversa apagada", {
+          descricao: "Se o cliente escrever de novo, a IA começa um atendimento do zero.",
+        })
+      } else {
+        toast.erro("Não foi possível apagar a conversa", { descricao: mensagemDeErro(error) })
+      }
+    } catch {
+      toast.erro("Não foi possível apagar a conversa", { descricao: "Falha de conexão com o servidor." })
+    } finally {
+      setOcupado(false)
+    }
+  }, [cliente, lojaId, leadId, toast, removerDaTela])
+
   /** Envia a resposta do vendedor. Devolve true se foi aceita (o campo pode ser limpo). */
   const enviar = useCallback(
     async (texto: string): Promise<boolean> => {
@@ -280,6 +318,7 @@ export function useInbox(
     semCanal,
     assumir,
     devolver,
+    resetar,
     enviar,
     recarregar,
   }

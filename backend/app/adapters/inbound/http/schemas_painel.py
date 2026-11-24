@@ -307,7 +307,18 @@ class EventoDonoMudouSchema(BaseModel):
     em: datetime
 
 
+class EventoLeadRemovidoSchema(BaseModel):
+    """A conversa foi resetada: o lead nao existe mais (sai do kanban e do inbox)."""
+
+    evento: Literal["LeadRemovido"]
+    lead_id: UUID
+    em: datetime
+
+
 EventoPainelSchema = Annotated[
-    EventoEtapaMudouSchema | EventoMensagemNovaSchema | EventoDonoMudouSchema,
+    EventoEtapaMudouSchema
+    | EventoMensagemNovaSchema
+    | EventoDonoMudouSchema
+    | EventoLeadRemovidoSchema,
     Field(discriminator="evento"),
 ]

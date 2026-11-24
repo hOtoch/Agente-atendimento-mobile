@@ -82,8 +82,9 @@ describe("assinarEventosLoja", () => {
       vendedor_id: null,
       em: "2026-11-20T15:00:02Z",
     })
+    es.emitir({ evento: "LeadRemovido", lead_id: LEAD, em: "2026-11-20T15:00:03Z" })
 
-    expect(recebidos.map((e) => e.evento)).toEqual(["EtapaMudou", "MensagemNova", "DonoMudou"])
+    expect(recebidos.map((e) => e.evento)).toEqual(["EtapaMudou", "MensagemNova", "DonoMudou", "LeadRemovido"])
     const primeiro = recebidos[0]
     if (primeiro.evento === "EtapaMudou") {
       expect(primeiro.para).toBe("com_o_vendedor")

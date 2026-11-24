@@ -1,7 +1,21 @@
 "use client"
 
+import { RotateCcw } from "lucide-react"
+import { useState } from "react"
+
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EtapaBadge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import type { DetalheLead } from "@/lib/api"
 import { contatoDoLead } from "@/lib/lead"
 
@@ -70,8 +84,63 @@ function ResumoHandoff({ detalhe }: { detalhe: DetalheLead }) {
   )
 }
 
-/** Conteúdo do painel lateral: etapa, ficha, pendências, proposta e resumo do handoff. */
-export function PainelFicha({ detalhe }: { detalhe: DetalheLead }) {
+function ResetarConversa({ ocupado, onResetar }: { ocupado: boolean; onResetar: () => void }) {
+  const [aberto, setAberto] = useState(false)
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>Recomeçar do zero</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-xs text-muted-foreground">
+          Apaga o histórico e a memória da IA. Útil para testar o atendimento de novo.
+        </p>
+        <Dialog open={aberto} onOpenChange={setAberto}>
+          <DialogTrigger
+            render={
+              <Button variant="destructive" size="sm" disabled={ocupado}>
+                <RotateCcw aria-hidden data-icon="inline-start" />
+                Resetar conversa
+              </Button>
+            }
+          />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Resetar esta conversa?</DialogTitle>
+              <DialogDescription>
+                Isso apaga todas as mensagens, a ficha e o lead, e não tem volta. Se o cliente escrever
+                de novo, a IA começa um atendimento do zero.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline">Cancelar</Button>} />
+              <Button
+                variant="destructive"
+                disabled={ocupado}
+                onClick={() => {
+                  setAberto(false)
+                  onResetar()
+                }}
+              >
+                Apagar conversa
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  )
+}
+
+type PropsPainel = {
+  detalhe: DetalheLead
+  /** Sem `onResetar`, a opção de resetar não aparece. */
+  onResetar?: () => void
+  ocupado?: boolean
+}
+
+/** Conteúdo do painel lateral: etapa, ficha, pendências, proposta, resumo do handoff e reset. */
+export function PainelFicha({ detalhe, onResetar, ocupado = false }: PropsPainel) {
   const ficha = descreverFicha(detalhe.ficha)
   const proposta = descreverProposta(detalhe.proposta)
   const pendencias = rotulosDasPendencias(detalhe.pendencias)
@@ -138,6 +207,8 @@ export function PainelFicha({ detalhe }: { detalhe: DetalheLead }) {
           </CardContent>
         </Card>
       ) : null}
+
+      {onResetar ? <ResetarConversa ocupado={ocupado} onResetar={onResetar} /> : null}
     </div>
   )
 }

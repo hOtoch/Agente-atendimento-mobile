@@ -956,6 +956,33 @@
         "title": "EventoEtapaMudouSchema",
         "type": "object"
       },
+      "EventoLeadRemovidoSchema": {
+        "description": "A conversa foi resetada: o lead nao existe mais (sai do kanban e do inbox).",
+        "properties": {
+          "em": {
+            "format": "date-time",
+            "title": "Em",
+            "type": "string"
+          },
+          "evento": {
+            "const": "LeadRemovido",
+            "title": "Evento",
+            "type": "string"
+          },
+          "lead_id": {
+            "format": "uuid",
+            "title": "Lead Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "lead_id",
+          "em"
+        ],
+        "title": "EventoLeadRemovidoSchema",
+        "type": "object"
+      },
       "EventoLeadSchema": {
         "properties": {
           "criado_em": {
@@ -1077,6 +1104,7 @@
           "mapping": {
             "DonoMudou": "#/components/schemas/EventoDonoMudouSchema",
             "EtapaMudou": "#/components/schemas/EventoEtapaMudouSchema",
+            "LeadRemovido": "#/components/schemas/EventoLeadRemovidoSchema",
             "MensagemNova": "#/components/schemas/EventoMensagemNovaSchema"
           },
           "propertyName": "evento"
@@ -1090,6 +1118,9 @@
           },
           {
             "$ref": "#/components/schemas/EventoDonoMudouSchema"
+          },
+          {
+            "$ref": "#/components/schemas/EventoLeadRemovidoSchema"
           }
         ]
       },
@@ -5343,6 +5374,82 @@
       }
     },
     "/lojas/{loja_id}/leads/{lead_id}": {
+      "delete": {
+        "description": "Nao tem volta. Se o cliente escrever de novo, nasce um lead novo e a IA recomeca do zero. Eventos de metricas ficam, desvinculados do lead. Publica `LeadRemovido` no SSE.",
+        "operationId": "resetar_lojas__loja_id__leads__lead_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loja_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loja Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "sessao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessao"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrosSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "summary": "Reseta a conversa: apaga o lead, as mensagens e a memoria da IA",
+        "tags": [
+          "painel"
+        ]
+      },
       "get": {
         "operationId": "detalhe_lead_lojas__loja_id__leads__lead_id__get",
         "parameters": [

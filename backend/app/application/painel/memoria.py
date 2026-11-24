@@ -180,3 +180,10 @@ class RepositorioPainelEmMemoria:
         )  # fmt: skip
         self._mensagens.setdefault(lead_id, []).append(msg)
         return msg
+
+    async def apagar_lead(self, loja_id: UUID, lead_id: UUID) -> bool:
+        if await self.obter_lead(loja_id, lead_id) is None:
+            return False
+        del self.leads[lead_id]
+        self._mensagens.pop(lead_id, None)
+        return True

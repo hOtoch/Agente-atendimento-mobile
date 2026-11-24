@@ -60,6 +60,12 @@ function montarApi(opcoes: { cards?: CardLead[]; detalhes?: Record<string, Detal
       return json({ etapas: [{ etapa: "novo_contato", nome: "Novo contato", leads: lista }] })
     }
     if (chave === "GET /config/vendedores") return json({ vendedores: VENDEDORES })
+    const apagar = chave.match(/^DELETE \/leads\/([^/]+)$/)
+    if (apagar) {
+      if (!detalhes[apagar[1]]) return json({ erros: [{ caminho: "lead", mensagem: "Lead não encontrado." }] }, 404)
+      delete detalhes[apagar[1]]
+      return new Response(null, { status: 204 })
+    }
     const m = chave.match(/^(GET|POST) \/leads\/([^/]+)(?:\/(\w+))?$/)
     if (m) {
       const [, metodo, id, acao] = m
@@ -347,6 +353,69 @@ describe("tempo real (SSE)", () => {
     expect(within(ficha).getByText("Interesse qualificado")).toBeInTheDocument()
     emitir({ evento: "EtapaMudou", lead_id: LEAD_MARIA, de: "interesse_qualificado", para: "com_o_vendedor", ator: "ia", motivo: "x", em: "2026-11-20T12:40:00Z" })
     expect(await within(ficha).findByText("Com o vendedor")).toBeInTheDocument()
+  })
+})
+
+describe("resetar conversa", () => {
+  const ficha = () => screen.getByRole("complementary", { name: "Ficha do lead" })
+  const lista = () => screen.getByRole("list", { name: "Conversas" })
+
+  async function pedirReset(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(within(ficha()).getByRole("button", { name: "Resetar conversa" }))
+    return screen.findByRole("dialog", { name: "Resetar esta conversa?" })
+  }
+
+  it("pede confirmação explicando o que será apagado; cancelar não apaga nada", async () => {
+    const user = userEvent.setup()
+    const api = await abrirConversa()
+    const dialogo = await pedirReset(user)
+    expect(dialogo).toHaveAccessibleDescription(/apaga todas as mensagens, a ficha e o lead/i)
+
+    await user.click(within(dialogo).getByRole("button", { name: "Cancelar" }))
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+    expect(api.quantas(`DELETE /leads/${LEAD_MARIA}`)).toBe(0)
+    expect(screen.getByRole("heading", { name: "Maria Souza" })).toBeInTheDocument()
+  })
+
+  it("confirmar apaga, tira o lead da lista e fecha a conversa", async () => {
+    const user = userEvent.setup()
+    const api = await abrirConversa()
+    const dialogo = await pedirReset(user)
+
+    await user.click(within(dialogo).getByRole("button", { name: "Apagar conversa" }))
+
+    await waitFor(() => expect(api.quantas(`DELETE /leads/${LEAD_MARIA}`)).toBe(1))
+    expect(await screen.findByText("Selecione uma conversa")).toBeInTheDocument()
+    expect(within(lista()).queryByRole("button", { name: /Maria Souza/ })).not.toBeInTheDocument()
+    expect(within(lista()).getByRole("button", { name: /João/ })).toBeInTheDocument()
+    expect(toast.sucesso).toHaveBeenCalledWith("Conversa apagada", expect.anything())
+  })
+
+  it("erro ao apagar avisa e mantém a conversa aberta", async () => {
+    const user = userEvent.setup()
+    const api = await abrirConversa()
+    api.responder(`DELETE /leads/${LEAD_MARIA}`, 500, { erros: [{ caminho: "x", mensagem: "Falhou no servidor." }] })
+    const dialogo = await pedirReset(user)
+
+    await user.click(within(dialogo).getByRole("button", { name: "Apagar conversa" }))
+
+    await waitFor(() => expect(toast.erro).toHaveBeenCalledWith("Não foi possível apagar a conversa", expect.anything()))
+    expect(screen.getByRole("heading", { name: "Maria Souza" })).toBeInTheDocument()
+  })
+
+  it("reset feito em outra aba (SSE) fecha a conversa aberta e tira da lista", async () => {
+    await abrirConversa()
+    emitir({ evento: "LeadRemovido", lead_id: LEAD_MARIA, em: "2026-11-20T12:50:00Z" })
+    expect(await screen.findByText("Selecione uma conversa")).toBeInTheDocument()
+    expect(within(lista()).queryByRole("button", { name: /Maria Souza/ })).not.toBeInTheDocument()
+  })
+
+  it("reset de outro lead (SSE) só tira esse lead da lista", async () => {
+    await abrirConversa()
+    emitir({ evento: "LeadRemovido", lead_id: LEAD_JOAO, em: "2026-11-20T12:50:00Z" })
+    await waitFor(() => expect(within(lista()).queryByRole("button", { name: /João/ })).not.toBeInTheDocument())
+    expect(screen.getByRole("heading", { name: "Maria Souza" })).toBeInTheDocument()
   })
 })
 

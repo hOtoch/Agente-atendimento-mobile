@@ -379,7 +379,11 @@ export interface paths {
         get: operations["detalhe_lead_lojas__loja_id__leads__lead_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Reseta a conversa: apaga o lead, as mensagens e a memoria da IA
+         * @description Nao tem volta. Se o cliente escrever de novo, nasce um lead novo e a IA recomeca do zero. Eventos de metricas ficam, desvinculados do lead. Publica `LeadRemovido` no SSE.
+         */
+        delete: operations["resetar_lojas__loja_id__leads__lead_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1015,6 +1019,27 @@ export interface components {
             motivo: string;
             para: components["schemas"]["Etapa"];
         };
+        /**
+         * EventoLeadRemovidoSchema
+         * @description A conversa foi resetada: o lead nao existe mais (sai do kanban e do inbox).
+         */
+        EventoLeadRemovidoSchema: {
+            /**
+             * Em
+             * Format: date-time
+             */
+            em: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            evento: "LeadRemovido";
+            /**
+             * Lead Id
+             * Format: uuid
+             */
+            lead_id: string;
+        };
         /** EventoLeadSchema */
         EventoLeadSchema: {
             /**
@@ -1076,7 +1101,7 @@ export interface components {
              */
             tipo: "texto" | "audio" | "imagem";
         };
-        EventoPainel: components["schemas"]["EventoEtapaMudouSchema"] | components["schemas"]["EventoMensagemNovaSchema"] | components["schemas"]["EventoDonoMudouSchema"];
+        EventoPainel: components["schemas"]["EventoEtapaMudouSchema"] | components["schemas"]["EventoMensagemNovaSchema"] | components["schemas"]["EventoDonoMudouSchema"] | components["schemas"]["EventoLeadRemovidoSchema"];
         /** FerramentaSchema */
         FerramentaSchema: {
             /** Erros */
@@ -2975,6 +3000,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DetalheLeadSchema"];
                 };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrosSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resetar_lojas__loja_id__leads__lead_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loja_id: string;
+                lead_id: string;
+            };
+            cookie?: {
+                sessao?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Not Found */
             404: {

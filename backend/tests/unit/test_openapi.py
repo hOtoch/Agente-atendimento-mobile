@@ -29,6 +29,7 @@ def test_uniao_de_eventos_do_sse_esta_nos_componentes() -> None:
         "EventoEtapaMudouSchema",
         "EventoMensagemNovaSchema",
         "EventoDonoMudouSchema",
+        "EventoLeadRemovidoSchema",
     }
     assert schemas["EventoEtapaMudouSchema"]["properties"]["evento"]["const"] == "EtapaMudou"
 

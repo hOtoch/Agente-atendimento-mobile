@@ -27,10 +27,16 @@ type Props = {
 }
 
 export function Inbox({ lojaId, leadId, onSelecionar, cliente = api, assinar }: Props) {
-  const inbox = useInbox(lojaId, leadId, cliente, assinar)
+  const [fichaAberta, setFichaAberta] = useState(false)
+  const inbox = useInbox(lojaId, leadId, cliente, assinar, (removido) => {
+    // a conversa aberta deixou de existir (reset aqui ou em outra aba): volta para a lista
+    if (removido === leadId) {
+      setFichaAberta(false)
+      onSelecionar(null)
+    }
+  })
   const ativos = inbox.vendedores.filter((v) => v.ativo)
   const { vendedorId, definir } = useVendedorAtual(lojaId, ativos)
-  const [fichaAberta, setFichaAberta] = useState(false)
   const itens = ativos.map((v) => ({ value: v.id, label: v.nome }))
 
   return (
@@ -107,7 +113,9 @@ export function Inbox({ lojaId, leadId, onSelecionar, cliente = api, assinar }: 
           aria-label="Ficha do lead"
           className="hidden min-h-0 overflow-y-auto xl:block"
         >
-          {inbox.detalhe ? <PainelFicha detalhe={inbox.detalhe} /> : null}
+          {inbox.detalhe ? (
+            <PainelFicha detalhe={inbox.detalhe} ocupado={inbox.ocupado} onResetar={() => void inbox.resetar()} />
+          ) : null}
         </aside>
       </div>
 
@@ -117,7 +125,11 @@ export function Inbox({ lojaId, leadId, onSelecionar, cliente = api, assinar }: 
             <SheetTitle>Ficha do lead</SheetTitle>
             <SheetDescription>Dados coletados, pendências e proposta.</SheetDescription>
           </SheetHeader>
-          <div className="px-4 pb-4">{inbox.detalhe ? <PainelFicha detalhe={inbox.detalhe} /> : null}</div>
+          <div className="px-4 pb-4">
+            {inbox.detalhe ? (
+              <PainelFicha detalhe={inbox.detalhe} ocupado={inbox.ocupado} onResetar={() => void inbox.resetar()} />
+            ) : null}
+          </div>
         </SheetContent>
       </Sheet>
     </div>

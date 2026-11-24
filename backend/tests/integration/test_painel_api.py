@@ -358,6 +358,34 @@ async def test_sse_nao_entrega_eventos_de_outra_loja(amb: Ambiente) -> None:
     assert eventos == []
 
 
+# --- resetar conversa ------------------------------------------------------------------------
+
+
+async def test_resetar_apaga_a_conversa_e_publica_lead_removido(amb: Ambiente) -> None:
+    loja = await amb.loja()
+    lead, conversa = await amb.lead(loja, estado=_estado_iphone())
+    await amb.mensagem(loja, conversa, direcao="entrada", texto="quero um iphone", ha_s=10)
+
+    async def resetar() -> None:
+        r = await amb.client.delete(f"/lojas/{loja}/leads/{lead}")
+        assert r.status_code == 204
+
+    eventos = await amb.ler_sse(f"/lojas/{loja}/eventos", resetar, topico_painel(UUID(loja)))
+
+    assert [(e["evento"], e["lead_id"]) for e in eventos] == [("LeadRemovido", str(lead))]
+    assert (await amb.client.get(f"/lojas/{loja}/leads/{lead}")).status_code == 404
+    kanban = (await amb.client.get(f"/lojas/{loja}/leads")).json()
+    assert all(c["id"] != str(lead) for col in kanban["etapas"] for c in col["leads"])
+
+
+async def test_resetar_lead_inexistente_ou_de_outra_loja_e_404(amb: Ambiente) -> None:
+    a, b = await amb.loja(), await amb.loja()
+    lead_b, _ = await amb.lead(b)
+    assert (await amb.client.delete(f"/lojas/{a}/leads/{lead_b}")).status_code == 404
+    assert (await amb.client.delete(f"/lojas/{a}/leads/{uuid4()}")).status_code == 404
+    assert (await amb.client.get(f"/lojas/{b}/leads/{lead_b}")).status_code == 200
+
+
 # --- assumir / devolver -----------------------------------------------------------------------
 
 

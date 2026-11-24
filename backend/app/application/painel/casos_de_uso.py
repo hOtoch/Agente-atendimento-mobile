@@ -17,7 +17,7 @@ from app.application.handoff import (
     LeadNaoEncontrado,
     ResumoHandoff,
 )
-from app.application.painel.eventos import EventoEtapaMudou, EventoMensagemNova
+from app.application.painel.eventos import EventoEtapaMudou, EventoLeadRemovido, EventoMensagemNova
 from app.application.painel.portas import (
     DONO_IA,
     DONO_VENDEDOR,
@@ -221,6 +221,15 @@ class CasosPainel:
             ),
         )
         return await self._card(loja_id, lead_id)
+
+    async def resetar(self, loja_id: UUID, lead_id: UUID) -> None:
+        """Apaga a conversa inteira: lead, mensagens e memoria da IA. Se o cliente escrever de
+        novo, nasce um lead novo e a IA recomeca do zero."""
+        if not await self._repo.apagar_lead(loja_id, lead_id):
+            raise LeadNaoEncontrado(lead_id)
+        await publicar_sem_falhar(
+            self._publicador, loja_id, EventoLeadRemovido(lead_id=lead_id, em=self._agora())
+        )
 
     async def assumir(self, loja_id: UUID, lead_id: UUID, vendedor_id: UUID) -> CardLead:
         """Troca o dono para o vendedor (regra em `CasosHandoff`)."""

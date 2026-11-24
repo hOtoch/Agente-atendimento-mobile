@@ -111,3 +111,10 @@ class RepositorioPainel(Protocol):
     async def registrar_mensagem_vendedor(
         self, loja_id: UUID, conversa_id: UUID, canal: Canal, texto: str
     ) -> MensagemRegistro: ...
+
+    async def apagar_lead(self, loja_id: UUID, lead_id: UUID) -> bool:
+        """Apaga o lead da loja com conversas, mensagens e memoria da IA; False se nao existia.
+
+        Eventos de metricas ficam, desvinculados do lead.
+        """
+        ...

@@ -6,6 +6,7 @@ type Schemas = components["schemas"]
 export type EventoEtapaMudou = Schemas["EventoEtapaMudouSchema"]
 export type EventoMensagemNova = Schemas["EventoMensagemNovaSchema"]
 export type EventoDonoMudou = Schemas["EventoDonoMudouSchema"]
+export type EventoLeadRemovido = Schemas["EventoLeadRemovidoSchema"]
 /** Uniao discriminada por `evento`, igual ao payload publicado em `/lojas/{id}/eventos`. */
 export type EventoPainel = Schemas["EventoPainel"]
 
@@ -13,6 +14,7 @@ const EVENTOS_CONHECIDOS: ReadonlySet<string> = new Set<EventoPainel["evento"]>(
   "EtapaMudou",
   "MensagemNova",
   "DonoMudou",
+  "LeadRemovido",
 ])
 
 export type OpcoesAssinatura = {

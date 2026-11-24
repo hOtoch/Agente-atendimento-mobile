@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import StreamingResponse
 
 from app.adapters.inbound.http import schemas_painel as s
@@ -91,6 +91,21 @@ async def assumir(
 )
 async def devolver(loja_id: UUID, lead_id: UUID, casos: Casos) -> s.CardLeadSchema:
     return s.CardLeadSchema.de(await casos.devolver(loja_id, lead_id))
+
+
+@router.delete(
+    "/leads/{lead_id}",
+    status_code=204,
+    summary="Reseta a conversa: apaga o lead, as mensagens e a memoria da IA",
+    description=(
+        "Nao tem volta. Se o cliente escrever de novo, nasce um lead novo e a IA recomeca do "
+        "zero. Eventos de metricas ficam, desvinculados do lead. Publica `LeadRemovido` no SSE."
+    ),
+    responses={404: {"model": s.ErrosSchema}},
+)
+async def resetar(loja_id: UUID, lead_id: UUID, casos: Casos) -> Response:
+    await casos.resetar(loja_id, lead_id)
+    return Response(status_code=204)
 
 
 @router.post(

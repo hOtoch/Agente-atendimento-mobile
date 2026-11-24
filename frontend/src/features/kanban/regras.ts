@@ -66,6 +66,14 @@ function nomeDoVendedor(colunas: ColunaKanban[], vendedorId: string): string | n
 }
 
 export function aplicarEvento(colunas: ColunaKanban[], evento: EventoPainel): ResultadoEvento {
+  if (evento.evento === "LeadRemovido") {
+    // conversa resetada: o card some; se nem estava no quadro, nada a fazer
+    if (!localizarCard(colunas, evento.lead_id)) return { colunas, recarregar: false }
+    return {
+      colunas: colunas.map((c) => ({ ...c, leads: c.leads.filter((l) => l.id !== evento.lead_id) })),
+      recarregar: false,
+    }
+  }
   const achado = localizarCard(colunas, evento.lead_id)
   if (!achado) return { colunas, recarregar: true }
   const { card, indice } = achado

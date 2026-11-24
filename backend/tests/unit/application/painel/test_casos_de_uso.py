@@ -25,6 +25,7 @@ from app.application.painel.casos_de_uso import (
 from app.application.painel.eventos import (
     EventoDonoMudou,
     EventoEtapaMudou,
+    EventoLeadRemovido,
     EventoMensagemNova,
 )
 from app.application.painel.memoria import PublicadorEmMemoria, RepositorioPainelEmMemoria
@@ -288,6 +289,50 @@ async def test_devolver_lead_que_ja_e_da_ia_e_conflito(c: Cenario) -> None:
     lead = c.lead(telefone="s1")
     with pytest.raises(ConflitoDono):
         await c.casos.devolver(c.loja, lead)
+
+
+# --- resetar conversa ------------------------------------------------------------------------
+
+
+async def test_resetar_apaga_lead_historico_e_memoria_e_publica(c: Cenario) -> None:
+    lead = c.lead(telefone="s1", estado=_estado_com_interesse(), etapa=Etapa.INTERESSE_QUALIFICADO)
+    c.repo.adicionar_mensagem(lead, autor="cliente", texto="quero um iphone")
+    c.repo.adicionar_mensagem(lead, autor="ia", texto="temos sim")
+
+    await c.casos.resetar(c.loja, lead)
+
+    assert await c.repo.obter_lead(c.loja, lead) is None
+    assert await c.repo.listar_mensagens(c.loja, lead) == []
+    assert c.publicador.publicados == [(c.loja, EventoLeadRemovido(lead_id=lead, em=AGORA))]
+    with pytest.raises(LeadNaoEncontrado):
+        await c.casos.detalhe(c.loja, lead)
+
+
+async def test_resetar_lead_inexistente_ou_de_outra_loja_nao_apaga_nada(c: Cenario) -> None:
+    outra_loja = uuid4()
+    alheio = c.repo.adicionar_lead(outra_loja, telefone="s2")
+    with pytest.raises(LeadNaoEncontrado):
+        await c.casos.resetar(c.loja, alheio)
+    with pytest.raises(LeadNaoEncontrado):
+        await c.casos.resetar(c.loja, uuid4())
+    assert await c.repo.obter_lead(outra_loja, alheio) is not None
+    assert c.publicador.publicados == []
+
+
+async def test_resetar_com_barramento_fora_do_ar_ainda_apaga(c: Cenario) -> None:
+    lead = c.lead(telefone="s1")
+    c.publicador.falhar = True
+    await c.casos.resetar(c.loja, lead)
+    assert await c.repo.obter_lead(c.loja, lead) is None
+
+
+def test_evento_lead_removido_no_formato_do_sse() -> None:
+    lead = uuid4()
+    assert EventoLeadRemovido(lead_id=lead, em=AGORA).para_dict() == {
+        "evento": "LeadRemovido",
+        "lead_id": str(lead),
+        "em": AGORA.isoformat(),
+    }
 
 
 # --- mensagem do vendedor ---------------------------------------------------------------------

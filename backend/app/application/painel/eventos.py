@@ -86,4 +86,16 @@ class EventoDonoMudou:
         }
 
 
-EventoPainel = EventoEtapaMudou | EventoMensagemNova | EventoDonoMudou
+@dataclass(frozen=True, slots=True)
+class EventoLeadRemovido:
+    """O lead foi apagado (reset da conversa): kanban e inbox tiram o card da tela."""
+
+    lead_id: UUID
+    em: datetime
+    nome: ClassVar[str] = "LeadRemovido"
+
+    def para_dict(self) -> dict[str, Any]:
+        return {"evento": self.nome, "lead_id": str(self.lead_id), "em": self.em.isoformat()}
+
+
+EventoPainel = EventoEtapaMudou | EventoMensagemNova | EventoDonoMudou | EventoLeadRemovido

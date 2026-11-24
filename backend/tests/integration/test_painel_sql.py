@@ -149,3 +149,43 @@ async def test_transcricao_do_audio_e_salva_lida_pelo_agente_e_pelo_painel(
     lead_id = (await session.execute(_select(Lead.id))).scalar_one()
     mensagens = await RepositorioPainelSql(session).listar_mensagens(loja, lead_id)
     assert [m.transcricao for m in mensagens] == ["tem iphone 16?"]
+
+
+async def test_apagar_lead_leva_conversa_mensagens_e_memoria_e_desvincula_eventos(
+    session: AsyncSession,
+) -> None:
+    from sqlalchemy import func
+
+    from app.adapters.outbound.db.models import Evento, Ficha
+    from app.adapters.outbound.db.painel import RepositorioPainelSql
+
+    loja, conversa = await _conversa(session)
+    lead = (await session.execute(select(Conversa.lead_id))).scalar_one()
+    session.add_all(
+        [
+            Mensagem(loja_id=loja, conversa_id=conversa, canal="webchat", direcao="entrada"),
+            Ficha(loja_id=loja, lead_id=lead, versao=1, dados={"ficha": {}}),
+            Evento(loja_id=loja, lead_id=lead, tipo="llm_uso", payload={}),
+        ]
+    )
+    outra = Loja(nome="Outra")
+    session.add(outra)
+    await session.flush()
+    alheio = Lead(loja_id=outra.id, telefone="s9", canal="webchat")
+    session.add(alheio)
+    await session.commit()
+
+    repo = RepositorioPainelSql(session)
+    assert await repo.apagar_lead(outra.id, lead) is False  # lead de outra loja: nada muda
+    assert await repo.apagar_lead(loja, lead) is True
+    assert await repo.apagar_lead(loja, lead) is False  # ja apagado
+
+    async def contar(modelo: type) -> int:
+        return (await session.execute(select(func.count()).select_from(modelo))).scalar_one()
+
+    assert await contar(Lead) == 1  # sobrou so o da outra loja
+    assert await contar(Conversa) == 0
+    assert await contar(Mensagem) == 0
+    assert await contar(Ficha) == 0
+    evento_lead = (await session.execute(select(Evento.lead_id))).scalar_one()
+    assert evento_lead is None  # metrica fica, sem o lead

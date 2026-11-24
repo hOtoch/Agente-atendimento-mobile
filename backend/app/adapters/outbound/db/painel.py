@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, func, select, update
+from sqlalchemy import Select, delete, func, select, update
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -198,6 +198,15 @@ class RepositorioPainelSql:
         self._session.add(mensagem)
         await self._session.commit()
         return registro
+
+    async def apagar_lead(self, loja_id: UUID, lead_id: UUID) -> bool:
+        # As FKs fazem o resto: conversas, mensagens e fichas em CASCADE; eventos em SET NULL.
+        apagados = await self._session.execute(
+            delete(Lead).where(Lead.id == lead_id, Lead.loja_id == loja_id).returning(Lead.id)
+        )
+        removido = apagados.scalar_one_or_none() is not None
+        await self._session.commit()
+        return removido
 
     def _evento(self, loja_id: UUID, lead_id: UUID, tipo: str, payload: dict[str, Any]) -> None:
         self._session.add(
