@@ -88,6 +88,8 @@ def test_taxa_de_cache_e_a_fatia_lida_do_cache_no_prompt() -> None:
     [
         ("acordo_fechado", MotivoHandoff.ACORDO_FECHADO),
         ("falha_llm", MotivoHandoff.FALHA_TECNICA),
+        ("negociacao", MotivoHandoff.NEGOCIACAO),
+        ("Negociacao", MotivoHandoff.NEGOCIACAO),
         ("Cliente pediu para falar com um atendente", MotivoHandoff.PEDIDO_CLIENTE),
         ("O cliente quer falar com uma pessoa", MotivoHandoff.PEDIDO_CLIENTE),
         ("Pedido do cliente: humano", MotivoHandoff.PEDIDO_CLIENTE),
@@ -103,4 +105,5 @@ def test_nomes_de_exibicao_dos_motivos() -> None:
     assert MotivoHandoff.PEDIDO_CLIENTE.nome_exibicao == "Pedido do cliente"
     assert MotivoHandoff.ACORDO_FECHADO.nome_exibicao == "Acordo fechado"
     assert MotivoHandoff.FALHA_TECNICA.nome_exibicao == "Falha técnica"
+    assert MotivoHandoff.NEGOCIACAO.nome_exibicao == "Negociação além do teto"
     assert MotivoHandoff.OUTROS.nome_exibicao == "Outros"

@@ -84,6 +84,7 @@ export function metricasCompletas(sobrescrever: Partial<Metricas> = {}): Metrica
         { motivo: "pedido_cliente", nome: "Pedido do cliente", quantidade: 5, anterior: 4 },
         { motivo: "acordo_fechado", nome: "Acordo fechado", quantidade: 6, anterior: 5 },
         { motivo: "falha_tecnica", nome: "Falha técnica", quantidade: 1, anterior: 1 },
+        { motivo: "negociacao", nome: "Negociação além do teto", quantidade: 0, anterior: 0 },
         { motivo: "outros", nome: "Outros", quantidade: 0, anterior: 0 },
       ],
     },

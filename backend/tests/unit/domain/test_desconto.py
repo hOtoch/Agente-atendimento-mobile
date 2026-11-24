@@ -6,10 +6,15 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.domain.desconto import (
+    DescontoLiberado,
     EstadoDesconto,
+    MotivoPassagem,
+    PassarAoVendedor,
+    PedidoCliente,
     PoliticaDesconto,
     RegraOportunidadeUnica,
     TetoAtingido,
+    decidir_pedido_desconto,
     desconto_total,
     liberar_proximo,
     oportunidade_unica,
@@ -180,3 +185,68 @@ def test_nunca_passa_do_teto_e_nao_decresce(teto: int, degrau: int, n: int) -> N
         assert total <= politica.teto
         assert estado.liberado == total
         anterior = total
+
+
+# --- escada de desconto: decidir_pedido_desconto --------------------------
+
+
+def _pedir_ate_vendedor(
+    politica: PoliticaDesconto, pedido: PedidoCliente = PedidoCliente.MAIS_DESCONTO
+) -> list[DescontoLiberado | PassarAoVendedor]:
+    estado = EstadoDesconto()
+    saidas: list[DescontoLiberado | PassarAoVendedor] = []
+    for _ in range(3000):
+        decisao = decidir_pedido_desconto(politica, estado, pedido)
+        saidas.append(decisao)
+        if isinstance(decisao, PassarAoVendedor):
+            return saidas
+        estado = decisao.estado
+    raise AssertionError("nunca passou ao vendedor")
+
+
+def test_escada_50_100_libera_50_depois_100_depois_vendedor() -> None:
+    politica = PoliticaDesconto(teto=din(100), degrau=din(50))
+    primeiro, segundo, terceiro = _pedir_ate_vendedor(politica)
+    assert isinstance(primeiro, DescontoLiberado) and primeiro.total == din(50)
+    assert isinstance(segundo, DescontoLiberado) and segundo.total == din(100)
+    assert segundo.estado == EstadoDesconto(liberado=din(100))
+    assert terceiro == PassarAoVendedor(MotivoPassagem.ACIMA_DO_TETO, din(100))
+
+
+def test_brinde_passa_ao_vendedor_em_qualquer_momento() -> None:
+    politica = PoliticaDesconto(teto=din(100), degrau=din(50))
+    for liberado in (0, 50, 100):
+        decisao = decidir_pedido_desconto(
+            politica, EstadoDesconto(liberado=din(liberado)), PedidoCliente.BRINDE_OU_BENEFICIO
+        )
+        assert decisao == PassarAoVendedor(MotivoPassagem.BRINDE_OU_BENEFICIO, din(liberado))
+
+
+def test_teto_zero_passa_ao_vendedor_no_primeiro_pedido() -> None:
+    politica = PoliticaDesconto(teto=Dinheiro.zero(), degrau=din(50))
+    decisao = decidir_pedido_desconto(politica, EstadoDesconto(), PedidoCliente.MAIS_DESCONTO)
+    assert decisao == PassarAoVendedor(MotivoPassagem.ACIMA_DO_TETO, Dinheiro.zero())
+
+
+def test_motivos_de_passagem_tem_valor_estavel() -> None:
+    assert MotivoPassagem.ACIMA_DO_TETO.value == "acima_do_teto"
+    assert MotivoPassagem.BRINDE_OU_BENEFICIO.value == "brinde_ou_beneficio"
+
+
+@given(teto=st.integers(0, 2000), degrau=st.integers(1, 500))
+def test_propriedade_soma_liberada_nunca_passa_do_teto(teto: int, degrau: int) -> None:
+    politica = PoliticaDesconto(teto=din(teto), degrau=din(degrau))
+    saidas = _pedir_ate_vendedor(politica)
+    for s in saidas:
+        if isinstance(s, DescontoLiberado):
+            assert s.total <= politica.teto
+            assert s.estado.liberado == s.total
+    assert saidas[-1].liberado == politica.teto  # type: ignore[union-attr]
+
+
+@given(teto=st.integers(0, 2000), degrau=st.integers(1, 500))
+def test_propriedade_pedidos_ate_o_vendedor_e_teto_sobre_degrau_mais_um(
+    teto: int, degrau: int
+) -> None:
+    politica = PoliticaDesconto(teto=din(teto), degrau=din(degrau))
+    assert len(_pedir_ate_vendedor(politica)) == -(-teto // degrau) + 1

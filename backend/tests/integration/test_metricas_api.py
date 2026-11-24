@@ -62,7 +62,7 @@ async def test_padrao_sao_os_ultimos_30_dias_e_loja_vazia_devolve_zeros(client) 
     assert corpo["custo"]["completo"] is True
     assert corpo["ferramentas"] == [] and corpo["mapa_horario"] == []
     assert [e["etapa"] for e in corpo["funil"]][0] == "novo_contato"
-    assert len(corpo["handoffs"]["por_motivo"]) == 4
+    assert len(corpo["handoffs"]["por_motivo"]) == 5
 
 
 async def test_periodo_informado_traz_numeros_e_comparacao(client) -> None:  # type: ignore[no-untyped-def]

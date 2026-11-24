@@ -34,6 +34,7 @@ const LIMITE_MENSAGENS = 3
 const MOTIVOS_DO_SISTEMA: Record<string, string> = {
   falha_llm: "A IA teve uma falha técnica e passou o atendimento para você",
   acordo_fechado: "Acordo fechado pela IA: cliente vai à loja para concluir",
+  negociacao: "Cliente quer negociar além do desconto liberado",
 }
 
 function textoDaMensagem(m: MensagemLead): string {

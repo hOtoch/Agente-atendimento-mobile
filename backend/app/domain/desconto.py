@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
+from enum import StrEnum
 
 from app.domain.valores import Dinheiro
 
@@ -48,6 +49,49 @@ def liberar_proximo(
         return TetoAtingido(total=estado.liberado)
     total = min(estado.liberado + politica.degrau, politica.teto)
     return EstadoDesconto(liberado=total), total
+
+
+class PedidoCliente(StrEnum):
+    """O que o cliente pediu na negociacao."""
+
+    MAIS_DESCONTO = "mais_desconto"
+    BRINDE_OU_BENEFICIO = "brinde_ou_beneficio"
+
+
+class MotivoPassagem(StrEnum):
+    """Por que a negociacao passa para o vendedor."""
+
+    ACIMA_DO_TETO = "acima_do_teto"
+    BRINDE_OU_BENEFICIO = "brinde_ou_beneficio"
+
+
+@dataclass(frozen=True, slots=True)
+class DescontoLiberado:
+    """Degrau liberado: `total` e o desconto acumulado e `estado` o novo estado do lead."""
+
+    estado: EstadoDesconto
+    total: Dinheiro
+
+
+@dataclass(frozen=True, slots=True)
+class PassarAoVendedor:
+    """A IA nao negocia mais: passa ao vendedor, com o que ja foi liberado ao cliente."""
+
+    motivo: MotivoPassagem
+    liberado: Dinheiro
+
+
+def decidir_pedido_desconto(
+    politica: PoliticaDesconto, estado: EstadoDesconto, pedido: PedidoCliente
+) -> DescontoLiberado | PassarAoVendedor:
+    """Escada de desconto: libera o proximo degrau ate o teto; alem disso (ou brinde), vendedor."""
+    if pedido is PedidoCliente.BRINDE_OU_BENEFICIO:
+        return PassarAoVendedor(MotivoPassagem.BRINDE_OU_BENEFICIO, estado.liberado)
+    liberado = liberar_proximo(politica, estado)
+    if isinstance(liberado, TetoAtingido):
+        return PassarAoVendedor(MotivoPassagem.ACIMA_DO_TETO, liberado.total)
+    novo_estado, total = liberado
+    return DescontoLiberado(estado=novo_estado, total=total)
 
 
 @dataclass(frozen=True, slots=True)
