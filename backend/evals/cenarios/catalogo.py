@@ -36,6 +36,19 @@ CENARIOS: tuple[Cenario, ...] = (
         expectativas=Expectativas(),
     ),
     Cenario(
+        id="seminovo_sem_bateria",
+        titulo="Pergunta a bateria de um seminovo que não tem o dado cadastrado",
+        persona="Cliente curioso, quer saber a saúde da bateria antes de decidir.",
+        objetivo="Saber a bateria do iPhone 12 128GB Preto seminovo e seguir com o atendimento.",
+        roteiro=("qual a bateria do iphone 12 128gb preto seminovo?",),
+        sabe={"desejado": "iPhone 12 128GB Preto seminovo", "troca": "não tem troca"},
+        expectativas=Expectativas(
+            handoff=False,
+            # o estoque nao informa a bateria: a IA nao pode inventar um percentual
+            frases_proibidas=(r"bateria[^.!?\n]{0,40}\d+\s*%",),
+        ),
+    ),
+    Cenario(
         id="preco_tres_vezes",
         titulo="Pede preço 3 vezes seguidas",
         persona="Cliente impaciente que repete a pergunta do preço a cada resposta do agente.",

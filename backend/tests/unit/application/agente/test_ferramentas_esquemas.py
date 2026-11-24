@@ -88,7 +88,13 @@ def test_opcionais_aceitam_null() -> None:
 def test_assinaturas_combinadas() -> None:
     props = {d.nome: set(d.esquema_json["properties"]) for d in CatalogoFerramentas().definicoes()}
     assert props["registrar_interesse"] == {"modelo", "capacidade", "cor", "condicao"}
-    assert props["consultar_estoque"] == {"modelo", "capacidade", "cor", "condicao"}
+    assert props["consultar_estoque"] == {
+        "modelo",
+        "capacidade",
+        "cor",
+        "condicao",
+        "bateria_minima",
+    }
     assert props["confirmar_item"] == {"sku"}
     assert props["registrar_usado"] == {
         "tem_troca",

@@ -297,11 +297,60 @@ def _opcao(item: ItemEstoque) -> dict[str, Any]:
         "cor": item.cor,
         "condicao": item.condicao.value,
     }
-    if item.bateria_pct is not None:
+    if item.condicao is Condicao.SEMINOVO:
+        # sem o dado, `null` explicito: o LLM nao pode inventar nem travar procurando
         opcao["bateria_pct"] = item.bateria_pct
+        opcao["bateria_informada"] = item.bateria_pct is not None
     if item.desatualizado:
         opcao["dados_desatualizados"] = True
     return opcao
+
+
+_INSTRUCAO_SEM_BATERIA = (
+    "A bateria deste seminovo não está cadastrada: diga que o vendedor confirma a saúde da "
+    "bateria na loja e siga o atendimento; não invente percentual."
+)
+
+
+def _sem_bateria(item: ItemEstoque) -> bool:
+    return item.condicao is Condicao.SEMINOVO and item.bateria_pct is None
+
+
+def _filtrar_bateria_minima(
+    itens: list[ItemEstoque], minima: int
+) -> tuple[list[ItemEstoque], str | None]:
+    """Seminovos com bateria conhecida >= minima (novos ficam; sem dado nao entram no filtro).
+
+    Sem nenhum que atenda devolve o de maior bateria conhecida; sem nenhuma bateria conhecida
+    nao filtra (a resposta nunca fica vazia por falta do dado). Devolve tambem o aviso.
+    """
+    seminovos = [i for i in itens if i.condicao is Condicao.SEMINOVO]
+    if not seminovos:
+        return itens, None
+    sem_dado = [i for i in seminovos if _sem_bateria(i)]
+    conhecidos = [i for i in seminovos if i.bateria_pct is not None]
+    avisos: list[str] = []
+    if sem_dado:
+        n = len(sem_dado)
+        plural = "seminovos sem bateria cadastrada" if n > 1 else "seminovo sem bateria cadastrada"
+        avisos.append(f"Há {n} {plural}; o vendedor confirma a saúde da bateria na loja.")
+    if not conhecidos:
+        return itens, " ".join(avisos)
+    atendem = [i for i in conhecidos if (i.bateria_pct or 0) >= minima]
+    if atendem:
+        mantidos = atendem
+    else:
+        melhor = max(conhecidos, key=lambda i: i.bateria_pct or 0)
+        mantidos = [melhor]
+        avisos.insert(
+            0,
+            f"Não há seminovo com bateria de {minima}% ou mais; o melhor disponível tem "
+            f"{melhor.bateria_pct}%. Ofereça uma alternativa (esse seminovo, o novo ou o vendedor "
+            "confirmar na loja) e siga a conversa.",
+        )
+    escolhidos = {i.sku for i in mantidos}
+    resultado = [i for i in itens if i.condicao is not Condicao.SEMINOVO or i.sku in escolhidos]
+    return resultado, " ".join(avisos)
 
 
 def _aplicar_interesse(
@@ -428,6 +477,11 @@ async def _consultar_estoque(
     capacidade = _capacidade_opcional(entrada)
     cor = _texto_opcional(entrada, "cor")
     condicao = _condicao_opcional(entrada)
+    bateria_minima = _int_opcional(entrada, "bateria_minima")
+    if bateria_minima is not None and not 0 <= bateria_minima <= 100:
+        raise ErroFerramenta(
+            "A bateria mínima deve estar entre 0 e 100 (%). Confirme com o cliente."
+        )
     atual = estado.ficha.interesse
     if atual.modelo == modelo:
         capacidade = capacidade or atual.capacidade
@@ -445,6 +499,9 @@ async def _consultar_estoque(
         aviso_condicao = f"Não há {condicao.value}{da_cap} deste modelo. "
         condicao, capacidade, cor = None, None, None
     itens = [i for i in filtrar(todos, modelo, capacidade, cor) if condicao in (None, i.condicao)]
+    aviso_bateria: str | None = None
+    if bateria_minima is not None and itens:
+        itens, aviso_bateria = _filtrar_bateria_minima(itens, bateria_minima)
 
     ficha, _ = _aplicar_interesse(estado.ficha, modelo, capacidade, cor, condicao)
     if aviso_condicao:
@@ -496,6 +553,13 @@ async def _consultar_estoque(
     }
     if "etapa" not in conteudo:
         conteudo["opcoes"] = [_opcao(i) for i in itens[:_MAX_OPCOES]]
+    exibidos = itens[:_MAX_OPCOES] if "opcoes" in conteudo else []
+    if "sku_confirmado" in conteudo:
+        exibidos = [i for i in itens if i.sku == conteudo["sku_confirmado"]]
+    if any(_sem_bateria(i) for i in exibidos):
+        conteudo["instrucao_bateria"] = _INSTRUCAO_SEM_BATERIA
+    if aviso_bateria:
+        conteudo["aviso_bateria"] = aviso_bateria
     return _Saida(conteudo, replace(estado, ficha=ficha, estoque_consultado=True))
 
 
@@ -553,6 +617,8 @@ async def _confirmar_item(
         sku_estoque_confirmado=item.sku,
     )
     conteudo = {"status": "ok", "item": _opcao(item), **_situacao(ficha)}
+    if _sem_bateria(item):
+        conteudo["instrucao_bateria"] = _INSTRUCAO_SEM_BATERIA
     return _Saida(conteudo, replace(estado, ficha=ficha, estoque_consultado=True))
 
 
@@ -1060,7 +1126,10 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
             "Com capacidade e cor: devolve os itens (sku, condição e bateria do seminovo) para ele "
             "escolher com confirmar_item. Só existindo um item compatível ele já é confirmado. "
             "Se o cliente disse que quer novo ou seminovo, passe condicao: a consulta traz só "
-            "essa condição (e lembra dela nas próximas). "
+            "essa condição (e lembra dela nas próximas). Se ele pediu bateria mínima em um "
+            "seminovo, passe bateria_minima: a consulta filtra pelos que têm bateria cadastrada "
+            "e avisa dos sem dado ou da falta de um que atenda (siga o aviso e a "
+            "instrucao_bateria). "
             "NUNCA devolve valores: para falar de dinheiro use calcular_proposta. Nunca ofereça "
             "só uma opção quando a ferramenta devolveu outras. Se o estoque estiver fora do ar, "
             "avise o cliente e tente de novo depois."
@@ -1074,6 +1143,13 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
                 ),
                 "cor": _txt("Cor que o cliente escolheu; null para listar as cores."),
                 "condicao": _condicao_esquema(),
+                "bateria_minima": {
+                    "type": ["integer", "null"],
+                    "description": (
+                        "Saúde mínima da bateria em % (0 a 100) que o cliente pediu para "
+                        "seminovo; null se ele não pediu."
+                    ),
+                },
             }
         ),
         estrita=False,
