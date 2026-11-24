@@ -129,6 +129,7 @@ async def rodar_cenario(
         tuple(eventos),
         etapa_final=amb.conversas.etapa(amb.lead_id).value,
         handoff=estado.handoff_solicitado,
+        motivo_handoff=estado.motivo_handoff,
     )
     return ResultadoCenario(
         cenario=cenario,

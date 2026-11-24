@@ -177,11 +177,16 @@ def mensagem_estado(
     handoff_solicitado: bool,
     formas: FormasAceitas | None = None,
     acordo_fechado: bool = False,
+    confirmacao_mostrada: bool = False,
+    pedido_confirmado: bool = False,
+    desconto_pedido_antes: bool = False,
 ) -> str:
     """Mensagem de sistema do turno: data, ficha, pendencias, proxima pergunta e lembretes.
 
     `formas` (as aceitas pela loja) montam a pergunta de pagamento; None = todas.
     `acordo_fechado`: `fechar_acordo` ja gravou o acordo (falta so agradecer e chamar o vendedor).
+    `confirmacao_mostrada`: a ficha esta com o cliente; `pedido_confirmado`: ele aceitou.
+    `desconto_pedido_antes`: ele pediu desconto antes da ficha (a primeira ficha ja traz o degrau).
     """
     faltas = pendencias(ficha)
     linhas = [
@@ -208,12 +213,19 @@ def mensagem_estado(
                 "mudar algum dado."
             )
             if not handoff_solicitado:
-                linhas.append(_lembrete_acordo(acordo_fechado))
+                linhas.append(
+                    _lembrete_acordo(acordo_fechado, confirmacao_mostrada, pedido_confirmado)
+                )
         else:
-            linhas.append("PODE chamar calcular_proposta agora e apresentar as opções.")
+            linhas.append("PODE chamar calcular_proposta agora e mostrar a ficha de confirmação.")
     linhas.append("")
     if proposta_apresentada and faltas:
         linhas.append("A proposta já foi apresentada, mas algum dado mudou: refaça a qualificação.")
+    if desconto_pedido_antes:
+        linhas.append(
+            "O cliente já pediu desconto: não negocie agora; a primeira ficha de confirmação "
+            "já traz o primeiro degrau. Siga a qualificação."
+        )
     if desconto_liberado is not None:
         linhas.append(
             f"Desconto já liberado pela ferramenta: {desconto_liberado}. "
@@ -237,18 +249,30 @@ def mensagem_estado(
     return "\n".join(linhas)
 
 
-def _lembrete_acordo(acordo_fechado: bool) -> str:
+def _lembrete_acordo(
+    acordo_fechado: bool, confirmacao_mostrada: bool = False, pedido_confirmado: bool = False
+) -> str:
     if acordo_fechado:
         return (
             "O acordo já foi fechado (fechar_acordo): envie o endereço, os horários (e a chave "
             "Pix, se houver) que a ferramenta devolveu, agradeça a preferência e chame "
             "chamar_vendedor com motivo 'acordo_fechado'."
         )
-    return (
-        "Quando o cliente aceitar a proposta, chame fechar_acordo; depois envie endereço e "
-        "horário, agradeça a preferência e chame chamar_vendedor com motivo 'acordo_fechado'. "
-        "Se ele mudar algo, refaça a proposta."
-    )
+    if pedido_confirmado:
+        return (
+            "O cliente já confirmou o pedido (confirmar_pedido): chame fechar_acordo, depois "
+            "chamar_vendedor com motivo 'acordo_fechado'."
+        )
+    if confirmacao_mostrada:
+        return (
+            "A ficha de confirmação já foi mostrada e o sistema aguarda o cliente responder. "
+            "Se ele aceitar (sim, pode fechar...), chame confirmar_pedido e em seguida "
+            "fechar_acordo. Se pedir desconto ou brinde, chame liberar_desconto; se mudar algo "
+            "(parcelas, forma de pagamento, aparelho), registre e chame calcular_proposta de novo: "
+            "a ficha nova pede nova confirmação. 'Quanto fica em Nx?' é simulação: registre as "
+            "parcelas e calcule, nunca feche."
+        )
+    return "A ficha de confirmação ainda não está com o cliente: chame calcular_proposta."
 
 
 def _pede_estoque(ficha: Ficha, estoque_consultado: bool) -> bool:

@@ -14,7 +14,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.application.agente.contexto import ContextoFerramentas
 from app.application.agente.conversa_portas import (
@@ -75,6 +75,7 @@ _ERRO_FERRAMENTA = (
     "confirmar e, se persistir, chame o vendedor."
 )
 _TRACEBACK_MAX = 1500
+_FERRAMENTAS_DA_FICHA = ("calcular_proposta", "liberar_desconto")
 _PERFIL_PADRAO = PerfilLoja("nossa loja", "simpático e objetivo", "", {}, "")
 _PROVISORIOS = {
     TipoMensagem.AUDIO: "[cliente enviou um áudio]",
@@ -183,6 +184,7 @@ class _Turno:
         self._conversa = conversa
         self._etapa = conversa.etapa
         self._estado = EstadoAtendimento()
+        self._rodada = uuid4().hex  # a ficha so vale como vista numa rodada posterior a esta
         self._uso = UsoTokens.vazio()
         self._chamadas_llm = 0
         self._historico: list[MensagemLLM] = []
@@ -249,6 +251,9 @@ class _Turno:
                         handoff_solicitado=self._estado.handoff_solicitado,
                         formas=formas,
                         acordo_fechado=self._estado.acordo is not None,
+                        confirmacao_mostrada=self._estado.confirmacao is not None,
+                        pedido_confirmado=self._estado.pedido_confirmado,
+                        desconto_pedido_antes=self._estado.desconto_pedido_antes,
                     )
                 )
             ],
@@ -265,6 +270,7 @@ class _Turno:
             config=c._config,
             hoje=c._hoje(),
             fala_do_cliente="\n".join(textos),
+            rodada=self._rodada,
         )
         definicoes = c._catalogo.definicoes()
 
@@ -343,6 +349,7 @@ class _Turno:
                 seguidos,
             )
             return False
+        await self._esquecer_ficha_nao_vista()
         seguidos = await c._descartes.registrar(conversa.conversa_id)
         log.info(
             "conversa %s: resposta descartada, chegaram %s mensagem(ns) do cliente (%s/%s)",
@@ -361,6 +368,19 @@ class _Turno:
             },
         )
         return True
+
+    async def _esquecer_ficha_nao_vista(self) -> None:
+        """A resposta foi descartada: a ficha mostrada nesta rodada nao chegou ao cliente.
+
+        Sem isso, um "sim" que ele mandou antes de ver a ficha valeria como confirmacao.
+        """
+        conf = self._estado.confirmacao
+        if conf is None or conf.get("rodada") != self._rodada:
+            return
+        self._estado = replace(self._estado, confirmacao=None, pedido_confirmado=False)
+        await self._c._atendimento.salvar(
+            self._conversa.loja_id, self._conversa.lead_id, self._estado
+        )
 
     async def _textos_das_entradas(self, entradas: list[EntradaConversa]) -> tuple[list[str], bool]:
         """Texto de cada entrada (audio transcrito aqui) e se TODAS foram audios sem transcricao."""
@@ -473,6 +493,8 @@ class _Turno:
         pronta = res.conteudo.get("mensagem_ao_cliente") if not res.erro else None
         if isinstance(pronta, str) and pronta.strip():
             self._mensagem_pronta = pronta
+        elif nome in _FERRAMENTAS_DA_FICHA and not res.erro:
+            self._mensagem_pronta = None  # a ficha antiga da rodada ficou velha (ex.: vendedor)
         return ResultadoFerramenta(id_, json.dumps(res.conteudo, ensure_ascii=False), res.erro)
 
     async def _recalcular_etapa(self) -> None:

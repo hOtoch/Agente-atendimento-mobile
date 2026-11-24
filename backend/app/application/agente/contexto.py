@@ -30,6 +30,9 @@ class ContextoFerramentas:
     fala_do_cliente: str | None = None
     """O que o cliente escreveu neste turno (o codigo confere o que o modelo diz que ele disse).
     None: ferramenta rodando fora de uma conversa (testes isolados), sem essa conferencia."""
+    rodada: str | None = None
+    """Id da rodada (uma execucao de `ProcessarConversa`). A ficha de confirmacao guarda a rodada em
+    que foi mostrada: o aceite so vale numa rodada POSTERIOR, depois de o cliente ver a ficha."""
 
 
 class ErroFerramenta(Exception):

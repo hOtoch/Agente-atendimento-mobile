@@ -661,3 +661,22 @@ def test_resumo_seminovo_com_bateria_e_novo_nao_trazem_o_aviso() -> None:
     ):
         r = montar_resumo_estruturado(_estado_com_aparelho(aparelho), motivo="x", agora=AGORA)
         assert r.aparelho_desejado == "iPhone 16 128GB"
+
+
+def test_motivo_negociacao_resume_o_pedido_o_liberado_e_o_teto() -> None:
+    negociacao = {
+        "motivo": "acima_do_teto",
+        "pedido": "mais_desconto",
+        "texto": "quer mais um pouco",
+        "liberado": "R$ 100,00",
+        "teto": "R$ 100,00",
+    }
+    estado = replace(_estado_rico(), negociacao=negociacao)
+    r = montar_resumo_estruturado(estado, motivo="negociacao", agora=AGORA)
+    assert r.motivo.startswith("Negociação: o cliente pediu mais desconto (quer mais um pouco)")
+    assert "R$ 100,00" in r.motivo and "teto" in r.motivo
+
+
+def test_motivo_negociacao_sem_dados_no_estado_passa_direto() -> None:
+    r = montar_resumo_estruturado(_estado_rico(), motivo="negociacao", agora=AGORA)
+    assert r.motivo == "negociacao"

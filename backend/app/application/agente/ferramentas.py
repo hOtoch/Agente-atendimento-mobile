@@ -16,9 +16,11 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any
 
+from app.application.agente.aceite import parece_aceite
 from app.application.agente.acordo import (
     MOTIVO_ACORDO_FECHADO,
     conteudo_para_ia,
+    ficha_confirmacao,
     mesmo_acordo,
     montar_acordo,
 )
@@ -34,7 +36,13 @@ from app.application.agente.proposta import FRASE_OBRIGATORIA, montar_proposta
 from app.application.config.modelos import LojaNaoEncontrada
 from app.application.estoque import EstoqueIndisponivel
 from app.application.llm import DefinicaoFerramenta
-from app.domain.desconto import TetoAtingido, liberar_proximo
+from app.domain.desconto import (
+    DescontoLiberado,
+    PassarAoVendedor,
+    PedidoCliente,
+    PoliticaDesconto,
+    decidir_pedido_desconto,
+)
 from app.domain.estoque import (
     Condicao,
     ItemEstoque,
@@ -44,6 +52,7 @@ from app.domain.estoque import (
     resolver_modelo,
 )
 from app.domain.ficha import Ficha, Pendencia, TipoPagamento, UsadoInformado, pendencias
+from app.domain.metricas import MOTIVO_NEGOCIACAO
 from app.domain.troca import MotivoLoja, motivo_fora_da_tabela
 from app.domain.valores import Bandeira, Capacidade, Dinheiro, ModeloAparelho
 
@@ -52,6 +61,7 @@ __all__ = [
     "CatalogoFerramentas",
     "ContextoFerramentas",
     "ResultadoFerramenta",
+    "parece_aceite",
 ]
 
 _MAX_OPCOES = 10
@@ -936,12 +946,39 @@ async def _registrar_compra(
     return _Saida({"status": "ok", **_situacao(ficha)}, replace(estado, ficha=ficha))
 
 
-_FECHAR_APOS_PROPOSTA = (
-    "O cliente já escolheu a forma de pagamento: chame fechar_acordo agora, antes de responder. "
-    "Na mesma mensagem, apresente o valor final só na forma escolhida (com a frase obrigatória) "
-    "e envie o endereço, os horários e, no Pix, a chave que fechar_acordo devolver. Não ofereça "
-    "desconto nem as alternativas de pagamento; só fale delas se o cliente pedir."
+_AGUARDAR_CONFIRMACAO = (
+    "Aguarde o cliente confirmar a ficha: o sistema envia a mensagem_ao_cliente como a resposta "
+    "deste turno, então não reescreva nem cite outros valores. Se ele pedir desconto, use "
+    "liberar_desconto; se mudar algo (parcelas, forma de pagamento, aparelho), registre e chame "
+    "calcular_proposta de novo. 'Quanto fica em Nx?' é só simulação: registre as parcelas e "
+    "calcule, nunca feche. Só depois de o cliente dizer 'sim' numa mensagem seguinte use "
+    "confirmar_pedido."
 )
+_TEXTO_PEDIDO_MAX = 140
+_APOS_CONFIRMAR = (
+    "Pedido confirmado pelo cliente. Chame fechar_acordo agora, depois chamar_vendedor com "
+    f"motivo '{MOTIVO_ACORDO_FECHADO}'."
+)
+
+
+def _com_confirmacao(
+    estado: EstadoAtendimento, proposta: dict[str, Any], ctx: ContextoFerramentas
+) -> EstadoAtendimento:
+    """A ficha mostrada agora vira a `confirmacao` (com a rodada); o aceite antigo cai."""
+    return replace(
+        estado,
+        proposta_apresentada=True,
+        ultima_proposta=proposta,
+        confirmacao={"proposta": proposta, "rodada": ctx.rodada},
+        pedido_confirmado=False,
+    )
+
+
+async def _politica(ctx: ContextoFerramentas) -> PoliticaDesconto:
+    preco = await ctx.config.obter_preco(ctx.loja_id)
+    if preco is None:
+        raise ErroFerramenta("A loja ainda não definiu as regras de preço. Chame o vendedor.")
+    return preco.politica
 
 
 async def _calcular_proposta(
@@ -949,66 +986,166 @@ async def _calcular_proposta(
 ) -> _Saida:
     if pendencias(estado.ficha):
         return _Saida(_bloqueio(estado.ficha), estado)
-    proposta = await montar_proposta(ctx, estado)
-    # o passo vai so para o LLM: `ultima_proposta` e comparada no fechamento do acordo
-    conteudo = {**proposta, "proximo_passo": _FECHAR_APOS_PROPOSTA}
-    return _Saida(conteudo, replace(estado, proposta_apresentada=True, ultima_proposta=proposta))
+    base = estado
+    conseguido: str | None = None
+    if estado.desconto_pedido_antes:
+        # o cliente pediu desconto antes da ficha: o primeiro degrau ja vem nela
+        politica = await _politica(ctx)
+        decisao = decidir_pedido_desconto(politica, estado.desconto, PedidoCliente.MAIS_DESCONTO)
+        base = replace(estado, desconto_pedido_antes=False)
+        if isinstance(decisao, DescontoLiberado):
+            base = replace(base, desconto=decisao.estado)
+            conseguido = str(decisao.total - estado.desconto.liberado)
+    proposta = await montar_proposta(ctx, base)
+    mesma = (
+        conseguido is None
+        and base.confirmacao is not None
+        and base.confirmacao.get("proposta") == proposta
+    )
+    if mesma:
+        # nada mudou: a ficha vale com a rodada em que foi mostrada (o aceite nao e refeito)
+        novo = replace(base, proposta_apresentada=True, ultima_proposta=proposta)
+    else:
+        novo = _com_confirmacao(base, proposta, ctx)
+    conteudo = {
+        **proposta,
+        "mensagem_ao_cliente": ficha_confirmacao(novo, proposta, desconto_conseguido=conseguido),
+        "mensagem": "Ficha de confirmação pronta; ela é a resposta deste turno.",
+        "proximo_passo": _AGUARDAR_CONFIRMACAO,
+    }
+    return _Saida(conteudo, novo)
+
+
+def _pedido_cliente(entrada: dict[str, Any]) -> PedidoCliente:
+    valor = entrada.get("pedido")
+    if valor is None:
+        return PedidoCliente.MAIS_DESCONTO
+    try:
+        return PedidoCliente(valor)
+    except ValueError:
+        validos = ", ".join(p.value for p in PedidoCliente)
+        raise ErroFerramenta(f"Pedido inválido: {valor!r}. Use um de: {validos}.") from None
+
+
+def _passar_negociacao(
+    estado: EstadoAtendimento,
+    passagem: PassarAoVendedor,
+    pedido: PedidoCliente,
+    texto: str,
+    teto: str,
+) -> _Saida:
+    negociacao = {
+        "motivo": passagem.motivo.value,
+        "pedido": pedido.value,
+        "texto": texto[:_TEXTO_PEDIDO_MAX],
+        "liberado": str(passagem.liberado),
+        "teto": teto,
+    }
+    novo = replace(
+        estado, handoff_solicitado=True, motivo_handoff=MOTIVO_NEGOCIACAO, negociacao=negociacao
+    )
+    conteudo = {
+        "status": "ok",
+        "passou_ao_vendedor": True,
+        "motivo": passagem.motivo.value,
+        "mensagem": (
+            "Isso é com o vendedor: avise o cliente, em uma frase, que um vendedor da loja vai "
+            "continuar a negociação com ele em instantes. Não prometa desconto nem brinde."
+        ),
+    }
+    return _Saida(conteudo, novo)
 
 
 async def _liberar_desconto(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
-    _texto_obrigatorio(entrada, "motivo")
-    if not estado.proposta_apresentada or pendencias(estado.ficha):
+    motivo = _texto_obrigatorio(entrada, "motivo")
+    pedido = _pedido_cliente(entrada)
+    if estado.handoff_solicitado:
         return _Saida(
-            {
-                "bloqueado": True,
-                "mensagem": (
-                    "Só é possível negociar desconto depois de apresentar a proposta ao "
-                    "cliente (use calcular_proposta com a ficha completa)."
-                ),
-            },
+            {"status": "ok", "mensagem": "O vendedor já foi acionado e vai continuar a conversa."},
             estado,
         )
-    preco = await ctx.config.obter_preco(ctx.loja_id)
-    if preco is None:
-        raise ErroFerramenta("A loja ainda não definiu as regras de preço. Chame o vendedor.")
-
-    liberacao = liberar_proximo(preco.politica, estado.desconto)
-    if isinstance(liberacao, TetoAtingido):
-        proposta = await montar_proposta(ctx, estado)
-        conteudo = {
-            "status": "ok",
-            "teto_atingido": True,
-            "mensagem": (
-                "Não há mais desconto a liberar: este já é o melhor preço que a loja pode fazer."
-            ),
-            "proposta": proposta,
-        }
-        return _Saida(conteudo, replace(estado, ultima_proposta=proposta))
-
-    novo_desconto, total = liberacao
-    novo = replace(estado, desconto=novo_desconto)
+    politica = await _politica(ctx)
+    ficha_no_ar = estado.confirmacao is not None and not pendencias(estado.ficha)
+    if not ficha_no_ar and pedido is PedidoCliente.MAIS_DESCONTO:
+        # antes da ficha nao se negocia: anota, e a primeira ficha ja traz o primeiro degrau
+        return _Saida(
+            {
+                "status": "ok",
+                "negociacao_adiada": True,
+                "mensagem": (
+                    "Diga ao cliente que o desconto é visto quando a ficha do pedido estiver "
+                    "pronta e siga a qualificação com a próxima pergunta. Não cite valor."
+                ),
+            },
+            replace(estado, desconto_pedido_antes=True),
+        )
+    decisao = decidir_pedido_desconto(politica, estado.desconto, pedido)
+    if isinstance(decisao, PassarAoVendedor):
+        return _passar_negociacao(estado, decisao, pedido, motivo, str(politica.teto))
+    novo = replace(estado, desconto=decisao.estado)
     proposta = await montar_proposta(ctx, novo)  # se falhar, nada foi liberado
+    novo = _com_confirmacao(novo, proposta, ctx)
+    ganho = str(decisao.total - estado.desconto.liberado)
     conteudo = {
+        **proposta,
         "status": "ok",
-        "teto_atingido": False,
-        "desconto_liberado_agora": str(total - estado.desconto.liberado),
-        "mensagem": "Desconto liberado e proposta recalculada. Apresente os valores novos.",
-        "proposta": proposta,
+        "desconto_liberado_agora": ganho,
+        "mensagem_ao_cliente": ficha_confirmacao(novo, proposta, desconto_conseguido=ganho),
+        "mensagem": "Desconto liberado e ficha refeita; ela é a resposta deste turno.",
+        "proximo_passo": _AGUARDAR_CONFIRMACAO,
     }
-    return _Saida(conteudo, replace(novo, ultima_proposta=proposta))
+    return _Saida(conteudo, novo)
+
+
+async def _confirmar_pedido(
+    entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
+) -> _Saida:
+    """O cliente aceitou a ficha? So vale com a ficha mostrada numa rodada ANTERIOR, a proposta
+    atual igual a confirmada e uma fala de aceite (que nao seja pergunta nem pedido)."""
+    conf = estado.confirmacao
+    if conf is None or pendencias(estado.ficha):
+        raise ErroFerramenta(
+            "A ficha de confirmação ainda não foi mostrada ao cliente. Chame calcular_proposta, "
+            "deixe o sistema enviar a ficha e pergunte se está tudo certo; só confirme depois "
+            "do 'sim' dele, numa mensagem seguinte."
+        )
+    if estado.pedido_confirmado:
+        return _Saida(
+            {"status": "ok", "pedido_confirmado": True, "mensagem": _APOS_CONFIRMAR}, estado
+        )
+    if conf.get("rodada") == ctx.rodada:
+        raise ErroFerramenta(
+            "O cliente ainda não confirmou: a ficha foi mostrada agora, nesta mesma rodada. "
+            "Pergunte se a ficha está correta e aguarde a resposta dele."
+        )
+    if await montar_proposta(ctx, estado) != conf.get("proposta"):
+        raise ErroFerramenta(
+            "A ficha mudou desde a que o cliente viu. Chame calcular_proposta, deixe o sistema "
+            "enviar a ficha nova e pergunte se está tudo certo."
+        )
+    if ctx.fala_do_cliente is not None and not parece_aceite(ctx.fala_do_cliente):
+        raise ErroFerramenta(
+            "O cliente ainda não confirmou: a fala dele não é um aceite (é pergunta, pedido de "
+            "desconto ou mudança). Responda o que ele disse e pergunte se a ficha está correta."
+        )
+    return _Saida(
+        {"status": "ok", "pedido_confirmado": True, "mensagem": _APOS_CONFIRMAR},
+        replace(estado, pedido_confirmado=True),
+    )
 
 
 async def _fechar_acordo(
     entrada: dict[str, Any], estado: EstadoAtendimento, ctx: ContextoFerramentas
 ) -> _Saida:
-    """O codigo decide se da para fechar: proposta apresentada e vigente, ficha completa e forma
-    aceita pela loja. Grava o acordo e devolve endereco, horarios e (no Pix) a chave da loja."""
+    """O codigo decide se da para fechar: proposta apresentada e vigente, ficha completa, forma
+    aceita pela loja e pedido confirmado pelo cliente. Grava o acordo e devolve endereco, horarios
+    e (no Pix) a chave da loja."""
     if not estado.proposta_apresentada or estado.ultima_proposta is None:
         raise ErroFerramenta(
-            "Ainda não há proposta apresentada ao cliente. Chame calcular_proposta, apresente os "
-            "valores e só feche o acordo depois que ele aceitar."
+            "Ainda não há proposta apresentada ao cliente. Chame calcular_proposta, deixe o "
+            "sistema enviar a ficha e só feche o acordo depois que ele confirmar."
         )
     faltas = pendencias(estado.ficha)
     if faltas:
@@ -1025,8 +1162,14 @@ async def _fechar_acordo(
     if await montar_proposta(ctx, estado) != estado.ultima_proposta:
         raise ErroFerramenta(
             "A proposta mudou desde a última que o cliente viu (a ficha ou o estoque mudou). "
-            "Chame calcular_proposta, apresente os valores novos e só feche o acordo depois que "
-            "ele aceitar."
+            "Chame calcular_proposta, deixe o sistema enviar a ficha nova e só feche o acordo "
+            "depois que ele confirmar."
+        )
+    if not estado.pedido_confirmado:
+        raise ErroFerramenta(
+            "O cliente ainda não confirmou a ficha do pedido. Mostre a ficha (calcular_proposta), "
+            "pergunte se está tudo certo e, só depois do 'sim' dele numa mensagem seguinte, "
+            "chame confirmar_pedido e então fechar_acordo."
         )
     acordo = montar_acordo(
         estado,
@@ -1048,6 +1191,12 @@ async def _chamar_vendedor(
         return _Saida(
             {"status": "ok", "mensagem": "O vendedor já foi acionado e vai continuar a conversa."},
             estado,
+        )
+    if motivo.strip().lower() == MOTIVO_ACORDO_FECHADO and estado.acordo is None:
+        raise ErroFerramenta(
+            "Ainda não há acordo fechado: o motivo 'acordo_fechado' só vale depois de "
+            "fechar_acordo, que exige o 'sim' do cliente à ficha do pedido. Siga o fluxo: "
+            "calcular_proposta, ficha, confirmação do cliente, confirmar_pedido e fechar_acordo."
         )
     novo = replace(estado, handoff_solicitado=True, motivo_handoff=motivo)
     return _Saida(
@@ -1285,22 +1434,45 @@ _DEFINICOES: tuple[DefinicaoFerramenta, ...] = (
     DefinicaoFerramenta(
         nome="liberar_desconto",
         descricao=(
-            "Libera o próximo degrau de desconto e recalcula a proposta. Use SOMENTE quando o "
-            "cliente pedir desconto, e só depois de ter apresentado a proposta; antes disso "
-            "devolve "
-            "bloqueado. Quando o teto da loja é atingido informa que é o melhor preço. Nunca "
-            "prometa desconto por conta própria nem invente valores. Deixe claro ao cliente o "
-            "que é "
-            "desconto negociado e o que é oportunidade única."
+            "Trata o pedido de desconto ou brinde do cliente. Use SOMENTE quando ele pedir. "
+            "Antes da ficha do pedido só anota (diga que vê o desconto quando a ficha estiver "
+            "pronta). Depois da ficha libera o próximo degrau e devolve a ficha refeita "
+            "(mensagem_ao_cliente, enviada pelo sistema); acima do teto, ou para brinde, o "
+            "sistema passa a negociação ao vendedor e você só avisa o cliente. Nunca prometa "
+            "desconto por conta própria nem invente valores."
         ),
-        esquema_json=_objeto({"motivo": _txt("Por que o desconto foi pedido.", nulo=False)}),
+        esquema_json=_objeto(
+            {
+                "pedido": {
+                    "type": "string",
+                    "enum": [p.value for p in PedidoCliente],
+                    "description": (
+                        "mais_desconto: o cliente quer pagar menos; brinde_ou_beneficio: ele "
+                        "quer um brinde, acessório ou outro benefício (isso vai ao vendedor)."
+                    ),
+                },
+                "motivo": _txt("O que o cliente pediu, em poucas palavras.", nulo=False),
+            }
+        ),
+    ),
+    DefinicaoFerramenta(
+        nome="confirmar_pedido",
+        descricao=(
+            "Registra que o cliente CONFIRMOU a ficha do pedido (calcular_proposta devolve a "
+            "ficha e o sistema a envia). Só funciona numa rodada posterior à da ficha, com o "
+            "'sim' do cliente (sim, pode fechar, confirmo...) e a ficha inalterada; pergunta, "
+            "pedido de desconto ou mudança não contam. Depois chame fechar_acordo. Se recusar, "
+            "siga a instrução do erro."
+        ),
+        esquema_json=_objeto({}),
     ),
     DefinicaoFerramenta(
         nome="fechar_acordo",
         descricao=(
-            "Fecha o acordo com o cliente. Chame quando ele aceitar a proposta apresentada e a "
-            "forma de pagamento estiver definida. O sistema só fecha com proposta apresentada, "
-            "ficha completa e forma aceita pela loja (senão devolve o que falta). Devolve a "
+            "Fecha o acordo com o cliente. Chame só depois de confirmar_pedido (o cliente disse "
+            "'sim' à ficha numa mensagem seguinte). O sistema só fecha com a ficha confirmada, "
+            "proposta apresentada, ficha completa e forma aceita pela loja (senão devolve o que "
+            "falta). Devolve a "
             "mensagem_ao_cliente pronta (valor final, endereço, horários e, no Pix, a chave e o "
             "favorecido), que o sistema envia como a resposta do turno; depois chame "
             f"chamar_vendedor com motivo '{MOTIVO_ACORDO_FECHADO}'. Nunca invente endereço, "
@@ -1336,6 +1508,25 @@ def _sem_acordo_velho(antes: EstadoAtendimento, depois: EstadoAtendimento) -> Es
     return replace(depois, acordo=None) if mudou else depois
 
 
+def _sem_confirmacao_velha(
+    antes: EstadoAtendimento, depois: EstadoAtendimento
+) -> EstadoAtendimento:
+    """Mudou a ficha, o desconto ou a proposta sem refazer a ficha de confirmacao? O aceite cai."""
+    if (
+        depois.confirmacao is not antes.confirmacao
+        or depois.pedido_confirmado != antes.pedido_confirmado
+    ):
+        return depois  # a propria ferramenta mexeu na confirmacao
+    if depois.confirmacao is None and not depois.pedido_confirmado:
+        return depois
+    mudou = (
+        depois.ficha != antes.ficha
+        or depois.desconto != antes.desconto
+        or depois.ultima_proposta != antes.ultima_proposta
+    )
+    return replace(depois, confirmacao=None, pedido_confirmado=False) if mudou else depois
+
+
 def _resumir(conteudo: dict[str, Any]) -> str:
     texto = json.dumps(conteudo, ensure_ascii=False)
     return texto if len(texto) <= _RESUMO_MAX else texto[: _RESUMO_MAX - 1] + "…"
@@ -1353,6 +1544,7 @@ class CatalogoFerramentas:
             "registrar_leitura_imagem": _registrar_leitura_imagem,
             "registrar_compra": _registrar_compra,
             "calcular_proposta": _calcular_proposta,
+            "confirmar_pedido": _confirmar_pedido,
             "liberar_desconto": _liberar_desconto,
             "fechar_acordo": _fechar_acordo,
             "chamar_vendedor": _chamar_vendedor,
@@ -1410,4 +1602,5 @@ class CatalogoFerramentas:
             )
         except LojaNaoEncontrada:
             return {"erro": "Loja não encontrada. Chame o vendedor."}, estado, True
-        return conteudo, _sem_acordo_velho(estado, saida.estado), False
+        novo = _sem_confirmacao_velha(estado, saida.estado)
+        return conteudo, _sem_acordo_velho(estado, novo), False

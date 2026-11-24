@@ -83,8 +83,9 @@ async def test_trocar_o_aparelho_depois_da_proposta_volta_a_bloquear() -> None:
     assert r.conteudo["bloqueado"] is True
     sem_valores(r.conteudo)
     d = await amb.rodar("liberar_desconto", {"motivo": "x"}, estado)
-    assert d.conteudo["bloqueado"] is True
+    assert d.conteudo["negociacao_adiada"] is True  # ficha incompleta: nao negocia agora
     assert d.estado.desconto.liberado == estado.desconto.liberado
+    sem_valores(d.conteudo)
 
 
 @settings(max_examples=60, deadline=None, suppress_health_check=[HealthCheck.too_slow])
@@ -143,7 +144,7 @@ async def test_oportunidade_unica_aparece_separada_do_desconto_negociado() -> No
     assert "por fora" in json.dumps(r.conteudo, ensure_ascii=False).lower()
     # depois de um degrau, os dois aparecem separados e somam
     r2 = await amb.rodar("liberar_desconto", {"motivo": "pediu"}, r.estado)
-    d2 = r2.conteudo["proposta"]["desconto"]
+    d2 = r2.conteudo["desconto"]
     assert d2["negociado"] == "R$ 50,00"
     assert d2["oportunidade_unica"] == "R$ 100,00"
     assert d2["total"] == "R$ 150,00"

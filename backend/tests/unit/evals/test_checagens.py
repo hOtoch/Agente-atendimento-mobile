@@ -316,3 +316,22 @@ def test_valores_esperados_ditos() -> None:
     assert ck.valores_esperados_ditos(t, ("R$ 2.310,00",)).passou
     r = ck.valores_esperados_ditos(t, ("R$ 2.500,00",))
     assert not r.passou and "2.500" in r.motivo
+
+
+def test_acordo_nao_fechado_pega_fechamento_sem_confirmacao() -> None:
+    from evals.checagens import acordo_nao_fechado
+
+    sem = transcricao(cli("quanto fica em 10x?"), ag("Confere seu pedido:"))
+    assert acordo_nao_fechado(sem).passou
+    fechou = transcricao(ferr("fechar_acordo", {"acordo_fechado": True}))
+    assert not acordo_nao_fechado(fechou).passou
+
+
+def test_motivo_handoff_esperado() -> None:
+    from dataclasses import replace
+
+    from evals.checagens import motivo_handoff_esperado
+
+    t = replace(transcricao(handoff=True), motivo_handoff="negociacao")
+    assert motivo_handoff_esperado(t, "negociacao").passou
+    assert not motivo_handoff_esperado(t, "acordo_fechado").passou

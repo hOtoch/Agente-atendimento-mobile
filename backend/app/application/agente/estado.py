@@ -29,6 +29,15 @@ class EstadoAtendimento:
     """Snapshot do acordo fechado por `fechar_acordo` (None ate a IA fechar; cai se algo muda)."""
     troca_perguntada: bool = False
     """A IA ja perguntou ao cliente se ele tem aparelho para a troca (resposta curta vale)."""
+    confirmacao: dict[str, Any] | None = None
+    """Ficha de confirmacao mostrada ao cliente: `{"proposta": ..., "rodada": id da rodada}`.
+    Cai quando a ficha, o desconto ou a proposta mudam."""
+    pedido_confirmado: bool = False
+    """O cliente aceitou a ficha numa rodada seguinte (`confirmar_pedido`); libera o fechamento."""
+    desconto_pedido_antes: bool = False
+    """O cliente pediu desconto antes da ficha: a primeira ficha ja traz o primeiro degrau."""
+    negociacao: dict[str, Any] | None = None
+    """Por que a negociacao passou ao vendedor: motivo, pedido do cliente, liberado e teto."""
 
     def para_dict(self) -> dict[str, Any]:
         return {
@@ -41,6 +50,10 @@ class EstadoAtendimento:
             "ultima_proposta": self.ultima_proposta,
             "acordo": self.acordo,
             "troca_perguntada": self.troca_perguntada,
+            "confirmacao": self.confirmacao,
+            "pedido_confirmado": self.pedido_confirmado,
+            "desconto_pedido_antes": self.desconto_pedido_antes,
+            "negociacao": self.negociacao,
         }
 
     @classmethod
@@ -59,6 +72,10 @@ class EstadoAtendimento:
             ultima_proposta=dados.get("ultima_proposta"),
             acordo=dados.get("acordo"),
             troca_perguntada=bool(dados.get("troca_perguntada", False)),
+            confirmacao=dados.get("confirmacao"),
+            pedido_confirmado=bool(dados.get("pedido_confirmado", False)),
+            desconto_pedido_antes=bool(dados.get("desconto_pedido_antes", False)),
+            negociacao=dados.get("negociacao"),
         )
 
 

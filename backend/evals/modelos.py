@@ -43,6 +43,7 @@ class Transcricao:
     eventos: tuple[Evento, ...]
     etapa_final: str
     handoff: bool
+    motivo_handoff: str | None = None
 
     @property
     def mensagens_agente(self) -> list[MensagemAgente]:
@@ -80,7 +81,9 @@ class Expectativas:
     """Valores 'R$ x' que o agente precisa dizer em algum momento."""
     acordo_fechado: bool | None = None
     """True: o agente tem de fechar o acordo (fechar_acordo ok), dizer o endereco devolvido e so
-    depois chamar o vendedor."""
+    depois chamar o vendedor. False: nao pode fechar acordo nesta conversa."""
+    motivo_handoff: str | None = None
+    """Motivo gravado no handoff (ex.: `negociacao`)."""
 
 
 @dataclass(frozen=True, slots=True)

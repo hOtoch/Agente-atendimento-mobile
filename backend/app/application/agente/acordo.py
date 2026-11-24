@@ -15,6 +15,7 @@ from typing import Any
 from app.application.agente.estado import EstadoAtendimento, descrever_troca
 from app.application.config.modelos import PagamentoLoja, PerfilLoja
 from app.domain.ficha import TipoPagamento
+from app.domain.valores import Dinheiro
 
 MOTIVO_ACORDO_FECHADO = "acordo_fechado"
 
@@ -190,21 +191,29 @@ def _aparelho(acordo: Mapping[str, Any]) -> str:
     return f"{texto}, cor {str(ap['cor']).lower()}" if ap.get("cor") else texto
 
 
-def _valores(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
+def _valores(acordo: Mapping[str, Any], tipo: TipoPagamento, desconto: str | None = None) -> str:
     """Primeiro o que o usado vale na troca, depois o valor final (ja com a troca descontada)."""
     troca = acordo.get("troca") or {}
     usado = troca.get("aparelho_usado")
     valor = _valor_na_forma(acordo, tipo)
+    linha_desconto = [] if desconto is None else [f"Desconto: {desconto}"]
     if troca.get("status") == "avaliada":
-        return (
-            f"Seu {usado} na troca: {troca['valor']}\nValor final, já descontada a troca: {valor}"
+        return "\n".join(
+            [
+                f"Seu {usado} na troca: {troca['valor']}",
+                *linha_desconto,
+                f"Valor final, já descontada a troca: {valor}",
+            ]
         )
     if troca.get("status") == "avaliacao_na_loja":
-        return (
-            f"Seu {usado} será avaliado na loja; o valor abaixo não inclui a troca.\n"
-            f"Valor final: {valor}"
+        return "\n".join(
+            [
+                f"Seu {usado} será avaliado na loja; o valor abaixo não inclui a troca.",
+                *linha_desconto,
+                f"Valor final: {valor}",
+            ]
         )
-    return f"Valor final: {valor}"
+    return "\n".join([*linha_desconto, f"Valor final: {valor}"])
 
 
 OBSERVACAO_PRE_AVALIACAO = (
@@ -250,6 +259,46 @@ def mensagem_fechamento(acordo: Mapping[str, Any], tipo: TipoPagamento) -> str:
         "Obrigado pela preferência! Um vendedor vai continuar o atendimento com você na loja."
     )
     paragrafos.append(OBSERVACAO_PRE_AVALIACAO)
+    return "\n\n".join(paragrafos)
+
+
+def ficha_confirmacao(
+    estado: EstadoAtendimento,
+    proposta: Mapping[str, Any],
+    *,
+    desconto_conseguido: str | None = None,
+) -> str:
+    """A ficha que o cliente confere ANTES de fechar: aparelho, troca, desconto, valor final.
+
+    Montada pelo codigo, no mesmo estilo de `mensagem_fechamento`: so a forma de pagamento
+    escolhida (nunca as alternativas) e nenhum valor fora da proposta. `desconto_conseguido` e o
+    valor liberado agora (primeiro degrau pedido antes da ficha, ou um pedido na negociacao).
+    """
+    ficha = estado.ficha
+    tipo = ficha.pagamento.tipo
+    assert tipo is not None, "ficha completa tem forma de pagamento"
+    troca = dict(proposta.get("troca") or {})
+    troca["aparelho_usado"] = descrever_troca(estado) if ficha.tem_troca else None
+    visao = {
+        "aparelho": proposta.get("aparelho") or {},
+        "forma_escolhida": proposta.get("forma_escolhida") or {},
+        "troca": troca,
+        "pagamento": {
+            "bandeira": None if ficha.pagamento.bandeira is None else ficha.pagamento.bandeira.value
+        },
+    }
+    desconto = (proposta.get("desconto") or {}).get("total")
+    tem_desconto = isinstance(desconto, str) and desconto != str(Dinheiro.zero())
+    paragrafos = ["Confere seu pedido:"]
+    if desconto_conseguido is not None:
+        paragrafos.append(f"Consegui um desconto de {desconto_conseguido} para você.")
+    paragrafos.append(f"{_aparelho(visao)}.")
+    paragrafos.append(_valores(visao, tipo, desconto if tem_desconto else None))
+    data = ficha.data_prevista_compra
+    if data is not None:
+        paragrafos.append(f"Data prevista da compra: {data.strftime('%d/%m/%Y')}")
+    paragrafos.append(OBSERVACAO_PRE_AVALIACAO)
+    paragrafos.append("Está tudo certo para eu confirmar seu pedido?")
     return "\n\n".join(paragrafos)
 
 
