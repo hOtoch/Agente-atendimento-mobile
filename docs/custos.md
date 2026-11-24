@@ -58,7 +58,7 @@ o total é uma faixa por causa da infra.
 - **Infra com 1 mil leads/mês:** US$ 20,00 a US$ 50,00 por mês (VPS, disco e backup; `context.md` §6: 2 vCPU/4 GB atendem até ~10 mil leads/mês).
 - **Infra com 10 mil leads/mês:** US$ 40,00 a US$ 100,00 por mês (VPS, disco e backup; `context.md` §6: 2 vCPU/4 GB atendem até ~10 mil leads/mês).
 - **Black Friday:** 4 vCPU/8 GB, Postgres gerenciado e 2+ workers custam mais e não estão nessas faixas.
-- **Fora da conta:** WhatsApp (Evolution self-hosted não cobra por mensagem; a API oficial cobra templates de follow-up), domínio, monitoramento e mão de obra.
+- **Fora da conta:** WhatsApp (a Evolution self-hosted não cobra por mensagem; o custo da API oficial da Meta, por mensagem entregue, e o plano para sair da Evolution estão em [whatsapp-oficial.md](whatsapp-oficial.md)), domínio, monitoramento e mão de obra.
 - **Amostra:** a média vem do eval (conversas roteirizadas); conversas reais mais curtas ou mais longas mudam o custo na mesma proporção. Use `--banco` para recalcular com conversas reais.
 
 ## Como regenerar
