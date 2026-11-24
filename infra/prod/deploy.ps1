@@ -46,6 +46,18 @@ function Get-Saida {
 
 if (-not (Test-Path $Chave)) { throw "chave SSH nao encontrada: $Chave" }
 
+Write-Passo "conexao com $Servidor"
+# Antes do build: falha em segundos se a chave ou o servidor tiverem problema.
+$ErrorActionPreference = 'Continue'
+& ssh @SshOpts $Servidor 'true'
+$codigo = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($codigo -ne 0) {
+  throw ("sem acesso SSH a $Servidor (codigo $codigo). Se aparecer 'bad permissions', a chave privada " +
+    "precisa ser lida so pelo seu usuario: icacls `"$Chave`" /inheritance:r /grant:r `"$($env:USERNAME):(R,W)`"")
+}
+Write-Host 'ok'
+
 Write-Passo "commit a enviar"
 Invoke-Nativo git @('-C', $Raiz, 'fetch', 'origin', '--quiet')
 $Sha = (Get-Saida git @('-C', $Raiz, 'rev-parse', '--verify', "$Ref^{commit}")).Trim()
