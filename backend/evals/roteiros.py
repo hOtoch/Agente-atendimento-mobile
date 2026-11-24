@@ -128,6 +128,15 @@ ROTEIROS_FAKE: dict[str, list[Roteiro]] = {
         chama("calcular_proposta"),
         fala("Temos o iPhone 16 128GB em Preto e Ultramarino. Qual cor você prefere?"),
     ],
+    "seminovo_sem_bateria": [
+        chama("registrar_interesse", modelo="iPhone 12", capacidade="128GB", cor="Preto"),
+        chama("consultar_estoque", modelo="iPhone 12", capacidade="128GB", cor="Preto"),
+        fala(
+            "Tenho o iPhone 12 128GB Preto seminovo, mas a bateria dele não está cadastrada: "
+            "o vendedor confirma a saúde da bateria na loja. Você tem um aparelho para dar "
+            "na troca?"
+        ),
+    ],
     "sem_troca_pix": _pix_hoje(),
     "desconto_tres_vezes": [
         *_pix_hoje(),

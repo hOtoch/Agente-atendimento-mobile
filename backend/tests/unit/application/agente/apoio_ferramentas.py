@@ -57,6 +57,8 @@ ITENS_PADRAO = [
     item("IP15-128-PRETO", "iPhone 15", 128, "Preto", 4199),
     item("IP13-128-AZUL", "iPhone 13", 128, "Azul", 2399, condicao=Condicao.SEMINOVO, bateria=88),
     item("IP14-256-ROXO", "iPhone 14", 256, "Roxo", 3399, qtd=0, condicao=Condicao.SEMINOVO),
+    # seminovo disponivel SEM bateria cadastrada (o dado nao veio do estoque)
+    item("IP12-128-PRETO", "iPhone 12", 128, "Preto", 1999, qtd=1, condicao=Condicao.SEMINOVO),
 ]
 
 

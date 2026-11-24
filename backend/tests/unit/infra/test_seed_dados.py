@@ -144,10 +144,12 @@ async def test_estoque_com_seminovos_e_quantidade_zero() -> None:
     assert 20 <= len(estoque) <= 35
     assert {e.condicao for e in estoque} == {"novo", "seminovo"}
     assert any(e.quantidade == 0 for e in estoque)
+    assert any(e.condicao == "seminovo" and e.bateria_pct is None for e in estoque)
     assert len({e.sku for e in estoque}) == len(estoque)
     for e in estoque:
         if e.condicao == "seminovo":
-            assert e.bateria_pct is not None
+            if e.bateria_pct is None:  # ao menos um seminovo sem bateria cadastrada, de proposito
+                continue
             assert 85 <= e.bateria_pct <= 100
 
 

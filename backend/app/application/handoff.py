@@ -267,6 +267,16 @@ def _decimal(valor: object) -> Decimal | None:
         return None
 
 
+def _aparelho_com_aviso_de_bateria(texto: str | None, aparelho: dict[str, Any]) -> str | None:
+    """Seminovo confirmado sem bateria cadastrada: o vendedor confirma a saude na loja."""
+    if texto is None:
+        return None
+    sem_dado = "bateria_pct" in aparelho and aparelho["bateria_pct"] is None
+    if aparelho.get("condicao") == "seminovo" and sem_dado:
+        return f"{texto} (bateria não cadastrada — confirmar na loja)"
+    return texto
+
+
 def _condicao_do_usado(estado: EstadoAtendimento) -> str | None:
     """Estado do usado em poucas palavras ("tela danificada, bateria 82%"); None sem dados."""
     u = estado.ficha.usado
@@ -396,7 +406,7 @@ def montar_resumo_estruturado(
     acordo = _acordo_do_estado(estado)
     return ResumoHandoff(
         motivo=_motivo_legivel(motivo, estado, faltas, acordo),
-        aparelho_desejado=aparelho_desejado(estado),
+        aparelho_desejado=_aparelho_com_aviso_de_bateria(aparelho_desejado(estado), aparelho),
         troca=descrever_troca(estado),
         valor_troca=valor_troca,
         proposta=forma.get("rotulo"),

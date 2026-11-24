@@ -631,3 +631,33 @@ def test_resumo_antigo_sem_acordo_continua_valido() -> None:
     dados = r.para_dict()
     dados.pop("acordo")
     assert ResumoHandoff.de_dict(dados).acordo is None
+
+
+def _estado_com_aparelho(aparelho: dict[str, object]) -> EstadoAtendimento:
+    return replace(
+        _estado_rico(),
+        ultima_proposta={
+            "aparelho": aparelho,
+            "preco_aparelho": "1999.00",
+            "troca": {"status": "avaliada", "valor": "500.00"},
+            "forma_escolhida": {"rotulo": "Pix ou dinheiro à vista", "valor_a_vista": "1499.00"},
+        },
+    )
+
+
+def test_resumo_seminovo_sem_bateria_manda_confirmar_na_loja() -> None:
+    estado = _estado_com_aparelho(
+        {"modelo": "iPhone 16", "condicao": "seminovo", "bateria_pct": None}
+    )
+    r = montar_resumo_estruturado(estado, motivo="x", agora=AGORA)
+    assert r.aparelho_desejado == "iPhone 16 128GB (bateria não cadastrada — confirmar na loja)"
+
+
+def test_resumo_seminovo_com_bateria_e_novo_nao_trazem_o_aviso() -> None:
+    for aparelho in (
+        {"modelo": "iPhone 16", "condicao": "seminovo", "bateria_pct": 91},
+        {"modelo": "iPhone 16", "condicao": "novo"},
+        {"modelo": "iPhone 16", "condicao": "seminovo"},  # proposta antiga, sem o campo
+    ):
+        r = montar_resumo_estruturado(_estado_com_aparelho(aparelho), motivo="x", agora=AGORA)
+        assert r.aparelho_desejado == "iPhone 16 128GB"

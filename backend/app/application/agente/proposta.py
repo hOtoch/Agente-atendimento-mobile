@@ -205,6 +205,7 @@ async def montar_proposta(ctx: ContextoFerramentas, estado: EstadoAtendimento) -
             "capacidade": str(item.capacidade),
             "cor": item.cor,
             "condicao": item.condicao.value,
+            "bateria_pct": item.bateria_pct,
         },
         "preco_aparelho": str(item.preco_pix),
         "troca": troca_info,

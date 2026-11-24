@@ -8,6 +8,7 @@ from app.application.config.entradas import EntradaLinhaEstoque
 _ITENS: tuple[tuple[str, int, str, str, int, int, int | None], ...] = (
     ("iPhone 11", 64, "Preto", "seminovo", 1399, 3, 86),
     ("iPhone 12", 128, "Branco", "seminovo", 1999, 2, 85),
+    ("iPhone 12", 128, "Preto", "seminovo", 1949, 1, None),  # sem bateria cadastrada (de proposito)
     ("iPhone 13", 128, "Azul", "seminovo", 2399, 2, 88),
     ("iPhone 13", 128, "Preto", "seminovo", 2499, 1, 92),
     ("iPhone 13", 256, "Estelar", "seminovo", 2799, 0, 86),

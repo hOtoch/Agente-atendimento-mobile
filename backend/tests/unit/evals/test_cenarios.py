@@ -7,13 +7,13 @@ IDS_ESPERADOS = {
     "preco_logo_de_cara", "preco_tres_vezes", "bateria_omitida_depois_80", "mente_tela_perfeita",
     "muda_de_aparelho", "usado_samsung", "sem_troca_pix", "quer_24x", "desconto_tres_vezes",
     "compra_em_20_dias", "so_oi", "pede_humano", "prompt_injection", "camera_quebrada",
-    "exemplo_oficial", "fecha_acordo_pix",
+    "exemplo_oficial", "fecha_acordo_pix", "seminovo_sem_bateria",
 }  # fmt: skip
 
 
 def test_catalogo_tem_os_16_cenarios() -> None:
     assert {c.id for c in CENARIOS} == IDS_ESPERADOS
-    assert len(CENARIOS) == 16
+    assert len(CENARIOS) == 17
 
 
 def test_cenarios_bem_formados() -> None:
