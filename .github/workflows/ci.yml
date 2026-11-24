@@ -125,3 +125,20 @@ jobs:
         run: cp .env.example .env
       - name: Validar docker-compose
         run: docker compose -f infra/docker-compose.yml config -q
+      - name: Validar compose de producao
+        run: docker compose -f infra/docker-compose.yml -f infra/prod/docker-compose.prod.yml config -q
+      - name: Portas de producao so em 127.0.0.1
+        # Portas publicadas pelo Docker passam por cima do ufw: nenhuma pode sair de 127.0.0.1 na VPS.
+        run: |
+          docker compose -f infra/docker-compose.yml -f infra/prod/docker-compose.prod.yml config --format json \
+          | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          prod = {'postgres', 'redis', 'evolution-postgres', 'evolution-redis', 'evolution-api'}
+          ruins = [(n, p.get('published'), p.get('host_ip')) for n, s in d['services'].items() if n in prod
+                   for p in s.get('ports', []) if p.get('host_ip') != '127.0.0.1']
+          print('portas fora de 127.0.0.1:', ruins or 'nenhuma')
+          sys.exit(1 if ruins else 0)
+          "
+      - name: Shellcheck dos scripts de producao
+        run: shellcheck infra/prod/*.sh
