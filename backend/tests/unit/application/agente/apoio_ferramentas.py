@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -132,9 +132,29 @@ async def criar_ambiente(
         estoque = PlanilhaAdapter(fonte)
     lead_id = uuid4()
     ctx = ContextoFerramentas(
-        loja_id=loja_id, lead_id=lead_id, estoque=estoque, config=casos, hoje=hoje
+        loja_id=loja_id,
+        lead_id=lead_id,
+        estoque=estoque,
+        config=casos,
+        hoje=hoje,
+        rodada="rodada-1",
     )
     return Ambiente(loja_id, lead_id, casos, CatalogoFerramentas(), ctx)
+
+
+def na_rodada(amb: Ambiente, rodada: str, fala: str | None = None) -> Ambiente:
+    """O mesmo ambiente, mas rodando em outra rodada (outra execucao do orquestrador)."""
+    return replace(amb, ctx=replace(amb.ctx, rodada=rodada, fala_do_cliente=fala))
+
+
+async def confirmar(
+    amb: Ambiente, estado: EstadoAtendimento, fala: str = "sim, pode fechar"
+) -> EstadoAtendimento:
+    """O cliente aceita a ficha na rodada seguinte: `confirmar_pedido` precisa dar certo."""
+    r = await na_rodada(amb, "rodada-confirma", fala).rodar("confirmar_pedido", {}, estado)
+    assert not r.erro, r.conteudo
+    assert r.estado.pedido_confirmado
+    return r.estado
 
 
 def sem_valores(conteudo: dict[str, Any]) -> None:

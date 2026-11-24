@@ -15,6 +15,7 @@ NOMES = {
     "registrar_leitura_imagem",
     "calcular_proposta",
     "liberar_desconto",
+    "confirmar_pedido",
     "fechar_acordo",
     "chamar_vendedor",
 }
@@ -83,6 +84,7 @@ def test_opcionais_aceitam_null() -> None:
         assert _aceita_null(prop), campo
     assert por_nome["calcular_proposta"] == {}
     assert por_nome["fechar_acordo"] == {}
+    assert por_nome["confirmar_pedido"] == {}
 
 
 def test_assinaturas_combinadas() -> None:
@@ -124,7 +126,7 @@ def test_assinaturas_combinadas() -> None:
         "modelo_provavel",
         "confianca",
     }
-    assert props["liberar_desconto"] == {"motivo"}
+    assert props["liberar_desconto"] == {"pedido", "motivo"}
     assert props["chamar_vendedor"] == {"motivo"}
 
 

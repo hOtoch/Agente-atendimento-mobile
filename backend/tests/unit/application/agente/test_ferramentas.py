@@ -923,20 +923,21 @@ async def _com_proposta(amb):  # type: ignore[no-untyped-def]
     return estado
 
 
-async def test_proposta_com_pagamento_escolhido_manda_fechar_e_enviar_o_endereco() -> None:
+async def test_proposta_manda_aguardar_a_confirmacao_da_ficha_e_nao_fechar() -> None:
     amb = await criar_ambiente()
     estado = await _com_proposta(amb)
     r = await amb.rodar("calcular_proposta", {}, estado)
     passo = r.conteudo["proximo_passo"]
-    assert "fechar_acordo" in passo
-    assert "endereço" in passo
-    assert "desconto" in passo  # diz para NAO oferecer desconto
+    assert "Aguarde o cliente confirmar a ficha" in passo
+    assert "liberar_desconto" in passo
+    assert r.conteudo["mensagem_ao_cliente"].startswith("Confere seu pedido:")
 
 
-async def test_liberar_desconto_antes_da_proposta_e_bloqueado() -> None:
+async def test_liberar_desconto_antes_da_proposta_so_anota_o_pedido() -> None:
     amb = await criar_ambiente()
     r = await amb.rodar("liberar_desconto", {"motivo": "cliente pediu desconto"}, VAZIO)
-    assert r.conteudo["bloqueado"] is True
+    assert r.conteudo["negociacao_adiada"] is True
+    assert r.estado.desconto_pedido_antes
     assert r.estado.desconto == EstadoDesconto()
     sem_valores(r.conteudo)
 
@@ -947,9 +948,11 @@ async def test_liberar_desconto_libera_degrau_e_recalcula() -> None:
     r = await amb.rodar("liberar_desconto", {"motivo": "pediu desconto"}, estado)
     assert not r.erro
     assert r.estado.desconto.liberado == Dinheiro(Decimal(50))
-    assert r.conteudo["proposta"]["desconto"]["negociado"] == "R$ 50,00"
-    assert r.conteudo["proposta"]["bloqueado"] is False
-    assert r.estado.ultima_proposta == r.conteudo["proposta"]
+    assert r.conteudo["desconto"]["negociado"] == "R$ 50,00"
+    assert r.conteudo["bloqueado"] is False
+    assert "Desconto: R$ 50,00" in r.conteudo["mensagem_ao_cliente"]
+    assert r.estado.ultima_proposta is not None
+    assert r.estado.ultima_proposta["desconto"] == r.conteudo["desconto"]
 
 
 async def test_desconto_nunca_passa_do_teto() -> None:
@@ -964,8 +967,9 @@ async def test_desconto_nunca_passa_do_teto() -> None:
         assert estado.desconto.liberado <= teto
     assert ultimo is not None
     assert estado.desconto.liberado == teto
-    assert ultimo.conteudo["teto_atingido"] is True
-    assert "melhor" in json.dumps(ultimo.conteudo, ensure_ascii=False).lower()
+    # acima do teto a IA nao negocia mais: passa ao vendedor
+    assert estado.handoff_solicitado and estado.motivo_handoff == "negociacao"
+    assert "vendedor" in json.dumps(ultimo.conteudo, ensure_ascii=False).lower()
 
 
 async def test_liberar_desconto_se_estoque_cai_nao_libera() -> None:

@@ -75,15 +75,6 @@ def apresenta_proposta(mensagens: list[MensagemLLM]) -> RespostaRoteirizada:
     return fala(" ".join(partes))
 
 
-def apresenta_desconto(mensagens: list[MensagemLLM]) -> RespostaRoteirizada:
-    ultimo = _resultados(mensagens)[-1]
-    p = ultimo["proposta"]
-    if ultimo.get("teto_atingido"):
-        return fala(f"Esse já é o melhor preço que consigo: {_forma(p)}. Posso fechar assim?")
-    ganho = ultimo["desconto_liberado_agora"]
-    return fala(f"Consegui mais {ganho} de desconto: ficou {_forma(p)}. Posso fechar assim?")
-
-
 def repassa_acordo(mensagens: list[MensagemLLM]) -> RespostaRoteirizada:
     """Como um agente bem comportado: repassa o endereco, o horario e o Pix que a ferramenta deu."""
     acordo = next(d for d in reversed(_resultados(mensagens)) if d.get("acordo_fechado"))
@@ -96,8 +87,9 @@ def repassa_acordo(mensagens: list[MensagemLLM]) -> RespostaRoteirizada:
 
 
 def fecha_acordo() -> list[Roteiro]:
-    """Cliente aceitou: fechar_acordo, depois o vendedor com o acordo, repassando os dados."""
+    """Cliente confirmou a ficha: confirmar_pedido, fechar_acordo, o vendedor com o acordo."""
     return [
+        chama("confirmar_pedido"),
         chama("fechar_acordo"),
         chama("chamar_vendedor", motivo="acordo_fechado"),
         repassa_acordo,
@@ -113,6 +105,20 @@ def _pix_hoje() -> list[Roteiro]:
         chama("registrar_compra", data_prevista="2026-11-20", tipo_pagamento="pix"),
         chama("calcular_proposta"),
         apresenta_proposta,
+    ]
+
+
+def _escada_de_desconto() -> list[Roteiro]:
+    """Ficha, depois 3 pedidos de desconto: R$ 50, R$ 100 e, acima do teto, o vendedor."""
+    pedido = {"pedido": "mais_desconto"}
+    return [
+        *_pix_hoje(),
+        chama("liberar_desconto", motivo="cliente pediu desconto", **pedido),
+        fala("Consegui um desconto para você, confere a ficha."),
+        chama("liberar_desconto", motivo="cliente pediu mais desconto", **pedido),
+        fala("Consegui mais um pouco, confere a ficha."),
+        chama("liberar_desconto", motivo="cliente pediu desconto de novo", **pedido),
+        fala("Vou chamar um vendedor para continuar a negociação com você."),
     ]
 
 
@@ -138,14 +144,27 @@ ROTEIROS_FAKE: dict[str, list[Roteiro]] = {
         ),
     ],
     "sem_troca_pix": _pix_hoje(),
-    "desconto_tres_vezes": [
+    "desconto_tres_vezes": _escada_de_desconto(),
+    "desconto_escada": _escada_de_desconto(),
+    "pede_brinde": [
         *_pix_hoje(),
-        chama("liberar_desconto", motivo="cliente pediu desconto"),
-        apresenta_desconto,
-        chama("liberar_desconto", motivo="cliente pediu mais desconto"),
-        apresenta_desconto,
-        chama("liberar_desconto", motivo="cliente pediu desconto de novo"),
-        apresenta_desconto,
+        chama("liberar_desconto", pedido="brinde_ou_beneficio", motivo="quer uma capinha"),
+        fala("Vou chamar um vendedor para ver esse brinde com você."),
+    ],
+    "pergunta_parcelas_nao_fecha": [
+        chama("registrar_interesse", modelo="iPhone 15", capacidade="256GB", cor=None),
+        chama("consultar_estoque", modelo="iPhone 15", capacidade="256GB", cor=None),
+        chama("registrar_usado", tem_troca=False),
+        chama(
+            "registrar_compra",
+            data_prevista="2026-11-20",
+            tipo_pagamento="credito",
+            bandeira="Mastercard",
+        ),
+        fala("Em quantas parcelas você quer pagar?"),
+        chama("registrar_compra", parcelas=10),
+        chama("calcular_proposta"),
+        apresenta_proposta,
     ],
     "fecha_acordo_pix": [*_pix_hoje(), *fecha_acordo()],
     "exemplo_oficial": [
@@ -183,6 +202,9 @@ ROTEIROS_FAKE: dict[str, list[Roteiro]] = {
     ],
     "controle_handoff_sem_acordo": [
         *_pix_hoje(),
+        # pula a confirmacao da ficha: o codigo recusa o fechamento, e o agente chama o
+        # vendedor mesmo assim, sem acordo
+        chama("fechar_acordo"),
         chama("chamar_vendedor", motivo="cliente quer fechar"),
         fala("Perfeito! Um vendedor da loja vai continuar o atendimento em instantes."),
     ],

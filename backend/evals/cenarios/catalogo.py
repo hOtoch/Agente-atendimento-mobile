@@ -276,6 +276,54 @@ CENARIOS: tuple[Cenario, ...] = (
         sabe={"desejado": "iPhone 15 256GB", "troca": "não", "data": "hoje", "pagamento": "Pix"},
         expectativas=Expectativas(etapa_final="com_o_vendedor", handoff=True, acordo_fechado=True),
     ),
+    Cenario(
+        id="pergunta_parcelas_nao_fecha",
+        titulo="Pergunta 'quanto fica em 10x?' e a IA não fecha o acordo",
+        persona="Cliente que só quer simular o parcelamento antes de decidir.",
+        objetivo=(
+            "Comprar o iPhone 15 256GB no crédito Mastercard, sem troca, e perguntar quanto "
+            "fica em 10x. Só quer ver o valor, não decidiu fechar ainda."
+        ),
+        roteiro=(
+            "quero um iphone 15 de 256gb, não tenho troca, crédito mastercard, compro hoje",
+            "quanto fica em 10x?",
+        ),
+        sabe={"desejado": "iPhone 15 256GB", "troca": "não", "pagamento": "crédito Mastercard"},
+        # a IA mostra a ficha de confirmacao e para: sem acordo e sem handoff nesse turno
+        expectativas=Expectativas(etapa_final=_QUALIFICADO, handoff=False, acordo_fechado=False),
+    ),
+    Cenario(
+        id="desconto_escada",
+        titulo="Pede desconto até acabar a escada (R$ 50, R$ 100, vendedor)",
+        persona="Cliente que barganha sem parar.",
+        objetivo="Conseguir o maior desconto possível no iPhone 15 256GB à vista, depois da ficha.",
+        roteiro=(
+            "quero um iphone 15 de 256gb",
+            "não tenho troca, vou pagar no Pix, compro hoje",
+            "dá um desconto?",
+            "só isso? faz mais um descontinho",
+            "ainda quero mais",
+        ),
+        sabe={"desejado": "iPhone 15 256GB", "troca": "não", "pagamento": "Pix, compra hoje"},
+        expectativas=Expectativas(
+            etapa_final="com_o_vendedor", handoff=True, motivo_handoff="negociacao"
+        ),
+    ),
+    Cenario(
+        id="pede_brinde",
+        titulo="Pede um brinde (vai ao vendedor)",
+        persona="Cliente que quer levar um brinde junto.",
+        objetivo="Comprar o iPhone 15 256GB no Pix e conseguir uma capinha de brinde.",
+        roteiro=(
+            "quero um iphone 15 de 256gb",
+            "não tenho troca, vou pagar no Pix, compro hoje",
+            "se eu levar ganho uma capinha de brinde?",
+        ),
+        sabe={"desejado": "iPhone 15 256GB", "troca": "não", "pagamento": "Pix, compra hoje"},
+        expectativas=Expectativas(
+            etapa_final="com_o_vendedor", handoff=True, motivo_handoff="negociacao"
+        ),
+    ),
 )
 
 CONTROLES: tuple[Cenario, ...] = (

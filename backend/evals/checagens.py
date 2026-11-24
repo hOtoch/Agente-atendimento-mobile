@@ -282,6 +282,22 @@ def acordo_antes_do_handoff(t: Transcricao) -> Checagem:
     return Checagem(nome, True)
 
 
+def acordo_nao_fechado(t: Transcricao) -> Checagem:
+    """Nenhum fechar_acordo aceito: a conversa so mostrou a ficha (simulacao, negociacao)."""
+    nome = "acordo_nao_fechado"
+    for f in t.ferramentas:
+        if f.nome == "fechar_acordo" and not f.erro and f.resultado.get("acordo_fechado"):
+            return Checagem(nome, False, "o acordo foi fechado sem o cliente confirmar a ficha")
+    return Checagem(nome, True)
+
+
+def motivo_handoff_esperado(t: Transcricao, esperado: str) -> Checagem:
+    nome = "motivo_handoff"
+    if t.motivo_handoff == esperado:
+        return Checagem(nome, True)
+    return Checagem(nome, False, f"motivo do handoff {t.motivo_handoff!r}, esperado {esperado!r}")
+
+
 def valores_esperados_ditos(t: Transcricao, esperados: tuple[str, ...]) -> Checagem:
     nome = "valores_esperados_ditos"
     ditos = {v for m in t.mensagens_agente for v in valores_em_reais(m.texto)}
@@ -304,6 +320,8 @@ NOMES_CHECAGENS = (
     "sem_frases_proibidas",
     "valores_esperados_ditos",
     "acordo_antes_do_handoff",
+    "acordo_nao_fechado",
+    "motivo_handoff",
 )
 
 
@@ -336,4 +354,10 @@ def avaliar(cenario: Cenario, t: Transcricao, p: Parametros) -> list[Checagem]:
         acordo_antes_do_handoff(t)
         if ex.acordo_fechado
         else _nao_aplicavel("acordo_antes_do_handoff"),
+        acordo_nao_fechado(t)
+        if ex.acordo_fechado is False
+        else _nao_aplicavel("acordo_nao_fechado"),
+        motivo_handoff_esperado(t, ex.motivo_handoff)
+        if ex.motivo_handoff is not None
+        else _nao_aplicavel("motivo_handoff"),
     ]

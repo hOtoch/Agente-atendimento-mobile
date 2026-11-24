@@ -16,6 +16,7 @@ from .apoio_ferramentas import (
     INTERESSE_16,
     USADO_EXEMPLO,
     Ambiente,
+    confirmar,
     criar_ambiente,
 )
 
@@ -38,7 +39,7 @@ async def _com_proposta(
         ("calcular_proposta", {}),
     )
     assert estado.proposta_apresentada
-    return estado
+    return await confirmar(amb, estado)  # o cliente aceitou a ficha
 
 
 async def _chave_pix(amb: Ambiente, *, com_chave: bool) -> None:
@@ -167,7 +168,8 @@ async def test_acordo_leva_o_desconto_liberado() -> None:
     amb = await criar_ambiente()
     estado = await _com_proposta(amb)
     estado, _ = await amb.seq(estado, ("liberar_desconto", {"motivo": "pediu desconto"}))
-    r = await amb.rodar("fechar_acordo", {}, estado)
+    assert not estado.pedido_confirmado  # a ficha refeita pede nova confirmacao
+    r = await amb.rodar("fechar_acordo", {}, await confirmar(amb, estado))
     assert not r.erro
     assert r.estado.acordo["desconto_liberado"] == "R$ 50,00"  # type: ignore[index]
     assert r.estado.acordo["desconto"]["negociado"] == "R$ 50,00"  # type: ignore[index]
@@ -241,7 +243,7 @@ async def test_chamar_de_novo_com_algo_diferente_atualiza() -> None:
         ("calcular_proposta", {}),
     )
     assert refeito.acordo is None  # mudar a ficha derruba o acordo antigo
-    segundo = await amb.rodar("fechar_acordo", {}, refeito)
+    segundo = await amb.rodar("fechar_acordo", {}, await confirmar(amb, refeito))
     assert not segundo.erro, segundo.conteudo
     assert segundo.estado.acordo["pagamento"]["tipo"] == "pix"  # type: ignore[index]
     assert segundo.estado.acordo != primeiro.estado.acordo

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import copy
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -251,7 +251,16 @@ async def test_mesma_conversa_gera_o_mesmo_atendimento_nos_dois_canais() -> None
     assert len(whatsapp.textos) == len(FALAS)
     assert instagram.textos == whatsapp.textos
     assert instagram.etapa is whatsapp.etapa is Etapa.INTERESSE_QUALIFICADO
-    assert instagram.estado == whatsapp.estado
+    # a rodada (id aleatorio de cada execucao) e a unica coisa que difere entre os dois
+    sem_rodada = [
+        replace(
+            e,
+            confirmacao=None if e.confirmacao is None else {"proposta": e.confirmacao["proposta"]},
+        )
+        for e in (instagram.estado, whatsapp.estado)
+    ]
+    assert sem_rodada[0] == sem_rodada[1]
+    assert instagram.estado.confirmacao is not None
     assert instagram.estado.estoque_consultado
     assert instagram.estado.ficha.interesse.capacidade is not None
 

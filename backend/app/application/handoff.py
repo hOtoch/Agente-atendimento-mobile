@@ -48,6 +48,7 @@ from app.application.painel.portas import (
 from app.application.painel.publicador import PublicadorPainel, publicar_sem_falhar
 from app.domain.ficha import pendencias
 from app.domain.kanban import Etapa, calcular_etapa
+from app.domain.metricas import MOTIVO_NEGOCIACAO
 
 log = logging.getLogger(__name__)
 
@@ -352,12 +353,32 @@ def _motivo_acordo_fechado(acordo: AcordoFechado) -> str:
     )
 
 
+def _motivo_negociacao(estado: EstadoAtendimento) -> str:
+    """Resumo da negociacao que a IA nao pode seguir: o que pediu, o que ja foi liberado, o teto."""
+    n = estado.negociacao or {}
+    pediu = (
+        "um brinde ou benefício" if n.get("pedido") == "brinde_ou_beneficio" else "mais desconto"
+    )
+    texto = f" ({n['texto']})" if n.get("texto") else ""
+    liberado = n.get("liberado") or "R$ 0,00"
+    teto = f" (teto da IA: {n['teto']})" if n.get("teto") else ""
+    proposta = estado.ultima_proposta or {}
+    forma = (proposta.get("forma_escolhida") or {}).get("rotulo")
+    atual = f" Proposta atual: {forma}." if forma else ""
+    return (
+        f"Negociação: o cliente pediu {pediu}{texto}. Desconto já liberado pela IA: "
+        f"{liberado}{teto}.{atual} A IA parou aqui: siga com o cliente."
+    )
+
+
 def _motivo_legivel(
     motivo: str, estado: EstadoAtendimento, faltas: list[str], acordo: AcordoFechado | None
 ) -> str:
     """Traduz motivos do sistema em texto acionavel; motivo da IA (texto livre) passa direto."""
     if motivo == MOTIVO_ACORDO_FECHADO and acordo is not None:
         return _motivo_acordo_fechado(acordo)
+    if motivo == MOTIVO_NEGOCIACAO and estado.negociacao:
+        return _motivo_negociacao(estado)
     if motivo != MOTIVO_FALHA_LLM:
         return motivo
     etapa = _etapa_antes_do_handoff(estado).nome_exibicao

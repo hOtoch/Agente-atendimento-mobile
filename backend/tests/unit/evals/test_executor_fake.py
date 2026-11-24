@@ -82,3 +82,29 @@ def test_cli_fake_gera_relatorio_md_e_json(tmp_path: Path) -> None:
 
 def test_cli_cenario_desconhecido(tmp_path: Path) -> None:
     assert rodar.main(["--modo", "fake", "--cenarios", "nao_existe", "--saida", str(tmp_path)]) == 2
+
+
+async def test_quanto_fica_em_10x_mostra_a_ficha_e_nao_fecha() -> None:
+    cenario = next(c for c in CENARIOS if c.id == "pergunta_parcelas_nao_fecha")
+    r = await rodar_cenario_fake(cenario)
+    assert r.aprovado, [c for c in r.checagens if c.aplicavel and not c.passou]
+    textos = [m.texto for m in r.transcricao.mensagens_agente]
+    assert textos[-1].startswith("Confere seu pedido:") and "10x de" in textos[-1]
+    assert not r.transcricao.handoff
+    assert "fechar_acordo" not in [f.nome for f in r.transcricao.ferramentas]
+
+
+async def test_escada_de_desconto_termina_no_vendedor_com_motivo_negociacao() -> None:
+    cenario = next(c for c in CENARIOS if c.id == "desconto_escada")
+    r = await rodar_cenario_fake(cenario)
+    assert r.aprovado, [c for c in r.checagens if c.aplicavel and not c.passou]
+    textos = " ".join(m.texto for m in r.transcricao.mensagens_agente)
+    assert "Desconto: R$ 50,00" in textos and "Desconto: R$ 100,00" in textos
+    assert r.transcricao.motivo_handoff == "negociacao"
+
+
+async def test_pedido_de_brinde_vai_ao_vendedor_com_motivo_negociacao() -> None:
+    cenario = next(c for c in CENARIOS if c.id == "pede_brinde")
+    r = await rodar_cenario_fake(cenario)
+    assert r.aprovado, [c for c in r.checagens if c.aplicavel and not c.passou]
+    assert r.transcricao.handoff and r.transcricao.motivo_handoff == "negociacao"

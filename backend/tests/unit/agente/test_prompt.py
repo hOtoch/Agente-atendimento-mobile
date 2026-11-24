@@ -114,6 +114,9 @@ def estado(
     handoff_solicitado: bool = False,
     formas: FormasAceitas | None = None,
     acordo_fechado: bool = False,
+    confirmacao_mostrada: bool = False,
+    pedido_confirmado: bool = False,
+    desconto_pedido_antes: bool = False,
 ) -> str:
     return mensagem_estado(
         ficha,
@@ -124,6 +127,9 @@ def estado(
         handoff_solicitado=handoff_solicitado,
         formas=formas,
         acordo_fechado=acordo_fechado,
+        confirmacao_mostrada=confirmacao_mostrada,
+        pedido_confirmado=pedido_confirmado,
+        desconto_pedido_antes=desconto_pedido_antes,
     )
 
 
@@ -450,11 +456,33 @@ def test_pergunta_de_pagamento_sem_nenhuma_forma_manda_chamar_vendedor() -> None
 # --- fechamento do acordo pela IA (#74) -----------------------------------------------------
 
 
-def test_proposta_apresentada_com_ficha_completa_lembra_de_fechar_o_acordo() -> None:
+def test_ficha_mostrada_aguarda_a_confirmacao_e_nao_manda_fechar_direto() -> None:
+    msg = estado(ficha_completa(), proposta_apresentada=True, confirmacao_mostrada=True)
+    assert "aguarda o cliente responder" in msg
+    assert "confirmar_pedido" in msg and "liberar_desconto" in msg
+    assert "nunca feche" in msg
+
+
+def test_pedido_confirmado_manda_fechar_o_acordo() -> None:
+    msg = estado(
+        ficha_completa(),
+        proposta_apresentada=True,
+        confirmacao_mostrada=True,
+        pedido_confirmado=True,
+    )
+    assert "confirmou o pedido" in msg
+    assert "fechar_acordo" in msg and "acordo_fechado" in msg
+
+
+def test_ficha_completa_sem_ficha_mostrada_manda_calcular() -> None:
     msg = estado(ficha_completa(), proposta_apresentada=True)
-    assert "fechar_acordo" in msg
-    assert "chamar_vendedor" in msg
-    assert "acordo_fechado" in msg
+    assert "chame calcular_proposta" in msg
+    assert "mostrar a ficha de confirmação" in estado(ficha_completa())
+
+
+def test_desconto_pedido_antes_manda_nao_negociar_e_seguir() -> None:
+    msg = estado(ficha_intermediaria(), desconto_pedido_antes=True)
+    assert "não negocie agora" in msg
 
 
 def test_sem_proposta_apresentada_nao_manda_fechar_o_acordo() -> None:
@@ -477,7 +505,10 @@ def test_lembrete_final_nao_manda_chamar_vendedor_so_porque_quer_fechar() -> Non
 
 def test_prefixo_conduz_ate_o_fechamento_do_acordo() -> None:
     prefixo = carregar_prefixo()
-    assert "Fechar o acordo" in prefixo
+    assert "Confirmar e fechar o acordo" in prefixo
+    assert "Mostrar a ficha de confirmação do pedido" in prefixo
+    assert "confirmar_pedido" in prefixo
+    assert "quanto fica em 10x" in prefixo
     assert "fechar_acordo" in prefixo
     assert "acordo_fechado" in prefixo
     assert "agradeça a preferência" in prefixo.lower()

@@ -392,8 +392,9 @@ async def test_acordo_fechado_pela_ia_envia_endereco_agradece_e_passa_ao_vendedo
             RespostaRoteirizada(chamadas=[chamada("t4", "registrar_compra", COMPRA_HOJE_12X)]),
             RespostaRoteirizada(chamadas=[chamada("t5", "calcular_proposta")]),
             texto("Aqui está a proposta. Pré-avaliação, valor final confirmado na loja."),
-            # turno 2: o cliente aceita
-            RespostaRoteirizada(chamadas=[chamada("t6", "fechar_acordo")]),
+            # turno 2: o cliente aceita a ficha
+            RespostaRoteirizada(chamadas=[chamada("t6", "confirmar_pedido")]),
+            RespostaRoteirizada(chamadas=[chamada("t6b", "fechar_acordo")]),
             RespostaRoteirizada(
                 chamadas=[chamada("t7", "chamar_vendedor", {"motivo": "acordo_fechado"})]
             ),
@@ -402,9 +403,9 @@ async def test_acordo_fechado_pela_ia_envia_endereco_agradece_e_passa_ao_vendedo
         ]
     )
     await c.turno("quero o iphone 16, tenho um 13 pra troca, 12x no master, compro hoje")
-    assert c.canal.textos == [
-        "Aqui está a proposta. Pré-avaliação, valor final confirmado na loja."
-    ]
+    # o codigo manda a ficha de confirmacao, nao o texto do modelo
+    assert len(c.canal.textos) == 1
+    assert c.canal.textos[0].startswith("Confere seu pedido:")
     assert not (await c.atendimento.obter(c.loja_id, c.lead_id)).handoff_solicitado
 
     await c.turno("fechado, pode ser assim!")
