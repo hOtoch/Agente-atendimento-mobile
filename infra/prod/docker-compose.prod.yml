@@ -1,0 +1,28 @@
+# Override de producao (VPS). Uso, na raiz do repo:
+#   docker compose -f infra/docker-compose.yml -f infra/prod/docker-compose.prod.yml --env-file .env \
+#     up -d --wait postgres redis evolution-postgres evolution-redis evolution-api
+# Nao suba postgres-test nem erp-mock em producao.
+#
+# As portas ficam presas em 127.0.0.1: portas publicadas pelo Docker passam por cima do ufw, entao
+# "5432:5432" deixaria o Postgres aberto na internet mesmo com o firewall ligado.
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+
+  redis:
+    ports: !override
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+
+  evolution-postgres:
+    restart: unless-stopped
+
+  evolution-redis:
+    restart: unless-stopped
+
+  evolution-api:
+    ports: !override
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped

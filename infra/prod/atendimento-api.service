@@ -1,0 +1,18 @@
+[Unit]
+Description=Atendimento Mobile - API (uvicorn)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=atendimento
+Group=atendimento
+WorkingDirectory=/opt/atendimento/app/backend
+Environment=UV_CACHE_DIR=/opt/atendimento/.cache/uv
+ExecStart=/usr/local/bin/uv run --no-sync uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --timeout-graceful-shutdown 3
+Restart=always
+RestartSec=3
+# uv/npm saem com 143 ao receber SIGTERM no stop: e parada normal, nao falha.
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
