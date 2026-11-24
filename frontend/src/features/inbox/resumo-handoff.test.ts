@@ -40,6 +40,11 @@ describe("montarResumoHandoff", () => {
     expect(r.motivo).toBe("A IA teve uma falha técnica e passou o atendimento para você")
   })
 
+  it("motivo negociacao vira texto legível", () => {
+    const r = montarResumoHandoff(detalhe({ card: CARD_MARIA, handoff_solicitado: true, motivo_handoff: "negociacao" }))
+    expect(r.motivo).toBe("Cliente quer negociar além do desconto liberado")
+  })
+
   describe("com o resumo vindo da API", () => {
     const comResumo = { ...DETALHE_MARIA, handoff_solicitado: true, resumo_handoff: RESUMO_API }
 

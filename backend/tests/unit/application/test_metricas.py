@@ -137,7 +137,7 @@ async def test_periodo_sem_dados_devolve_zeros_e_listas_vazias() -> None:
     assert r.erros.llm_por_tipo == ()
     # funil e motivos de handoff sao fixos (todos com zero); a serie tem todos os dias
     assert [e.leads for e in r.funil] == [0, 0, 0, 0, 0]
-    assert [h.quantidade for h in r.handoffs] == [0, 0, 0, 0]
+    assert [h.quantidade for h in r.handoffs] == [0, 0, 0, 0, 0]
     assert [p.dia for p in r.series] == ATUAL.listar_dias()
     assert all(p.conversas_novas == 0 and p.custo_usd == Decimal(0) for p in r.series)
     assert all(p.latencia_llm_media_ms is None for p in r.series)
@@ -233,6 +233,7 @@ async def test_handoffs_agrupados_por_categoria() -> None:
         ("pedido_cliente", 3),
         ("acordo_fechado", 3),
         ("falha_tecnica", 1),
+        ("negociacao", 0),
         ("outros", 4),
     ]
     assert r.handoffs[0].nome == "Pedido do cliente"

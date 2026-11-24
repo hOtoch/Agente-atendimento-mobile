@@ -97,7 +97,7 @@ class EtapaFunilSchema(BaseModel):
 
 class MotivoHandoffSchema(BaseModel):
     motivo: str
-    """`pedido_cliente`, `acordo_fechado`, `falha_tecnica` ou `outros`."""
+    """`pedido_cliente`, `acordo_fechado`, `falha_tecnica`, `negociacao` ou `outros`."""
     nome: str
     quantidade: int
     anterior: int

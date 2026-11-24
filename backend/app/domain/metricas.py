@@ -84,6 +84,7 @@ class MotivoHandoff(StrEnum):
     PEDIDO_CLIENTE = "pedido_cliente"
     ACORDO_FECHADO = "acordo_fechado"
     FALHA_TECNICA = "falha_tecnica"
+    NEGOCIACAO = "negociacao"
     OUTROS = "outros"
 
     @property
@@ -95,11 +96,13 @@ _NOMES_MOTIVO: dict[MotivoHandoff, str] = {
     MotivoHandoff.PEDIDO_CLIENTE: "Pedido do cliente",
     MotivoHandoff.ACORDO_FECHADO: "Acordo fechado",
     MotivoHandoff.FALHA_TECNICA: "Falha técnica",
+    MotivoHandoff.NEGOCIACAO: "Negociação além do teto",
     MotivoHandoff.OUTROS: "Outros",
 }
 
 MOTIVO_ACORDO_FECHADO = "acordo_fechado"
 MOTIVO_FALHA_LLM = "falha_llm"
+MOTIVO_NEGOCIACAO = "negociacao"
 
 # O motivo de uma chamada da IA e texto livre; reconhecemos so o pedido explicito de falar com
 # uma pessoa (trechos sem acento, em minusculas).
@@ -128,6 +131,8 @@ def classificar_motivo_handoff(motivo: str) -> MotivoHandoff:
         return MotivoHandoff.ACORDO_FECHADO
     if texto == MOTIVO_FALHA_LLM:
         return MotivoHandoff.FALHA_TECNICA
+    if texto == MOTIVO_NEGOCIACAO:
+        return MotivoHandoff.NEGOCIACAO
     if any(trecho in texto for trecho in _PEDIDO_DO_CLIENTE):
         return MotivoHandoff.PEDIDO_CLIENTE
     return MotivoHandoff.OUTROS

@@ -41,6 +41,9 @@ const PADRAO: Form = {
   oportunidade_valor: "0",
 }
 
+const AJUDA_ESCADA =
+  "A IA libera o degrau a cada pedido do cliente até o teto. Se ele pedir mais que o teto, ou brinde/benefício, o atendimento vai para o vendedor com um resumo."
+
 const SIM_NAO = [
   { value: "sim", label: "Sim" },
   { value: "nao", label: "Não" },
@@ -257,10 +260,9 @@ export function PassoPreco({
                     form.desconto_pix_tipo === "percentual" ? "Desconto Pix (%)" : "Desconto Pix (R$)",
                   )
                 : null}
-              {texto("desconto_teto", "Desconto máximo por cliente (R$)")}
-              {texto("desconto_degrau", "Degrau do desconto (R$)", {
-                dica: "De quanto em quanto o desconto sobe.",
-              })}
+              {texto("desconto_degrau", "Desconto por pedido (degrau)")}
+              {texto("desconto_teto", "Desconto máximo (teto)")}
+              <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">{AJUDA_ESCADA}</p>
               {seletor("oportunidade_ativa", "Oportunidade única ativa?")}
               {form.oportunidade_ativa === "sim"
                 ? texto("oportunidade_dias_minimos", "Oportunidade: dias mínimos até a compra", {
