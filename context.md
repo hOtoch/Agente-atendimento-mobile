@@ -504,6 +504,11 @@ _Atualizado ao final de cada milestone._
   - Fora do escopo: recuperação de senha por e-mail, vários usuários por loja (o schema aceita), cadastro público. O seletor "Atendendo como" do inbox continua.
   - Pontos de atenção: `sessao_atual` não consulta o banco (desativar usuário só derruba o acesso quando a sessão expira, salvo `redefinir_senha.py`); aviso de dev do Next 16 ("instant navigation") em `/kanban`, sem efeito no build; guia de VPS não foi executado numa VPS real.
   - Próximo: subir na VPS seguindo `docs/deploy-vps.md`.
+- **2026-11-23 — Primeiro deploy na VPS** (Hostinger, Ubuntu 26.04, 1 vCPU, 4 GB) em `https://189-24-10-237.sslip.io` (domínio temporário).
+  - Postgres, Redis e Evolution em Docker presos em `127.0.0.1` (`infra/prod/docker-compose.prod.yml`); API, worker e painel como serviços systemd do usuário `atendimento`; Caddy com HTTPS (Let's Encrypt) e `/api`; ufw só 22/80/443; swap 2 GB; acesso por chave SSH. Segredos gerados no servidor; chaves de LLM colocadas pelo dono.
+  - Verificado pelo domínio: HTTPS e redirect, `/api/health`, 401 sem sessão, chat público, SSE passando pelo Caddy (heartbeat a cada 15 s), portas internas fechadas por fora.
+  - Achados: o Git Bash converte `NEXT_PUBLIC_API_URL=/api` em `C:/Program Files/Git/api` no build (usar PowerShell); `uv`/`npm` saem com 143 no stop (systemd com `SuccessExitStatus=143`).
+  - Pendências: backup do Postgres; domínio próprio; parear o WhatsApp; o dono conferir o cookie `Secure` no primeiro login.
 
 ---
 

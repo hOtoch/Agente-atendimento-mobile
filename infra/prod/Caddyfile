@@ -1,0 +1,18 @@
+# /etc/caddy/Caddyfile — troque DOMINIO pelo dominio (deve apontar para o IP da VPS; portas 80/443
+# abertas). O Caddy emite e renova o certificado sozinho.
+DOMINIO {
+	encode zstd gzip
+
+	# API em /api: o prefixo e removido antes de chegar ao uvicorn.
+	handle_path /api/* {
+		# SSE do painel e do chat: sem buffer, a conexao fica aberta.
+		reverse_proxy 127.0.0.1:8000 {
+			flush_interval -1
+		}
+	}
+
+	# Todo o resto e o painel (next start).
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

@@ -122,6 +122,7 @@ Não altere código. Responda com o veredito e o resumo.
 | Redefinir senha | `cd backend && uv run python scripts/redefinir_senha.py --email dono@loja.com` (nova senha provisória e derruba as sessões) |
 | Dados de demonstração do painel de desempenho | `cd backend && uv run python scripts/popular_metricas_demo.py --loja <uuid> --dias 30 [--seed N]` (`--remover` apaga só o que ele criou; recusa o banco de teste; ver `docs/desempenho.md`) |
 | Regerar modelos xlsx | `cd backend && PYTHONPATH=. uv run python scripts/gerar_modelos_xlsx.py` |
+| Deploy na VPS | `docs/deploy-vps.md` + arquivos em `infra/prod/` (compose override, Caddyfile, systemd). Build do painel **pelo PowerShell** com `$env:NEXT_PUBLIC_API_URL='/api'` (o Git Bash converte `/api` em caminho do Windows) |
 | Componente do design system | `cd frontend && npx shadcn@latest add <componente>` |
 | Subir painel | `cd frontend && npm run dev` (http://localhost:3000; API em `NEXT_PUBLIC_API_URL`; exige login — `CORS_ORIGINS` precisa da origem do painel) |
 | Exportar OpenAPI + gerar cliente TS | `cd backend && uv run python scripts/exportar_openapi.py && cd ../frontend && npm run gerar:api` (o teste `test_openapi.py` quebra se ficar defasado) |

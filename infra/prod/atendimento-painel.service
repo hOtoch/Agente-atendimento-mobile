@@ -1,0 +1,17 @@
+[Unit]
+Description=Atendimento Mobile - painel (next start)
+After=network-online.target
+
+[Service]
+User=atendimento
+Group=atendimento
+WorkingDirectory=/opt/atendimento/app/frontend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm run start -- -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=3
+# uv/npm saem com 143 ao receber SIGTERM no stop: e parada normal, nao falha.
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
