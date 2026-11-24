@@ -167,7 +167,7 @@ Leitura:
 
 - **Com Haiku, o áudio pesa mais que o LLM**; o TTS é opcional por loja e é a principal alavanca de custo.
 - **Infra**: uma VPS de 2 vCPU / 4 GB atende até ~10 mil leads/mês (o gargalo é o LLM, que é API, não CPU). A faixa inclui disco e backup.
-- **Fora da conta**: WhatsApp oficial (a Evolution self-hosted não cobra por mensagem; a API oficial cobra templates de follow-up), domínio, monitoramento e mão de obra. A infra reforçada da Black Friday também não está nas faixas.
+- **Fora da conta**: WhatsApp (a Evolution self-hosted não cobra por mensagem; o custo da API oficial da Meta e o plano para sair da Evolution estão em [docs/whatsapp-oficial.md](docs/whatsapp-oficial.md)), domínio, monitoramento e mão de obra. A infra reforçada da Black Friday também não está nas faixas.
 - **Amostra**: a média vem de conversas roteirizadas do eval, rodado **antes** do fechamento pela IA (M9), que acrescenta alguns turnos (endereço, horário, Pix); conversas reais mais curtas ou mais longas mudam o custo na mesma proporção. Para recalcular com as conversas reais: `uv run python scripts/custos.py --banco`. O painel `/desempenho` também mostra tokens e custo por modelo das conversas reais.
 
 ---
@@ -369,7 +369,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 - **Horário comercial em UTC-3 fixo** (sem `tzdata`): vale para o follow-up, para "hoje" nas regras e para as métricas; lojas em outros fusos pediriam fuso por loja.
 - **Strict tool use com limites.** Na Anthropic, ferramentas com tipos que poderiam quebrar a ficha usam `strict`; as demais ficam sem. A API limita ferramentas strict (≤ 20), parâmetros opcionais (≤ 24) e uniões (≤ 16); um teste trava esses limites, mas o limite de uniões só aparece num `messages.create` real. Na OpenAI, nenhuma ferramenta é strict (o modo estrito exige todos os parâmetros obrigatórios).
 - **Login simples, um usuário por loja.** Cada loja tem um login de dono criado por script (sem cadastro público, sem papéis, sem recuperação por e-mail: a senha é redefinida por comando no servidor). A loja do painel vem da sessão; o inbox ainda usa o seletor "Atendendo como" para escolher o vendedor. `/chat/{loja}` é público de propósito.
-- **Evolution não oficial.** Risco de bloqueio do número: usar chip secundário e, em produção séria, avaliar a API oficial (que cobra templates de follow-up).
+- **Evolution não oficial.** Risco de bloqueio do número: usar chip secundário e, em produção séria, migrar para a API oficial: custo e plano em [docs/whatsapp-oficial.md](docs/whatsapp-oficial.md).
 
 ## Riscos conhecidos e pendências
 
@@ -388,6 +388,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 | [docs/roteiro-demo.md](docs/roteiro-demo.md) | Roteiro do vídeo (≤ 10 min) e da apresentação, tentativas de quebrar a IA, checklist e planos B/C |
 | [docs/deploy-vps.md](docs/deploy-vps.md) | Subir na VPS: um domínio com Caddy (painel em `/`, API em `/api`), variáveis de produção, build fora da VPS, swap |
 | [docs/custos.md](docs/custos.md) | Custo medido por conversa, efeito do cache, projeção 1 mil / 10 mil leads, premissas |
+| [docs/whatsapp-oficial.md](docs/whatsapp-oficial.md) | Custo da API oficial do WhatsApp (1 mil e 10 mil leads, Black Friday), Evolution × Cloud API e plano de migração |
 | [docs/black-friday.md](docs/black-friday.md) | Resultado do k6, interpretação, gargalos e plano da Black Friday |
 | [infra/k6/README.md](infra/k6/README.md) | Como repetir o teste de carga |
 | [docs/desempenho.md](docs/desempenho.md) | Painel de desempenho da IA e dados de demonstração |
