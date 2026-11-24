@@ -62,6 +62,34 @@ copie os do dev. Troque `dominio.com` pelo seu domínio.
 
 `NEXT_PUBLIC_API_URL` não fica no `.env` do servidor: é lida **no build** do painel (abaixo).
 
+## Atualizar a versão no ar (dia a dia)
+
+Depois do preparo (seções 2 e 3) e do primeiro deploy, toda atualização é um comando, no PowerShell,
+na raiz do repo:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File infra\prod\deploy.ps1
+```
+
+O [`deploy.ps1`](../infra/prod/deploy.ps1) envia um **commit** (padrão `origin/main`; outro com
+`-Ref main` ou `-Ref <sha>`), nunca alterações locais soltas, e:
+
+1. faz o build do painel numa worktree própria (`.worktrees/deploy`) no commit exato, com
+   `NEXT_PUBLIC_API_URL=/api` (só refaz o `npm ci` se o `package-lock.json` mudou);
+2. recusa o bundle se ele tiver `Program Files` ou `localhost:8000`;
+3. envia `git archive` + `.next` por `scp` e roda o [`deploy-remoto.sh`](../infra/prod/deploy-remoto.sh) na VPS, que
+   cria um release novo em `/opt/atendimento/releases/<data>-<sha>`, instala dependências, sobe a
+   infra, aplica as migrations, atualiza systemd e Caddyfile, aponta `/opt/atendimento/app` para o
+   release e reinicia API, worker e painel;
+4. **se a API ou o painel não responderem em 2 min, volta sozinho para o release anterior**;
+5. guarda os 3 releases mais recentes e confere `https://<dominio>/api/health` e `/login`.
+
+O `.env` de produção e as mídias do chat ficam em `/opt/atendimento/shared` (fora dos releases; cada
+release tem links para eles). Rollback manual: `ln -sfn /opt/atendimento/releases/<anterior>
+/opt/atendimento/app && systemctl restart atendimento-api atendimento-worker atendimento-painel`.
+
+As seções abaixo descrevem o que o script faz, passo a passo (útil para entender ou fazer à mão).
+
 ## 4. Enviar o código
 
 O repositório é privado: em vez de clonar na VPS (o que exigiria credencial do GitHub lá), envie um
