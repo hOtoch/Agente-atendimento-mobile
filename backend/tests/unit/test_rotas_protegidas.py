@@ -11,7 +11,7 @@ import httpx
 import pytest
 
 from app.application.auth.memoria import MemoriaSessoes
-from app.infra.dependencias import get_sessoes
+from app.infra.dependencias import get_session, get_sessoes
 from app.main import app
 
 pytestmark = pytest.mark.autenticacao_real
@@ -90,6 +90,19 @@ async def test_rotas_publicas_continuam_abertas(
     assert r.status_code == 401 and "token" in r.json()["detail"]
     # modelo de planilha em branco e publico
     assert (await c.get("/modelos/vendedores")).status_code in (200, 422)
-    # webchat: abrir sessao nao exige login (pode falhar por loja/infra, mas nunca 401/403)
-    r = await c.post(f"/webchat/{ID}/sessoes")
+    # webchat: abrir sessao nao exige login. Teste unitario nao faz IO: o banco e trocado por
+    # uma sessao que falha em qualquer uso; o que importa e nao ser barrado por sessao (401/403).
+    app.dependency_overrides[get_session] = _sessao_sem_banco
+    transporte = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transporte, base_url="http://t") as sem_cookie:
+        r = await sem_cookie.post(f"/webchat/{ID}/sessoes")
     assert r.status_code not in (401, 403)
+
+
+class _BancoIndisponivel:
+    def __getattr__(self, nome: str) -> object:
+        raise RuntimeError(f"teste unitario sem banco (tentou usar session.{nome})")
+
+
+async def _sessao_sem_banco() -> AsyncIterator[_BancoIndisponivel]:
+    yield _BancoIndisponivel()
