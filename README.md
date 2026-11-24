@@ -18,7 +18,7 @@ Depois: [o que já funciona](#o-que-já-funciona), [integração com o ERP](#int
 
 - **Atendimento**: entende o aparelho, consulta o estoque (capacidade primeiro, depois cor), qualifica (usado: tela, traseira, carcaça, bateria, câmera; data da compra; forma de pagamento) e só então passa preço, troca e parcelas.
 - **Fechamento pela IA**: quando o cliente aceita, a IA registra o acordo, combina endereço/horário, passa a chave Pix da loja, agradece e entrega ao vendedor com o acordo no resumo.
-- **Canais**: WhatsApp via Evolution API e chat web (simulador no painel e página pública `/chat/{loja}`). Instagram: adaptador esqueleto, testado com fixtures, não ligado à Graph API (ver [docs/instagram.md](docs/instagram.md)).
+- **Canais**: WhatsApp via Evolution API e chat web (simulador no painel e página pública `/chat/{loja}`). Instagram: adaptador testado com fixtures e com teste de paridade com o WhatsApp, não ligado à Graph API; plano de ação em [docs/instagram.md](docs/instagram.md).
 - **Kanban** de 5 etapas (`Novo contato → Interesse identificado → Interesse qualificado → Com o vendedor → Venda fechada`), atualizado em tempo real por SSE.
 - **Inbox** com ficha do cliente, resumo do handoff, **Assumir** e **Devolver para a IA**. O vendedor também pode responder direto pelo celular: a IA percebe o `fromMe` e silencia.
 - **Distribuição de leads por porcentagem** entre vendedores (ex.: 50/30/20), com resumo e link da conversa enviados ao WhatsApp do vendedor.
@@ -393,7 +393,7 @@ Portas locais: API 8000, painel 3000, Evolution 8080, ERP simulado 8090 (token `
 | [infra/k6/README.md](infra/k6/README.md) | Como repetir o teste de carga |
 | [docs/desempenho.md](docs/desempenho.md) | Painel de desempenho da IA e dados de demonstração |
 | [docs/audio.md](docs/audio.md) | Áudio de entrada (STT) e de saída (TTS): regra, provedor, preço de referência |
-| [docs/instagram.md](docs/instagram.md) | Adaptador do Instagram e passos para produção |
+| [docs/instagram.md](docs/instagram.md) | Plano de ação do Instagram Direct, adaptador e passos para produção |
 | [docs/mercadophone.md](docs/mercadophone.md) | Integração com o ERP Mercado Phone: conectar, sincronizar, regras de descarte, o que é escrito no ERP, limites |
 | [docs/modelos](docs/modelos) | Planilhas modelo de importação (troca, taxas, estoque) |
 | [DESIGN.md](DESIGN.md) | Design system e fonte da verdade visual do painel |

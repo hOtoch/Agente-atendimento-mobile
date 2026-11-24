@@ -20,7 +20,7 @@ from app.application.agente.repositorio import RepositorioAtendimentoEmMemoria
 from app.application.agente.transcricao import RepositorioTranscricaoEmMemoria
 from app.application.audio_entrada import TranscreverAudio
 from app.application.audio_saida import ResponderEmAudio
-from app.application.canal import Canal, MensagemSaida, TipoMensagem
+from app.application.canal import Canal, CanalPort, MensagemSaida, TipoMensagem
 from app.application.handoff import CasosHandoff
 from app.application.llm import (
     BlocoTexto,
@@ -190,6 +190,7 @@ async def criar_cenario(
     max_descartes: int = 2,
     relogio: RelogioFalso | None = None,
     parede: RelogioParedeFalso | None = None,
+    canais: dict[Canal, CanalPort] | None = None,
 ) -> Cenario:
     amb = await criar_ambiente()
     conversas = ConversasEmMemoria()
@@ -238,7 +239,7 @@ async def criar_cenario(
         eventos=eventos,
         llm=llm,
         catalogo=catalogo or amb.catalogo,
-        canais={Canal.WEBCHAT: canal},
+        canais=canais or {Canal.WEBCHAT: canal},
         config=amb.casos,
         estoque=amb.ctx.estoque,
         hoje=lambda: HOJE,
